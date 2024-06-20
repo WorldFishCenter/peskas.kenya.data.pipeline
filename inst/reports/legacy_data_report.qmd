@@ -1,0 +1,68 @@
+---
+title: "WCS SSF legacy data"
+format:
+   html:
+     self-contained: true
+     theme:
+       light: flatly
+       dark: darkly
+code-fold: true
+code-summary: "Show the code"
+editor: visual
+css: style.css
+toc: true
+toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data distribution
+
+```{r, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+library(magrittr)
+library(ggplot2)
+
+quarter_format <- function(date) {
+  year <- lubridate::year(date)
+  quarter <- lubridate::quarter(date)
+  return(paste0("Q", quarter, "\n", year))
+}
+
+arrow::read_feather(system.file("data/legacy_dat_processed.feather", package = "peskas.kenya.data.pipeline")) %>%
+  dplyr::group_by(landing_id) %>%
+  dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(quarter_date = lubridate::floor_date(landing_date, unit = "quarter")) %>%
+  dplyr::group_by(quarter_date, sector, landing_site) %>%
+  dplyr::count() %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(quarter_date, landing_site, fill = list(n = 0)) %>%
+  dplyr::filter(!is.na(sector)) %>%
+  ggplot() +
+  theme_bw() +
+  geom_tile(aes(x = quarter_date, y = landing_site, fill = n, alpha = log(n)), color = "white", size = 0.3) +
+  facet_grid(sector ~ ., scales = "free", , space = "free") +
+  scale_fill_viridis_c(direction = -1) +
+  coord_cartesian(expand = FALSE) +
+  theme(
+    panel.grid = element_blank(),
+    strip.background = element_rect(fill = "white"),
+    legend.position = "bottom",
+    legend.key.width = unit(1, "cm"),
+    strip.text.y = element_text(angle = 0, vjust = 0.5, hjust = 0.5, face = "bold"),
+  ) +
+  guides(alpha = "none") +
+  scale_x_date(
+    date_breaks = "3 years",
+    labels = quarter_format, 
+    expand = c(0, 0)
+  ) +  labs(
+    title = "Landing sites activity",
+    x = "Quarter of the Year",
+    fill = "Number of surveys",
+    y = ""
+  )
+```
+
