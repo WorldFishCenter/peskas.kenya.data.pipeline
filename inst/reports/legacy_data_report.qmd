@@ -24,16 +24,28 @@ knitr::opts_chunk$set(echo = TRUE)
 library(magrittr)
 library(ggplot2)
 
+
+setwd("../..")
+conf <- peskas.kenya.data.pipeline::read_config()
+
 quarter_format <- function(date) {
   year <- lubridate::year(date)
   quarter <- lubridate::quarter(date)
   return(paste0("Q", quarter, "\n", year))
 }
 
-arrow::read_feather(system.file("data/legacy_dat_processed.feather", package = "peskas.kenya.data.pipeline")) %>%
+legacy_data <-
+  peskas.kenya.data.pipeline::mdb_collection(
+    collection_name = "legacy_data",
+    db_name = "kenya",
+    connection_string = conf$storage$mongodb$connection_string
+  )
+
+legacy_data %>% 
+  dplyr::mutate(landing_date = as.Date(as.POSIXct(landing_date, origin = "1970-01-01"))) %>%
   dplyr::group_by(landing_id) %>%
   dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
-  dplyr::ungroup() %>%
+  dplyr::ungroup() %>% 
   dplyr::mutate(quarter_date = lubridate::floor_date(landing_date, unit = "quarter")) %>%
   dplyr::group_by(quarter_date, sector, landing_site) %>%
   dplyr::count() %>%
@@ -65,4 +77,3 @@ arrow::read_feather(system.file("data/legacy_dat_processed.feather", package = "
     y = ""
   )
 ```
-
