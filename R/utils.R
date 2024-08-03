@@ -53,7 +53,7 @@ add_version <- function(filename, extension = "", sha_nchar = 7, sep = "__") {
 
 #' Read configuration file
 #'
-#' Reads configuration file in `conf.yml` and adds some logging lines. Wrapped
+#' Reads configuration file in `config.yml` and adds some logging lines. Wrapped
 #' for convenience
 #'
 #' @return the environment parameters
@@ -62,9 +62,11 @@ add_version <- function(filename, extension = "", sha_nchar = 7, sep = "__") {
 read_config <- function() {
   logger::log_info("Loading configuration file...")
 
+  config_file <- here::here("inst", "config.yml")
+
   pars <- config::get(
     config = Sys.getenv("R_CONFIG_ACTIVE", "default"),
-    file = system.file("conf.yml", package = "peskas.kenya.data.pipeline")
+    file = config_file
   )
 
   logger::log_info("Using configutation: {attr(pars, 'config')}")

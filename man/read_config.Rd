@@ -10,6 +10,6 @@ read_config()
 the environment parameters
 }
 \description{
-Reads configuration file in \code{conf.yml} and adds some logging lines. Wrapped
+Reads configuration file in \code{config.yml} and adds some logging lines. Wrapped
 for convenience
 }

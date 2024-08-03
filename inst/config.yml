@@ -1,0 +1,15 @@
+default:
+  storage:
+    mongodb:
+      connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
+
+production:
+  storage:
+    mongodb:
+
+local:
+  storage:
+    mongodb:
+      connection_string: !expr readLines("auth/mongodb-connection-string")
+
+
