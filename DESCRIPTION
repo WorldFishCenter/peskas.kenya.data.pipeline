@@ -1,23 +1,36 @@
 Package: peskas.kenya.data.pipeline
-Title: What the Package Does (One Line, Title Case)
+Title: Functions to Implement the Kenya Small Scale Fisheries Data Pipeline
 Version: 0.2.0
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: Apache License (>= 2)
+    c(person(given = "Lorenzo",
+             family = "Longobardi",
+             role = c("aut", "cre"),
+             email = "l.longobardi@cgiar.org",
+             comment = c(ORCID = "0000-0003-3126-7341")),
+      person(given = "Hamza",
+             family = "Altarturi",
+             role = c("aut"),
+             email = "h.altarturi@cgiar.org"),
+      person(given = "WorldFish",
+             role = "cph"))           
+Description: This package implements the data and modelling pipelines underpining the WCS-Peskas system in Kenya.
+License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Imports: 
     config,
+    digest,
     dplyr,
-    ggplot2,
     git2r,
+    googlesheets4,
     here,
+    janitor,
     logger,
-    lubridate,
     magrittr,
     mongolite,
+    purrr,
+    rio,
     rlang,
-    tidyr
+    tidyr,
+    univOutl
