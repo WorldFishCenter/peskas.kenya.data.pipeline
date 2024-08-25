@@ -18,13 +18,17 @@
 #'
 #' @export
 prepare_legacy_landings <- function(...) {
-  legacy_dat <- rio::import(system.file("WCS_LegayData1995_2022.xlsx", package = "peskas.kenya.data.pipeline"),
-    setclass = "tibble",
-    data.table = TRUE
-  )
+  conf <- read_config()
 
-  legacy_dat %>%
-    dplyr::select(-c("Months", "Year", "Day", "Month", "Management", "New.mngt", "Mngt")) %>%
+  raw_legacy_dat <- peskas.kenya.data.pipeline::mdb_collection(
+    collection_name = "legacy_data-raw",
+    db_name = "kenya",
+    connection_string = conf$storage$mongodb$connection_string
+  ) |>
+    dplyr::as_tibble()
+
+  raw_legacy_dat %>%
+    dplyr::select(-c("Months", "Year", "Day", "Month", "Management", "New_mngt", "Mngt")) %>%
     janitor::clean_names() %>%
     dplyr::rename(
       landing_date = "date",
@@ -51,8 +55,8 @@ prepare_legacy_landings <- function(...) {
       dplyr::everything()
     ) %>%
     dplyr::select(-c(
-      "n_catch", "size_category", "sector", "size_km",
-      "new_areas", "seascape", "new_fishing_areas", "total_catch"
+      "n_catch", "sector", "size_km", "new_areas",
+      "seascape", "new_fishing_areas", "total_catch"
     )) %>%
     dplyr::mutate(
       landing_date = as.Date(.data$landing_date, format = "%d/%m/%y")
