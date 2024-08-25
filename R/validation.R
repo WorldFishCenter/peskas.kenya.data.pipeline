@@ -1,33 +1,53 @@
-#' Validate Legacy Data
+#' Validate Legacy Fisheries Data
 #'
-#' This function performs various validation checks on the input data and returns a validated output.
+#' This function imports and validates preprocessed legacy fisheries data from a MongoDB collection. It conducts a series of validation checks to ensure data integrity, including checks on dates, fisher counts, boat numbers, and catch weights. The function then compiles the validated data and corresponding alert flags, which are subsequently uploaded back to MongoDB.
 #'
-#' @param data A data frame containing the legacy data to be validated.
+#' @return This function does not return a value. Instead, it processes the data and uploads the validated results and alert flags to a MongoDB collection named "legacy_data-validated" in the "kenya" database.
 #'
-#' @return A list containing two elements:
-#'   \item{validated_output}{A data frame with validated and processed data}
-#'   \item{alert_flags}{A data frame with alert flags for each catch_id}
+#' @details
+#' The function performs the following main operations:
+#' 1. Pulls preprocessed legacy landings data from the "legacy_data-preprocessed" MongoDB collection.
+#' 2. Validates the data for consistency and accuracy, focusing on:
+#'    - Date validation
+#'    - Number of fishers
+#'    - Number of boats
+#'    - Catch weight
+#' 3. Generates a validated dataset that integrates the results of the validation checks.
+#' 4. Creates alert flags to identify and track any data issues discovered during validation.
+#' 5. Merges the validated data with additional metadata, such as survey details and landing site information.
+#' 6. Uploads the validated dataset to the "legacy_data-validated" MongoDB collection.
 #'
-#' @importFrom dplyr select left_join
-#' @importFrom purrr map reduce
-#' @importFrom tidyr unite
+#' @note This function requires a configuration file to be present and readable by the 'read_config' function, which should provide MongoDB connection details and parameters for validation.
 #'
 #' @examples
 #' \dontrun{
-#' validated_data <- validate_legacy_data(your_data)
+#' validate_legacy_landings()
 #' }
-validate_legacy_data <- function(data = NULL) {
+#'
+#' @export
+validate_legacy_landings <- function() {
+  conf <- read_config()
+
+  preprocessed_legacy_landings <-
+    mdb_collection_pull(
+      collection_name = "legacy_data-preprocessed",
+      db_name = "kenya",
+      connection_string = conf$storage$mongodb$connection_string
+    ) |>
+    dplyr::as_tibble()
+
+
   validation_output <-
     list(
-      dates_alert = validate_dates(data = data),
-      fishers_alert = validate_nfishers(data = data),
-      nboats_alert = validate_nboats(data = data),
-      catch_alert = validate_catch(data = data, k = 3)
+      dates_alert = validate_dates(data = preprocessed_legacy_landings),
+      fishers_alert = validate_nfishers(data = preprocessed_legacy_landings, k = conf$validation$k_nfishers),
+      nboats_alert = validate_nboats(data = preprocessed_legacy_landings, k = conf$validation$k_nboats),
+      catch_alert = validate_catch(data = preprocessed_legacy_landings, k = conf$validation$k_catch)
     )
 
   # validated data
   base_data <-
-    data %>%
+    preprocessed_legacy_landings %>%
     dplyr::select(
       "survey_id", "catch_id", "landing_site",
       "gear", "gear_new", "fish_category",
@@ -53,7 +73,15 @@ validate_legacy_data <- function(data = NULL) {
     purrr::reduce(dplyr::left_join, by = "catch_id") %>%
     tidyr::unite(col = "alert_number", dplyr::contains("alert"), sep = "-", na.rm = TRUE)
 
-  validated_output
+
+  # upload validated outputs
+  logger::log_info("Uploading validated data to mongodb")
+  mdb_collection_push(
+    data = validated_output,
+    connection_string = conf$storage$mongodb$connection_string,
+    collection_name = "legacy_data-validated",
+    db_name = "kenya"
+  )
 }
 
 #' Generate an alert vector based on the `univOutl::LocScaleB()` function
@@ -148,6 +176,7 @@ validate_dates <- function(data = NULL) {
 #' is set to `NA`.
 #'
 #' @param data A data frame containing the `no_of_fishers` column.
+#' @param k a numeric value used in the LocScaleB function for outlier detection.
 #'
 #' @return A data frame with two columns: `no_of_fishers` and `alert_n_fishers`.
 #'   - `no_of_fishers`: The original number of fishers if valid, otherwise `NA`.
@@ -157,16 +186,16 @@ validate_dates <- function(data = NULL) {
 #'
 #' @examples
 #' \dontrun{
-#' validate_nfishers(data)
+#' validate_nfishers(data, k = 3)
 #' }
-validate_nfishers <- function(data = NULL) {
+validate_nfishers <- function(data = NULL, k = NULL) {
   data %>%
     dplyr::transmute(
       .data$catch_id,
       .data$no_of_fishers,
       alert_n_fishers = alert_outlier(
         x = .data$no_of_fishers,
-        alert_if_larger = 2, logt = TRUE, k = 3
+        alert_if_larger = 2, logt = TRUE, k = k
       )
     ) %>%
     dplyr::mutate(no_of_fishers = ifelse(is.na(.data$alert_n_fishers), .data$no_of_fishers, NA_real_))
@@ -181,6 +210,7 @@ validate_nfishers <- function(data = NULL) {
 #' is set to `NA`.
 #'
 #' @param data A data frame containing the `n_boats` column.
+#' @param k a numeric value used in the LocScaleB function for outlier detection.
 #'
 #' @return A data frame with two columns: `n_boats` and `alert_n_boats`.
 #'   - `n_boats`: The original number of boats if valid, otherwise `NA`.
@@ -190,16 +220,16 @@ validate_nfishers <- function(data = NULL) {
 #'
 #' @examples
 #' \dontrun{
-#' validate_nboats(data)
+#' validate_nboats(data, k = 2)
 #' }
-validate_nboats <- function(data = NULL) {
+validate_nboats <- function(data = NULL, k = NULL) {
   data %>%
     dplyr::transmute(
       .data$catch_id,
       .data$n_boats,
       alert_n_boats = alert_outlier(
         x = .data$n_boats,
-        alert_if_larger = 3, logt = TRUE, k = 3
+        alert_if_larger = 3, logt = TRUE, k = k
       )
     ) %>%
     dplyr::mutate(n_boats = ifelse(is.na(.data$alert_n_boats), .data$n_boats, NA_real_))
@@ -221,7 +251,7 @@ validate_nboats <- function(data = NULL) {
 #'
 #' @examples
 #' \dontrun{
-#' catch_bounds <- get_catch_bounds(your_data, k = 3)
+#' catch_bounds <- get_catch_bounds(your_data, k = 2)
 #' }
 get_catch_bounds <- function(data = NULL, k = NULL) {
   get_bounds <- function(x = NULL, k = NULL) {

@@ -14,6 +14,10 @@ default:
       sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
       tables:
         - fishing_grounds
+  validation:
+    k_nboats: 3
+    k_nfishers: 3
+    k_catch: 2.5
 
 production:
   storage:
