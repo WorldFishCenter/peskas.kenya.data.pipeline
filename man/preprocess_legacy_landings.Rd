@@ -4,26 +4,37 @@
 \alias{preprocess_legacy_landings}
 \title{Preprocess Legacy Landings Data}
 \usage{
-preprocess_legacy_landings(landings = NULL)
-}
-\arguments{
-\item{landings}{A data frame containing legacy WCS SSF landings data. The data frame
-should include the columns: \code{landing_date}, \code{catch_name}, \code{gear}, \code{gear_new},
-\code{fish_category}, and \code{ecology}.}
+preprocess_legacy_landings()
 }
 \value{
-A tibble with transformed data:
-\item{landing_date}{Converted to \code{Date} format.}
-\item{catch_name, gear, gear_new, fish_category, ecology}{Converted to lowercase.}
+This function does not return a value. Instead, it processes the data and uploads
+the result to a MongoDB collection in the "kenya" database.
 }
 \description{
-This function preprocesses legacy landings data by converting it into a tibble,
-transforming the \code{landing_date} column to \code{Date} format, and converting
-specified columns to lowercase.
+This function imports, preprocesses, and cleans legacy landings data from a MongoDB collection.
+It performs various data cleaning and transformation operations, including column renaming,
+removal of unnecessary columns, generation of unique identifiers, and data type conversions.
+The processed data is then uploaded back to MongoDB.
+}
+\details{
+The function performs the following main operations:
+\enumerate{
+\item Pulls raw data from the "legacy_data-raw" MongoDB collection.
+\item Removes several unnecessary columns.
+\item Renames columns for clarity (e.g., 'site' to 'landing_site').
+\item Generates unique 'survey_id' and 'catch_id' fields.
+\item Converts several string fields to lowercase.
+\item Cleans catch names using a separate function 'clean_catch_names'.
+\item Uploads the processed data to the "legacy_data-preprocessed" MongoDB collection.
+}
+}
+\note{
+This function requires a configuration file to be present and readable by the
+'read_config' function, which should provide MongoDB connection details.
 }
 \examples{
 \dontrun{
-preprocessed_data <- preprocess_legacy_landings(landings_data)
+preprocess_legacy_landings()
 }
 
 }

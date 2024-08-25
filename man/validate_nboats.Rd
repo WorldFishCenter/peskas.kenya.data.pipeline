@@ -4,10 +4,12 @@
 \alias{validate_nboats}
 \title{Validate Number of Boats}
 \usage{
-validate_nboats(data = NULL)
+validate_nboats(data = NULL, k = NULL)
 }
 \arguments{
 \item{data}{A data frame containing the \code{n_boats} column.}
+
+\item{k}{a numeric value used in the LocScaleB function for outlier detection.}
 }
 \value{
 A data frame with two columns: \code{n_boats} and \code{alert_n_boats}.
@@ -25,6 +27,6 @@ is set to \code{NA}.
 }
 \examples{
 \dontrun{
-validate_nboats(data)
+validate_nboats(data, k = 2)
 }
 }
