@@ -1,33 +1,47 @@
-#' Prepare and Clean Legacy Landings Data
+#' Preprocess Legacy Landings Data
 #'
-#' This function imports, preprocesses, and cleans legacy landings data from an Excel file.
-#' The data is cleaned by renaming columns, removing unnecessary columns, generating a unique
-#' landing ID, and filtering the data based on a specific date threshold.
+#' This function imports, preprocesses, and cleans legacy landings data from a MongoDB collection.
+#' It performs various data cleaning and transformation operations, including column renaming,
+#' removal of unnecessary columns, generation of unique identifiers, and data type conversions.
+#' The processed data is then uploaded back to MongoDB.
 #'
-#' @param ... Additional arguments passed to the `rio::import` function, such as file path or import options.
+#' @return This function does not return a value. Instead, it processes the data and uploads
+#'   the result to a MongoDB collection in the "kenya" database.
 #'
-#' @return A tibble containing the cleaned and preprocessed legacy landings data, with the following transformations:
-#'   \item{landing_date}{Converted to `Date` format and filtered to include dates from 1990 onwards.}
-#'   \item{landing_id}{A unique identifier generated for each landing record.}
-#'   \item{landing_site, sector, gear, n_boats}{Columns renamed for clarity.}
+#' @details
+#' The function performs the following main operations:
+#' 1. Pulls raw data from the "legacy_data-raw" MongoDB collection.
+#' 2. Removes several unnecessary columns.
+#' 3. Renames columns for clarity (e.g., 'site' to 'landing_site').
+#' 4. Generates unique 'survey_id' and 'catch_id' fields.
+#' 5. Converts several string fields to lowercase.
+#' 6. Cleans catch names using a separate function 'clean_catch_names'.
+#' 7. Uploads the processed data to the "legacy_data-preprocessed" MongoDB collection.
+#'
+#' @note This function requires a configuration file to be present and readable by the
+#'   'read_config' function, which should provide MongoDB connection details.
 #'
 #' @examples
 #' \dontrun{
-#' cleaned_legacy_data <- prepare_legacy_landings()
+#' preprocess_legacy_landings()
 #' }
 #'
 #' @export
-prepare_legacy_landings <- function(...) {
+
+preprocess_legacy_landings <- function() {
   conf <- read_config()
 
-  raw_legacy_dat <- peskas.kenya.data.pipeline::mdb_collection(
+  # get raw landings from mongodb
+  raw_legacy_dat <- mdb_collection_pull(
     collection_name = "legacy_data-raw",
     db_name = "kenya",
     connection_string = conf$storage$mongodb$connection_string
   ) |>
     dplyr::as_tibble()
 
-  raw_legacy_dat %>%
+  # preprocess raw landings
+  processed_legacy_landings <-
+    raw_legacy_dat %>%
     dplyr::select(-c("Months", "Year", "Day", "Month", "Management", "New_mngt", "Mngt")) %>%
     janitor::clean_names() %>%
     dplyr::rename(
@@ -42,7 +56,7 @@ prepare_legacy_landings <- function(...) {
       ),
       algo = "crc32"
     )) %>%
-    dplyr::group_by("survey_id") %>%
+    dplyr::group_by(.data$survey_id) %>%
     dplyr::mutate(
       n_catch = seq(1, dplyr::n(), 1),
       catch_id = paste(.data$survey_id, .data$n_catch, sep = "-")
@@ -58,35 +72,7 @@ prepare_legacy_landings <- function(...) {
       "n_catch", "sector", "size_km", "new_areas",
       "seascape", "new_fishing_areas", "total_catch"
     )) %>%
-    dplyr::mutate(
-      landing_date = as.Date(.data$landing_date, format = "%d/%m/%y")
-    ) %>%
-    dplyr::ungroup()
-}
-
-#' Preprocess Legacy Landings Data
-#'
-#' This function preprocesses legacy landings data by converting it into a tibble,
-#' transforming the `landing_date` column to `Date` format, and converting
-#' specified columns to lowercase.
-#'
-#' @param landings A data frame containing legacy WCS SSF landings data. The data frame
-#' should include the columns: `landing_date`, `catch_name`, `gear`, `gear_new`,
-#' `fish_category`, and `ecology`.
-#'
-#' @return A tibble with transformed data:
-#'   \item{landing_date}{Converted to `Date` format.}
-#'   \item{catch_name, gear, gear_new, fish_category, ecology}{Converted to lowercase.}
-#'
-#' @examples
-#' \dontrun{
-#' preprocessed_data <- preprocess_legacy_landings(landings_data)
-#' }
-#'
-#' @export
-preprocess_legacy_landings <- function(landings = NULL) {
-  landings %>%
-    dplyr::as_tibble() %>%
+    dplyr::ungroup() |>
     dplyr::mutate(
       dplyr::across(.cols = c(
         "catch_name", "gear", "gear_new",
@@ -94,9 +80,34 @@ preprocess_legacy_landings <- function(landings = NULL) {
       ), tolower)
     ) %>%
     clean_catch_names()
+
+
+  logger::log_info("Uploading preprocessed data to mongodb")
+  # upload preprocessed landings
+  mdb_collection_push(
+    data = processed_legacy_landings,
+    connection_string = conf$storage$mongodb$connection_string,
+    collection_name = "legacy_data-preprocessed",
+    db_name = "kenya"
+  )
 }
 
 
+#' Clean Catch Names
+#'
+#' This function standardizes catch names in the dataset by correcting common misspellings
+#' and inconsistencies.
+#'
+#' @param data A data frame or tibble containing a column named `catch_name`.
+#'
+#' @return A data frame or tibble with standardized catch names in the `catch_name` column.
+#'
+#' @examples
+#' \dontrun{
+#' cleaned_data <- clean_catch_names(data)
+#' }
+#'
+#' @keywords internal
 clean_catch_names <- function(data = NULL) {
   data %>%
     dplyr::mutate(catch_name = dplyr::case_when(
