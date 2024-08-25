@@ -224,7 +224,6 @@ validate_nboats <- function(data = NULL) {
 #' catch_bounds <- get_catch_bounds(your_data, k = 3)
 #' }
 get_catch_bounds <- function(data = NULL, k = NULL) {
-
   get_bounds <- function(x = NULL, k = NULL) {
     univOutl::LocScaleB(x$catch_kg, logt = TRUE, k = k) %>%
       magrittr::extract2("bounds")
@@ -258,16 +257,16 @@ get_catch_bounds <- function(data = NULL, k = NULL) {
 #' validated_catch <- validate_catch(your_data, k = 3)
 #' }
 validate_catch <- function(data = NULL, k = NULL) {
-
-  bounds <- get_catch_bounds(data = data, k = 3)
+  bounds <- get_catch_bounds(data = data, k = k)
 
   data %>%
     dplyr::select("catch_id", "gear_new", "catch_name", "catch_kg") %>%
     dplyr::left_join(bounds, by = c("gear_new", "catch_name")) %>%
+    dplyr::rowwise() |>
     dplyr::mutate(
-      alert_catch = ifelse("catch_kg" >= "upper.up", 4, NA_real_),
-      catch_kg = ifelse(is.na("alert_catch"), "catch_kg", NA_real_)
+      alert_catch = ifelse(.data$catch_kg >= .data$upper.up, 4, NA_real_),
+      catch_kg = ifelse(is.na(.data$alert_catch), .data$catch_kg, NA_real_)
     ) %>%
+    dplyr::ungroup() |>
     dplyr::select(-c("upper.up", "gear_new", "catch_name"))
 }
-
