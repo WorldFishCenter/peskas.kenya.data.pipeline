@@ -43,11 +43,12 @@ setwd("../..")
 conf <- peskas.kenya.data.pipeline::read_config()
 
 legacy_data <-
-  peskas.kenya.data.pipeline::mdb_collection(
+  peskas.kenya.data.pipeline::mdb_collection_pull(
     collection_name = "legacy_data-validated",
     db_name = "kenya",
     connection_string = conf$storage$mongodb$connection_string
-  )
+  ) %>%
+  dplyr::as_tibble()
 
 data_table <- dplyr::tibble(
   N. = seq(1, length(legacy_data)),
