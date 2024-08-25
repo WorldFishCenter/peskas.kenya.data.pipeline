@@ -21,8 +21,8 @@
 #' }
 #'
 #' @export
-mdb_collection <- function(connection_string = NULL, collection_name = NULL, db_name = NULL){
-  data <- mongolite::mongo(collection=collection_name, db=db_name, url=connection_string)
+mdb_collection <- function(connection_string = NULL, collection_name = NULL, db_name = NULL) {
+  data <- mongolite::mongo(collection = collection_name, db = db_name, url = connection_string)
   data$find()
 }
 
@@ -52,7 +52,6 @@ mdb_collection <- function(connection_string = NULL, collection_name = NULL, db_
 #' \dontrun{
 #' # Ensure you have the necessary configuration in conf.yml
 #' metadata_tables <- get_metadata()
-#'
 #' }
 get_metadata <- function(log_threshold = logger::DEBUG) {
   logger::log_threshold(log_threshold)

@@ -30,7 +30,6 @@ Imports:
     magrittr,
     mongolite,
     purrr,
-    rio,
     rlang,
     tidyr,
     univOutl

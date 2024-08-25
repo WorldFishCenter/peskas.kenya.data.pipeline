@@ -77,10 +77,10 @@ reactable::reactable(data_table,
   striped = TRUE,
   highlight = TRUE,
   pagination = FALSE,
-      columns = list(
-      "N." = reactable::colDef(maxWidth = 100),
-      Description = reactable::colDef(minWidth = 240) # overrides the default
-    ),
+  columns = list(
+    "N." = reactable::colDef(maxWidth = 100),
+    Description = reactable::colDef(minWidth = 240) # overrides the default
+  ),
   theme = reactable::reactableTheme(
     borderColor = "#dfe2e5",
     stripedColor = "#f6f8fa",
@@ -159,26 +159,27 @@ The landing date was validated by ensuring that dates were not earlier than 1990
 In the histogram below, the dashed line indicates the outlier threshold at 8.34 boats, determined by the data using a `k` value of 1.5. Adjusting `k` changes sensitivity: lower `k` detects more outliers, while higher `k` detects fewer.
 
 ```{r, warning=FALSE, message=FALSE}
-
-thr <- 
+thr <-
   univOutl::LocScaleB(legacy_data$n_boats, logt = TRUE, k = 1.5) %>%
   magrittr::extract2("bounds")
 upb <- (exp(thr) - 1)[2]
-  
 
-legacy_data %>% 
-  ggplot(aes(n_boats))+
-  theme_minimal()+
-  geom_histogram(bins = 30, fill = "#52817f", color = "white", alpha = 0.5)+
-  geom_vline(xintercept = upb, color = "firebrick", linetype = 2)+
-  theme(panel.grid = element_blank())+
+
+legacy_data %>%
+  ggplot(aes(n_boats)) +
+  theme_minimal() +
+  geom_histogram(bins = 30, fill = "#52817f", color = "white", alpha = 0.5) +
+  geom_vline(xintercept = upb, color = "firebrick", linetype = 2) +
+  theme(panel.grid = element_blank()) +
   annotate("text", x = upb + 0.5, y = Inf, label = "k value = 1.5\n(8.34 boats)", color = "firebrick", vjust = 2, hjust = 0) +
-  scale_y_continuous(labels = scales::comma)+
-  scale_x_continuous(n.breaks = 10)+
-  coord_cartesian(expand = FALSE)+
-  labs(x = "Number of boats",
-       y = "Count",
-       title = "Outlier detection for number of boats using MAD")
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_continuous(n.breaks = 10) +
+  coord_cartesian(expand = FALSE) +
+  labs(
+    x = "Number of boats",
+    y = "Count",
+    title = "Outlier detection for number of boats using MAD"
+  )
 ```
 
 The same criteria were applied to the number of fishermen and catch weight. For the latter, data were grouped based on the gear type, as fishing methods can significantly influence catch sizes. By grouping catch weight data by gear type, we account for these variations, allowing for a more accurate identification of outliers specific to each gear category.
@@ -190,7 +191,6 @@ A `k` value of 3 was used for each feature.
 ## Temporal distribution
 
 ```{r, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
-
 quarter_format <- function(date) {
   year <- lubridate::year(date)
   quarter <- lubridate::quarter(date)
@@ -246,8 +246,9 @@ side_plot <-
   ggplot() +
   theme_minimal() +
   geom_bar(aes(y = reorder(landing_site, total_surveys), x = total_surveys), stat = "identity", fill = "#52817f", alpha = 0.5) +
-  geom_text(aes(y = reorder(landing_site, total_surveys), x = total_surveys, label = scales::label_number(scale = 1/1000, suffix = "K")(total_surveys)), 
-            hjust = -0.1, size = 3) +
+  geom_text(aes(y = reorder(landing_site, total_surveys), x = total_surveys, label = scales::label_number(scale = 1 / 1000, suffix = "K")(total_surveys)),
+    hjust = -0.1, size = 3
+  ) +
   labs(x = "", y = "") +
   theme(
     panel.grid = element_blank(),
@@ -255,13 +256,13 @@ side_plot <-
     axis.text.x = element_blank(),
     axis.ticks.y = element_blank(),
     axis.title.y = element_blank()
-  )+
+  ) +
   coord_cartesian(x = c(0, 11000))
 
 cowplot::plot_grid(main_plot,
-                   side_plot + theme(plot.margin = margin(0, 10, 0, -5)),
-                   ncol = 2,
-                   rel_widths = c(4, 1),
-                   align = "h"
+  side_plot + theme(plot.margin = margin(0, 10, 0, -5)),
+  ncol = 2,
+  rel_widths = c(4, 1),
+  align = "h"
 )
 ```

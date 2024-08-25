@@ -29,7 +29,6 @@ The parameters needed in \code{conf.yml} are:
 \dontrun{
 # Ensure you have the necessary configuration in conf.yml
 metadata_tables <- get_metadata()
-
 }
 }
 \keyword{workflow}
