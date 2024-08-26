@@ -2,6 +2,19 @@ default:
   storage:
     mongodb:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
+      database:
+        pipeline:
+          name: pipeline
+          collection_name:
+            legacy:
+              raw: legacy-raw
+              preprocessed: legacy-preprocessed
+              validated: legacy-validated
+        dashboard:
+          name: app
+          collection_name:
+            legacy:
+              fishery_metrics: legacy-metrics
     google:
       key: gcs
       options:
@@ -34,4 +47,3 @@ local:
   metadata:
     google_sheets:
       sheet_id: !expr readLines("auth/metadata-sheet-id")
-

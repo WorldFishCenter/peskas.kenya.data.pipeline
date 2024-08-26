@@ -8,7 +8,7 @@ preprocess_legacy_landings()
 }
 \value{
 This function does not return a value. Instead, it processes the data and uploads
-the result to a MongoDB collection in the "kenya" database.
+the result to a MongoDB collection in the pipeline database.
 }
 \description{
 This function imports, preprocesses, and cleans legacy landings data from a MongoDB collection.
@@ -19,13 +19,13 @@ The processed data is then uploaded back to MongoDB.
 \details{
 The function performs the following main operations:
 \enumerate{
-\item Pulls raw data from the "legacy_data-raw" MongoDB collection.
+\item Pulls raw data from the raw data MongoDB collection.
 \item Removes several unnecessary columns.
 \item Renames columns for clarity (e.g., 'site' to 'landing_site').
 \item Generates unique 'survey_id' and 'catch_id' fields.
 \item Converts several string fields to lowercase.
 \item Cleans catch names using a separate function 'clean_catch_names'.
-\item Uploads the processed data to the "legacy_data-preprocessed" MongoDB collection.
+\item Uploads the processed data to the preprocessed MongoDB collection.
 }
 }
 \note{

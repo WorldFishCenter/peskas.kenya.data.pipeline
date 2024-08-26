@@ -40,12 +40,13 @@ library(ggplot2)
 
 
 setwd("../..")
+getwd()
 conf <- peskas.kenya.data.pipeline::read_config()
 
 legacy_data <-
   peskas.kenya.data.pipeline::mdb_collection_pull(
-    collection_name = "legacy_data-validated",
-    db_name = "kenya",
+    collection_name = "legacy-validated",
+    db_name = "pipeline",
     connection_string = conf$storage$mongodb$connection_string
   ) %>%
   dplyr::as_tibble()

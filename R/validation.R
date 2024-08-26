@@ -2,11 +2,11 @@
 #'
 #' This function imports and validates preprocessed legacy fisheries data from a MongoDB collection. It conducts a series of validation checks to ensure data integrity, including checks on dates, fisher counts, boat numbers, and catch weights. The function then compiles the validated data and corresponding alert flags, which are subsequently uploaded back to MongoDB.
 #'
-#' @return This function does not return a value. Instead, it processes the data and uploads the validated results and alert flags to a MongoDB collection named "legacy_data-validated" in the "kenya" database.
+#' @return This function does not return a value. Instead, it processes the data and uploads the validated results to a MongoDB collection in the pipeline databse.
 #'
 #' @details
 #' The function performs the following main operations:
-#' 1. Pulls preprocessed legacy landings data from the "legacy_data-preprocessed" MongoDB collection.
+#' 1. Pulls preprocessed legacy landings data from the preprocessed MongoDB collection.
 #' 2. Validates the data for consistency and accuracy, focusing on:
 #'    - Date validation
 #'    - Number of fishers
@@ -15,7 +15,7 @@
 #' 3. Generates a validated dataset that integrates the results of the validation checks.
 #' 4. Creates alert flags to identify and track any data issues discovered during validation.
 #' 5. Merges the validated data with additional metadata, such as survey details and landing site information.
-#' 6. Uploads the validated dataset to the "legacy_data-validated" MongoDB collection.
+#' 6. Uploads the validated dataset to the validated MongoDB collection.
 #'
 #' @note This function requires a configuration file to be present and readable by the 'read_config' function, which should provide MongoDB connection details and parameters for validation.
 #'
@@ -30,8 +30,8 @@ validate_legacy_landings <- function() {
 
   preprocessed_legacy_landings <-
     mdb_collection_pull(
-      collection_name = "legacy-preprocessed",
-      db_name = "pipeline",
+      collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$preprocessed,
+      db_name = conf$storage$mongodb$database$pipeline$name,
       connection_string = conf$storage$mongodb$connection_string
     ) |>
     dplyr::as_tibble()
@@ -79,8 +79,8 @@ validate_legacy_landings <- function() {
   mdb_collection_push(
     data = validated_output,
     connection_string = conf$storage$mongodb$connection_string,
-    collection_name = "legacy-validated",
-    db_name = "pipeline"
+    collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$validated,
+    db_name = conf$storage$mongodb$database$pipeline$name
   )
 }
 

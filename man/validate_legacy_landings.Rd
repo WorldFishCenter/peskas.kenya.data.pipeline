@@ -7,7 +7,7 @@
 validate_legacy_landings()
 }
 \value{
-This function does not return a value. Instead, it processes the data and uploads the validated results and alert flags to a MongoDB collection named "legacy_data-validated" in the "kenya" database.
+This function does not return a value. Instead, it processes the data and uploads the validated results to a MongoDB collection in the pipeline databse.
 }
 \description{
 This function imports and validates preprocessed legacy fisheries data from a MongoDB collection. It conducts a series of validation checks to ensure data integrity, including checks on dates, fisher counts, boat numbers, and catch weights. The function then compiles the validated data and corresponding alert flags, which are subsequently uploaded back to MongoDB.
@@ -15,7 +15,7 @@ This function imports and validates preprocessed legacy fisheries data from a Mo
 \details{
 The function performs the following main operations:
 \enumerate{
-\item Pulls preprocessed legacy landings data from the "legacy_data-preprocessed" MongoDB collection.
+\item Pulls preprocessed legacy landings data from the preprocessed MongoDB collection.
 \item Validates the data for consistency and accuracy, focusing on:
 \itemize{
 \item Date validation
@@ -26,7 +26,7 @@ The function performs the following main operations:
 \item Generates a validated dataset that integrates the results of the validation checks.
 \item Creates alert flags to identify and track any data issues discovered during validation.
 \item Merges the validated data with additional metadata, such as survey details and landing site information.
-\item Uploads the validated dataset to the "legacy_data-validated" MongoDB collection.
+\item Uploads the validated dataset to the validated MongoDB collection.
 }
 }
 \note{

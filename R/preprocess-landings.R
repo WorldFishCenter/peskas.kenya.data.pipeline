@@ -6,17 +6,17 @@
 #' The processed data is then uploaded back to MongoDB.
 #'
 #' @return This function does not return a value. Instead, it processes the data and uploads
-#'   the result to a MongoDB collection in the "kenya" database.
+#'   the result to a MongoDB collection in the pipeline database.
 #'
 #' @details
 #' The function performs the following main operations:
-#' 1. Pulls raw data from the "legacy_data-raw" MongoDB collection.
+#' 1. Pulls raw data from the raw data MongoDB collection.
 #' 2. Removes several unnecessary columns.
 #' 3. Renames columns for clarity (e.g., 'site' to 'landing_site').
 #' 4. Generates unique 'survey_id' and 'catch_id' fields.
 #' 5. Converts several string fields to lowercase.
 #' 6. Cleans catch names using a separate function 'clean_catch_names'.
-#' 7. Uploads the processed data to the "legacy_data-preprocessed" MongoDB collection.
+#' 7. Uploads the processed data to the preprocessed MongoDB collection.
 #'
 #' @note This function requires a configuration file to be present and readable by the
 #'   'read_config' function, which should provide MongoDB connection details.
@@ -33,8 +33,8 @@ preprocess_legacy_landings <- function() {
 
   # get raw landings from mongodb
   raw_legacy_dat <- mdb_collection_pull(
-    collection_name = "legacy-raw",
-    db_name = "pipeline",
+    collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$raw,
+    db_name = conf$storage$mongodb$database$pipeline$name,
     connection_string = conf$storage$mongodb$connection_string
   ) |>
     dplyr::as_tibble()
@@ -87,8 +87,8 @@ preprocess_legacy_landings <- function() {
   mdb_collection_push(
     data = processed_legacy_landings,
     connection_string = conf$storage$mongodb$connection_string,
-    collection_name = "legacy-preprocessed",
-    db_name = "pipeline"
+    collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$preprocessed,
+    db_name = conf$storage$mongodb$database$pipeline$name
   )
 }
 
