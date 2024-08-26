@@ -30,8 +30,8 @@ validate_legacy_landings <- function() {
 
   preprocessed_legacy_landings <-
     mdb_collection_pull(
-      collection_name = "legacy_data-preprocessed",
-      db_name = "kenya",
+      collection_name = "legacy-preprocessed",
+      db_name = "pipeline",
       connection_string = conf$storage$mongodb$connection_string
     ) |>
     dplyr::as_tibble()
@@ -79,8 +79,8 @@ validate_legacy_landings <- function() {
   mdb_collection_push(
     data = validated_output,
     connection_string = conf$storage$mongodb$connection_string,
-    collection_name = "legacy_data-validated",
-    db_name = "kenya"
+    collection_name = "legacy-validated",
+    db_name = "pipeline"
   )
 }
 

@@ -33,8 +33,8 @@ preprocess_legacy_landings <- function() {
 
   # get raw landings from mongodb
   raw_legacy_dat <- mdb_collection_pull(
-    collection_name = "legacy_data-raw",
-    db_name = "kenya",
+    collection_name = "legacy-raw",
+    db_name = "pipeline",
     connection_string = conf$storage$mongodb$connection_string
   ) |>
     dplyr::as_tibble()
@@ -87,8 +87,8 @@ preprocess_legacy_landings <- function() {
   mdb_collection_push(
     data = processed_legacy_landings,
     connection_string = conf$storage$mongodb$connection_string,
-    collection_name = "legacy_data-preprocessed",
-    db_name = "kenya"
+    collection_name = "legacy-preprocessed",
+    db_name = "pipeline"
   )
 }
 
