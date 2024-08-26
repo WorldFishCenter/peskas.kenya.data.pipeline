@@ -77,7 +77,7 @@ export_summaries <- function() {
   mdb_collection_push(
     data = summaries,
     connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongod$database$dashboard$collection_name$legacy,
+    collection_name = conf$storage$mongod$database$dashboard$collection_name$legacy$fishery_metrics,
     db_name = conf$storage$mongod$database$dashboard$name
   )
 }
