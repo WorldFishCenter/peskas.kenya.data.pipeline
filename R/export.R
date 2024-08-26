@@ -73,6 +73,7 @@ export_summaries <- function() {
     dplyr::arrange(.by_group = T) |>
     dplyr::ungroup()
 
+  logger::log_info("Uploading fishery summary metrics data to mongodb")
   mdb_collection_push(
     data = summaries,
     connection_string = conf$storage$mongodb$connection_string,
