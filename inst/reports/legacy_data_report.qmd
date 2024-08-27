@@ -40,7 +40,6 @@ library(ggplot2)
 
 
 setwd("../..")
-getwd()
 conf <- peskas.kenya.data.pipeline::read_config()
 
 legacy_data <-
@@ -101,7 +100,7 @@ Below is a breakdown of the categorical variables:
 ranked <-
   legacy_data %>%
   dplyr::select(dplyr::where(is.character)) %>%
-  dplyr::select(-c("landing_date", "survey_id", "catch_id")) %>%
+  dplyr::select(-c("survey_id", "catch_id")) %>%
   tidyr::pivot_longer(dplyr::everything(), names_to = "variable", values_to = "value") %>%
   dplyr::count(variable, value)
 
