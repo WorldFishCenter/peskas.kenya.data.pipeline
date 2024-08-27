@@ -21,13 +21,12 @@
 #' @note This function requires a configuration file to be present and readable by the
 #'   'read_config' function, which should provide MongoDB connection details.
 #'
+#' @keywords workflow preprocessing
 #' @examples
 #' \dontrun{
 #' preprocess_legacy_landings()
 #' }
-#'
 #' @export
-
 preprocess_legacy_landings <- function() {
   conf <- read_config()
 
@@ -102,12 +101,13 @@ preprocess_legacy_landings <- function() {
 #'
 #' @return A data frame or tibble with standardized catch names in the `catch_name` column.
 #'
+#' @keywords preprocessing
 #' @examples
 #' \dontrun{
 #' cleaned_data <- clean_catch_names(data)
 #' }
 #'
-#' @keywords internal
+#' @export
 clean_catch_names <- function(data = NULL) {
   data %>%
     dplyr::mutate(catch_name = dplyr::case_when(

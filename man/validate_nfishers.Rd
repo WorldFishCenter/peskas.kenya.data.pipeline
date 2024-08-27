@@ -30,3 +30,4 @@ is set to \code{NA}.
 validate_nfishers(data, k = 3)
 }
 }
+\keyword{validation}

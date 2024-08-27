@@ -22,3 +22,4 @@ This function calculates the upper bounds for catch data based on gear type and 
 catch_bounds <- get_catch_bounds(your_data, k = 2)
 }
 }
+\keyword{validation}

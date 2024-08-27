@@ -36,5 +36,6 @@ This function requires a configuration file to be present and readable by the
 \dontrun{
 preprocess_legacy_landings()
 }
-
 }
+\keyword{preprocessing}
+\keyword{workflow}

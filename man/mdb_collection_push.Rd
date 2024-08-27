@@ -39,3 +39,4 @@ result <- mdb_collection_push(
 }
 
 }
+\keyword{storage}

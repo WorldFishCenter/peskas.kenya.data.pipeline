@@ -24,6 +24,7 @@
 #' validate_legacy_landings()
 #' }
 #'
+#' @keywords workflow validation
 #' @export
 validate_legacy_landings <- function() {
   conf <- read_config()
@@ -94,6 +95,9 @@ validate_legacy_landings <- function() {
 #'
 #' @return a vector of the same lenght as x
 #' @importFrom stats mad
+#'
+#' @keywords validation
+#' @export
 alert_outlier <- function(x,
                           no_alert_value = NA_real_,
                           alert_if_larger = no_alert_value,
@@ -148,10 +152,12 @@ alert_outlier <- function(x,
 #'
 #' @importFrom dplyr transmute mutate case_when
 #'
+#' @keywords validation
 #' @examples
 #' \dontrun{
 #' validate_dates(data)
 #' }
+#' @export
 validate_dates <- function(data = NULL) {
   data %>%
     dplyr::transmute(
@@ -184,10 +190,12 @@ validate_dates <- function(data = NULL) {
 #'
 #' @importFrom dplyr transmute mutate
 #'
+#' @keywords validation
 #' @examples
 #' \dontrun{
 #' validate_nfishers(data, k = 3)
 #' }
+#' @export
 validate_nfishers <- function(data = NULL, k = NULL) {
   data %>%
     dplyr::transmute(
@@ -218,10 +226,12 @@ validate_nfishers <- function(data = NULL, k = NULL) {
 #'
 #' @importFrom dplyr transmute mutate
 #'
+#' @keywords validation
 #' @examples
 #' \dontrun{
 #' validate_nboats(data, k = 2)
 #' }
+#' @export
 validate_nboats <- function(data = NULL, k = NULL) {
   data %>%
     dplyr::transmute(
@@ -234,6 +244,7 @@ validate_nboats <- function(data = NULL, k = NULL) {
     ) %>%
     dplyr::mutate(n_boats = ifelse(is.na(.data$alert_n_boats), .data$n_boats, NA_real_))
 }
+
 
 #' Get Catch Bounds
 #'
@@ -249,10 +260,12 @@ validate_nboats <- function(data = NULL, k = NULL) {
 #' @importFrom tidyr separate
 #' @importFrom magrittr extract2
 #'
+#' @keywords validation
 #' @examples
 #' \dontrun{
 #' catch_bounds <- get_catch_bounds(your_data, k = 2)
 #' }
+#' @export
 get_catch_bounds <- function(data = NULL, k = NULL) {
   get_bounds <- function(x = NULL, k = NULL) {
     univOutl::LocScaleB(x$catch_kg, logt = TRUE, k = k) %>%
@@ -282,10 +295,12 @@ get_catch_bounds <- function(data = NULL, k = NULL) {
 #'
 #' @importFrom dplyr select left_join mutate
 #'
+#' @keywords validation
 #' @examples
 #' \dontrun{
 #' validated_catch <- validate_catch(your_data, k = 3)
 #' }
+#' @export
 validate_catch <- function(data = NULL, k = NULL) {
   bounds <- get_catch_bounds(data = data, k = k)
 

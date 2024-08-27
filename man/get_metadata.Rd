@@ -31,4 +31,4 @@ The parameters needed in \code{conf.yml} are:
 metadata_tables <- get_metadata()
 }
 }
-\keyword{workflow}
+\keyword{storage}

@@ -22,3 +22,4 @@ This function validates the catch data by comparing it to calculated upper bound
 validated_catch <- validate_catch(your_data, k = 3)
 }
 }
+\keyword{validation}

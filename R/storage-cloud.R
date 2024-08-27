@@ -8,7 +8,7 @@
 #'
 #' @return A data frame containing all documents from the specified collection.
 #'
-#' @importFrom mongolite mongo
+#' @keywords storage
 #'
 #' @examples
 #' \dontrun{
@@ -38,7 +38,7 @@ mdb_collection_pull <- function(connection_string = NULL, collection_name = NULL
 #'
 #' @return The number of documents inserted.
 #'
-#' @importFrom mongolite mongo
+#' @keywords storage
 #'
 #' @examples
 #' \dontrun{
@@ -90,7 +90,7 @@ mdb_collection_push <- function(data = NULL, connection_string = NULL, collectio
 #' @param log_threshold The logging threshold level. Default is logger::DEBUG.
 #'
 #' @export
-#' @keywords workflow
+#' @keywords storage
 #'
 #' @examples
 #' \dontrun{

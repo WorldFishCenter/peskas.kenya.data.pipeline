@@ -27,6 +27,7 @@
 #' 'read_config' function, which should provide MongoDB connection details.
 #' It also assumes the existence of a 'bmu_size' dataset for joining.
 #'
+#' @keywords workflow export
 #' @examples
 #' \dontrun{
 #' export_summaries()

@@ -22,4 +22,4 @@ cleaned_data <- clean_catch_names(data)
 }
 
 }
-\keyword{internal}
+\keyword{preprocessing}
