@@ -20,3 +20,4 @@ auth/*
 .idea
 
 /.quarto/
+docs

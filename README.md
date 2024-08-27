@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# peskas.kenya.data.pipeline
+# peskas.kenya.data.pipeline <img src="man/figures/logo.png" align="right" />
 
 <!-- badges: start -->
 <!-- badges: end -->
@@ -68,10 +68,10 @@ further details.
 
 ## Getting Started
 
-This package uses a configuration file (`config.yml` in the `inst/`
-directory) to manage environment-specific settings and connections. To
-get started, familiarize yourself with the package structure,
-particularly the `R/` directory where the main functions are located.
+This package uses a configuration file [`config.yml`](inst/config.yml)
+to manage environment-specific settings and connections. To get started,
+familiarize yourself with the package structure, particularly the
+[`R`](R) directory where the main functions are located.
 
 Each function typically reads the configuration using `read_config()` to
 access necessary parameters. To work on this package locally, you’ll
