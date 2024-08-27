@@ -18,3 +18,5 @@ auth/*
 
 ## MongoDB
 .idea
+
+/.quarto/
