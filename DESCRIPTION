@@ -1,5 +1,5 @@
 Package: peskas.kenya.data.pipeline
-Title: Functions to Implement the Kenya Small-Scale Fisheries Data Pipeline
+Title: Kenya Small-Scale Fisheries Data Pipeline
 Version: 0.2.0
 Authors@R: 
     c(person(given = "Lorenzo",
