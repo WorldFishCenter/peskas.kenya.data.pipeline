@@ -51,9 +51,9 @@ export_summaries <- function() {
 
   summaries <-
     valid_data |>
-    dplyr::rename(BMU = .data$landing_site) |>
+    dplyr::rename(BMU = "landing_site") |>
     dplyr::group_by(.data$survey_id) |>
-    dplyr::summarise(dplyr::across(c(.data$BMU:.data$ecology), ~ dplyr::first(.x)),
+    dplyr::summarise(dplyr::across(c("BMU":"ecology"), ~ dplyr::first(.x)),
       catch_kg = sum(.data$catch_kg, na.rm = T),
       price = mean(.data$price, na.rm = T)
     ) |>
@@ -74,11 +74,42 @@ export_summaries <- function() {
     dplyr::arrange(.by_group = T) |>
     dplyr::ungroup()
 
-  logger::log_info("Uploading fishery summary metrics data to mongodb")
-  mdb_collection_push(
-    data = summaries,
-    connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongod$database$dashboard$collection_name$legacy$fishery_metrics,
-    db_name = conf$storage$mongod$database$dashboard$name
+  monthly_summaries <-
+    summaries |>
+    dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = "month")) |>
+    dplyr::group_by(.data$BMU, .data$date) |>
+    dplyr::summarise(
+      mean_trip_catch = mean(.data$catch_kg, na.rm = T),
+      mean_trip_price = mean(.data$price, na.rm = T),
+      mean_effort = mean(.data$effort, na.rm = T),
+      mean_cpue = mean(.data$cpue, na.rm = T)
+    ) |>
+    dplyr::ungroup()
+
+  # Dataframes to upload
+  dataframes_to_upload <- list(
+    summaries = summaries,
+    monthly_summaries = monthly_summaries
+  )
+
+  # Collection names
+  collection_names <- list(
+    summaries = conf$storage$mongod$database$dashboard$collection_name$legacy$fishery_metrics,
+    monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$legacy$fishery_metrics_monthly
+  )
+
+  # Iterate over the dataframes and upload them
+  purrr::walk2(
+    .x = dataframes_to_upload,
+    .y = collection_names,
+    .f = ~ {
+      logger::log_info(paste("Uploading", .y, "data to MongoDB"))
+      mdb_collection_push(
+        data = .x,
+        connection_string = conf$storage$mongodb$connection_string,
+        collection_name = .y,
+        db_name = conf$storage$mongod$database$dashboard$name
+      )
+    }
   )
 }

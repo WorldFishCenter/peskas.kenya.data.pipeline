@@ -15,6 +15,7 @@ default:
           collection_name:
             legacy:
               fishery_metrics: legacy-metrics
+              fishery_metrics_monthly: legacy-metrics_monthly
     google:
       key: gcs
       options:

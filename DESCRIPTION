@@ -27,6 +27,7 @@ Imports:
     here,
     janitor,
     logger,
+    lubridate,
     magrittr,
     mongolite,
     purrr,
