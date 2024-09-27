@@ -30,7 +30,7 @@ reference:
 - title: Ingestion
   desc: Functions dedicated to the ingestion module
   contents:
-  - has_keyword("preprocessing")
+  - has_keyword("ingestion")
 
 - title: Preprocessing
   desc: Functions dedicated to the preprocessing module
