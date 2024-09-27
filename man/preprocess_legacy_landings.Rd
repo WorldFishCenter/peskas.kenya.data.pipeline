@@ -4,7 +4,10 @@
 \alias{preprocess_legacy_landings}
 \title{Preprocess Legacy Landings Data}
 \usage{
-preprocess_legacy_landings()
+preprocess_legacy_landings(log_threshold = logger::DEBUG)
+}
+\arguments{
+\item{log_threshold}{Logging threshold level (default: logger::DEBUG)}
 }
 \value{
 This function does not return a value. Instead, it processes the data and uploads

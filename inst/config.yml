@@ -1,4 +1,9 @@
 default:
+  ingestion:
+    koboform:
+      asset_id: !expr Sys.getenv('KOBO_ASSET_ID')
+      username: !expr Sys.getenv('KOBO_USERNAME')
+      password: !expr Sys.getenv('KOBO_PASSWORD')
   storage:
     mongodb:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
@@ -10,6 +15,10 @@ default:
               raw: legacy-raw
               preprocessed: legacy-preprocessed
               validated: legacy-validated
+            ongoing:
+              raw: raw
+              preprocessed: preprocessed
+              validated: validated
         dashboard:
           name: app
           collection_name:
@@ -39,6 +48,11 @@ production:
 
 local:
   inherits: development
+  ingestion:
+    koboform:
+      asset_id: !expr readLines("auth/kobo-asset-id")
+      username: !expr readLines("auth/kobo-username")
+      password: !expr readLines("auth/kobo-password")
   storage:
     mongodb:
       connection_string: !expr readLines("auth/mongodb-connection-string")
