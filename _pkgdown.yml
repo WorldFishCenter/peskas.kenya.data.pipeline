@@ -27,6 +27,11 @@ reference:
   contents:
   - has_keyword("storage")
 
+- title: Ingestion
+  desc: Functions dedicated to the ingestion module
+  contents:
+  - has_keyword("preprocessing")
+
 - title: Preprocessing
   desc: Functions dedicated to the preprocessing module
   contents:

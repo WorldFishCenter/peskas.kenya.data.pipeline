@@ -45,3 +45,5 @@ file_list <- retrieve_wcs_surveys(
 )
 }
 }
+\keyword{ingestion}
+\keyword{workflow}
