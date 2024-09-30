@@ -2,7 +2,7 @@
 % Please edit documentation in R/ingestion.R
 \name{ingest_surveys}
 \alias{ingest_surveys}
-\title{Download WCS Surveys from Kobotoolbox}
+\title{Download and Process WCS Surveys from Kobotoolbox}
 \usage{
 ingest_surveys(
   url = NULL,
@@ -13,31 +13,42 @@ ingest_surveys(
 )
 }
 \arguments{
-\item{url}{The URL of kobotoolbox (often referred to as 'kpi-url').}
+\item{url}{The URL of Kobotoolbox (default is NULL, uses value from configuration).}
 
-\item{project_id}{Is the asset id of the asset for which the data is
-to be downloaded.}
+\item{project_id}{The asset ID of the project to download data from (default is NULL, uses value from configuration).}
 
-\item{username}{Username of your kobotoolbox account.}
+\item{username}{Username for Kobotoolbox account (default is NULL, uses value from configuration).}
 
-\item{psswd}{Password of the account.}
+\item{psswd}{Password for Kobotoolbox account (default is NULL, uses value from configuration).}
 
-\item{encoding}{Encoding to be used. Default is "UTF-8".}
+\item{encoding}{Encoding to be used for data retrieval (default is NULL, uses "UTF-8").}
 }
 \value{
-A character vector with paths of the downloaded files.
+No return value. Function downloads data, processes it, and uploads to MongoDB.
 }
 \description{
-This function retrieves survey data from Kobotoolbox for a specific project.
-It allows users to customize the filename using a prefix, choose between CSV or RDS formats,
-and decide whether to append versioning information to the filename.
-The resulting files are downloaded to the working directory or specified path,
-with paths returned as a character vector.
+This function retrieves survey data from Kobotoolbox for a specific project,
+processes it, and uploads the raw data to a MongoDB database. It uses the
+\code{get_kobo_data} function, which is a wrapper for \code{kobotools_kpi_data} from
+the KoboconnectR package.
+}
+\details{
+The function performs the following steps:
+\enumerate{
+\item Reads configuration settings.
+\item Downloads survey data from Kobotoolbox using \code{get_kobo_data}.
+\item Checks for uniqueness of submissions.
+\item Converts data to tabular format.
+\item Uploads raw data to MongoDB.
+}
+
+Note that while parameters are provided for customization, the function
+currently uses hardcoded values and configuration settings for some parameters.
 }
 \examples{
 \dontrun{
-file_list <- retrieve_wcs_surveys(
-  url = "kf.kobotoolbox.org",
+ingest_surveys(
+  url = "eu.kobotoolbox.org",
   project_id = "my_project_id",
   username = "admin",
   psswd = "admin",

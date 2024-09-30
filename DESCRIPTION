@@ -1,6 +1,6 @@
 Package: peskas.kenya.data.pipeline
 Title: Kenya Small-Scale Fisheries Data Pipeline
-Version: 0.3.0
+Version: 0.4.0
 Authors@R: 
     c(person(given = "Lorenzo",
              family = "Longobardi",
@@ -25,8 +25,8 @@ Imports:
     git2r,
     googlesheets4,
     here,
+    httr2,
     janitor,
-    KoboconnectR,
     logger,
     lubridate,
     magrittr,

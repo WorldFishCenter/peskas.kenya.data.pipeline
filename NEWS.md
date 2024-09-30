@@ -1,3 +1,13 @@
+# peskas.kenya.data.pipeline 0.4.0
+
+## New features
+
+- Now `ingest_surveys()` uses Kobotoolbox API directly to download surveys instead of rely on R package
+
+## Fixes
+
+- Fix ingestion functions as it was limited to download max 30,000 submissions. The approach now uses pagination to retrieve large datasets, with a limit of 30,000 records per request
+
 # peskas.kenya.data.pipeline 0.3.0
 
 ## New features
