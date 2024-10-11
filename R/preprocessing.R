@@ -59,7 +59,7 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
       landing_site = stringr::str_to_title(.data$landing_site),
       fishing_ground = stringr::str_to_title(.data$fishing_ground),
       landing_site = trimws(.data$landing_site),
-      author_U = trimws(.data$landing_site),
+      author_U = trimws(.data$author_U),
       fishing_ground = trimws(.data$fishing_ground)
     ) %>%
     tidyr::separate(.data$gps,
