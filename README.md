@@ -4,6 +4,8 @@
 # peskas.kenya.data.pipeline <img src="man/figures/logo.png" align="right" />
 
 <!-- badges: start -->
+
+[![R-CMD-check](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 The goal of peskas.kenya.data.pipeline is to implement, deploy, and

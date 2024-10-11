@@ -29,7 +29,7 @@
 #'
 #' @examples
 #' \dontrun{
-#' ingest_surveys(
+#' ingest_landings(
 #'   url = "eu.kobotoolbox.org",
 #'   project_id = "my_project_id",
 #'   username = "admin",
@@ -37,11 +37,11 @@
 #'   encoding = "UTF-8"
 #' )
 #' }
-ingest_surveys <- function(url = NULL,
-                           project_id = NULL,
-                           username = NULL,
-                           psswd = NULL,
-                           encoding = NULL) {
+ingest_landings <- function(url = NULL,
+                            project_id = NULL,
+                            username = NULL,
+                            psswd = NULL,
+                            encoding = NULL) {
   conf <- read_config()
 
   logger::log_info("Downloading WCS Fish Catch Survey Kobo data...")
@@ -63,7 +63,8 @@ ingest_surveys <- function(url = NULL,
   logger::log_info("Converting WCS Fish Catch Survey Kobo data to tabular format...")
   raw_survey <-
     purrr::map(data_raw, flatten_row) %>%
-    dplyr::bind_rows()
+    dplyr::bind_rows() %>%
+    dplyr::rename(submission_id = "_id")
 
   logger::log_info("Uploading raw data to mongodb")
   mdb_collection_push(

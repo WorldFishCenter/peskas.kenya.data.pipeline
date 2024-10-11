@@ -40,10 +40,9 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     raw_dat |>
     dplyr::rename_with(~ stringr::str_remove(., "group_xp36r82/")) %>%
     dplyr::select(
-      survey_id = "_uuid",
+      "submission_id",
       landing_site = "Tambua_BMU",
       landing_date = "Tambua_tarehe",
-      author_U = "Jina_la_mwandishi",
       fishing_ground = "Eneo_la_uvuvi",
       gear = "Aina_ya_zana_ya_uvuvi",
       no_of_fishers = "Number_of_fishermen",
@@ -53,13 +52,11 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     ) %>%
     dplyr::rowwise() %>%
     # Generate unique survey IDs and clean text fields
-    dplyr::mutate(survey_id = digest::digest(.data$survey_id, algo = "crc32")) %>%
     dplyr::ungroup() %>%
     dplyr::mutate(
       landing_site = stringr::str_to_title(.data$landing_site),
       fishing_ground = stringr::str_to_title(.data$fishing_ground),
       landing_site = trimws(.data$landing_site),
-      author_U = trimws(.data$author_U),
       fishing_ground = trimws(.data$fishing_ground)
     ) %>%
     tidyr::separate(.data$gps,
@@ -98,16 +95,16 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(
       landing_date = lubridate::as_datetime(.data$landing_date),
       dplyr::across(
-        c(.data$no_of_fishers, .data$n_boats, .data$catch_kg, .data$lat, .data$lon), ~ as.numeric(.x)
+        c("no_of_fishers", "n_boats", "catch_kg", "lat", "lon"), ~ as.numeric(.x)
       )
     )
 
   # Handle cases with no catch data
   catch_data <-
     field_raw %>%
-    dplyr::group_by(.data$survey_id) %>%
+    dplyr::group_by(.data$submission_id) %>%
     dplyr::mutate(total_catch = sum(.data$catch_kg, na.rm = TRUE)) %>%
-    dplyr::group_by(.data$survey_id) %>%
+    dplyr::group_by(.data$submission_id) %>%
     dplyr::mutate(catch_present = ifelse(.data$total_catch > 0, TRUE, FALSE)) %>%
     dplyr::ungroup() %>%
     split(.$catch_present)
@@ -132,14 +129,14 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     catch_data %>%
     dplyr::bind_rows() %>%
     dplyr::arrange(.data$landing_site, .data$landing_date) %>%
-    dplyr::group_by(.data$survey_id) %>%
+    dplyr::group_by(.data$submission_id) %>%
     dplyr::mutate(
       n_catch = seq(1, dplyr::n(), 1),
-      catch_id = paste(.data$survey_id, .data$n_catch, sep = "-")
+      catch_id = paste(.data$submission_id, .data$n_catch, sep = "-")
     ) %>%
     dplyr::ungroup() %>%
     dplyr::select(-c("n_catch", "total_catch", "catch_present")) %>%
-    dplyr::select("survey_id", "catch_id", dplyr::everything())
+    dplyr::select("submission_id", "catch_id", dplyr::everything())
 
 
   logger::log_info("Uploading preprocessed legacy data to mongodb")

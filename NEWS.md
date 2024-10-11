@@ -1,3 +1,9 @@
+# peskas.kenya.data.pipeline 0.5.0
+
+## Enhancements
+
+- Improve mongoDB storage functions by adding indexes to improve query performance. Before this fix column order in data was not preserved.
+
 # peskas.kenya.data.pipeline 0.4.0
 
 ## New features

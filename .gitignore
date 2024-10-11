@@ -19,5 +19,11 @@ auth/*
 ## MongoDB
 .idea
 
+## Data files
+*.rds
+*.xlsx
+*.csv
+*.tsv
 /.quarto/
 docs
+
