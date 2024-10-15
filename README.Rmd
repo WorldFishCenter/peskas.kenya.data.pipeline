@@ -18,6 +18,7 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/WorldFishCenter/peskas.kenya.data.pipeline/graph/badge.svg)](https://app.codecov.io/gh/WorldFishCenter/peskas.kenya.data.pipeline)
 <!-- badges: end -->
 
 The goal of peskas.kenya.data.pipeline is to implement, deploy, and execute the data and modelling pipelines that underpin Peskas in Kenya, a partnership between [WorldFish](https://worldfishcenter.org/) and [Wildlife Conservation Society](https://www.wcs.org/).

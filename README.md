@@ -6,6 +6,8 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/WorldFishCenter/peskas.kenya.data.pipeline/graph/badge.svg)](https://app.codecov.io/gh/WorldFishCenter/peskas.kenya.data.pipeline)
 <!-- badges: end -->
 
 The goal of peskas.kenya.data.pipeline is to implement, deploy, and
