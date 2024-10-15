@@ -24,6 +24,7 @@
 #' \dontrun{
 #' preprocessed_data <- preprocess_landings()
 #' }
+#' @export
 preprocess_landings <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
