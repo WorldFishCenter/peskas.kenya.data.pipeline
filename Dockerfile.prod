@@ -19,7 +19,6 @@ RUN install2.r --error --skipinstalled \
     config \
     digest \
     dplyr \
-    here \
     httr2 \
     janitor \
     logger \

@@ -24,7 +24,6 @@ Imports:
     dplyr,
     git2r,
     googlesheets4,
-    here,
     httr2,
     janitor,
     logger,
