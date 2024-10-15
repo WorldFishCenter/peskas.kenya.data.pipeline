@@ -15,6 +15,7 @@ RUN apt-get update -qq && apt-get -y --no-install-recommends install \
 
 # Install imports
 RUN install2.r --error --skipinstalled \
+    remotes \
     config \
     digest \
     dplyr \
