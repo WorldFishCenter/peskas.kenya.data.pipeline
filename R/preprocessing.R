@@ -42,6 +42,7 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::rename_with(~ stringr::str_remove(., "group_xp36r82/")) %>%
     dplyr::select(
       "submission_id",
+      form_consent = "Good_day_my_name_is_and_I_r",
       landing_site = "Tambua_BMU",
       landing_date = "Tambua_tarehe",
       fishing_ground = "Eneo_la_uvuvi",
@@ -86,6 +87,12 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
         catch_name == "mchanganyiko_wadogo" ~ "rest of catch_small",
         catch_name == "mchanganyiko" ~ "rest of catch",
         TRUE ~ .data$catch_name
+      ),
+      # Standardize gear names
+      gear = dplyr::case_when(
+        gear == "beachseine_1" ~ "beachseine",
+        gear == "ringnet_1" ~ "ringnet",
+        TRUE ~ .data$gear
       )
     ) %>%
     tidyr::separate(.data$catch_name, into = c("catch_name", "size"), sep = "_")
@@ -133,11 +140,12 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::group_by(.data$submission_id) %>%
     dplyr::mutate(
       n_catch = seq(1, dplyr::n(), 1),
-      catch_id = paste(.data$submission_id, .data$n_catch, sep = "-")
+      catch_id = paste(.data$submission_id, .data$n_catch, sep = "-"),
+      catch_kg = ifelse(.data$form_consent == "no", NA_real_, .data$catch_kg)
     ) %>%
     dplyr::ungroup() %>%
     dplyr::select(-c("n_catch", "total_catch", "catch_present")) %>%
-    dplyr::select("submission_id", "catch_id", dplyr::everything())
+    dplyr::select("submission_id", "form_consent", "catch_id", dplyr::everything())
 
 
   logger::log_info("Uploading preprocessed legacy data to mongodb")
