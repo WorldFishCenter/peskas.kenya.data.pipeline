@@ -69,33 +69,39 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     # Pivot catch data from wide to long format
     tidyr::pivot_longer(
       cols = dplyr::contains("_kg"),
-      names_to = "catch_name",
+      names_to = "fish_category",
       values_to = "catch_kg"
     ) %>%
     # Standardize catch names and separate size information
     dplyr::mutate(
-      catch_name = tolower(.data$catch_name),
-      catch_name = stringr::str_remove(.data$catch_name, "_kg"),
-      catch_name = dplyr::case_when(
-        catch_name == "samaki_wa_maji_mengi_wakubwa" ~ "freshwater fish_large",
-        catch_name == "samaki_wa_maji_mengi_wadogo" ~ "freshwater fish_small",
-        catch_name == "papa_wakubwa" ~ "shark_large",
-        catch_name == "papa_wadogo" ~ "shark_small",
-        catch_name == "taa_wakubwa" ~ "lamp_large",
-        catch_name == "taa_wadogo" ~ "lamp_small",
-        catch_name == "mchanganyiko_wakubwa" ~ "rest of catch_large",
-        catch_name == "mchanganyiko_wadogo" ~ "rest of catch_small",
-        catch_name == "mchanganyiko" ~ "rest of catch",
-        TRUE ~ .data$catch_name
+      fish_category = tolower(.data$fish_category),
+      fish_category = stringr::str_remove(.data$fish_category, "_kg"),
+      fish_category = dplyr::case_when(
+        fish_category == "samaki_wa_maji_mengi_wakubwa" ~ "pelagics_large",
+        fish_category == "samaki_wa_maji_mengi_wadogo" ~ "pelagics_small",
+        fish_category == "papa_wakubwa" ~ "shark_large",
+        fish_category == "papa_wadogo" ~ "shark_small",
+        fish_category == "taa_wakubwa" ~ "ray_large",
+        fish_category == "taa_wadogo" ~ "ray_small",
+        fish_category == "mchanganyiko_wakubwa" ~ "rest of catch_large",
+        fish_category == "mchanganyiko_wadogo" ~ "rest of catch_small",
+        fish_category == "mchanganyiko" ~ "rest of catch",
+        TRUE ~ .data$fish_category
       ),
       # Standardize gear names
       gear = dplyr::case_when(
+        gear == "beachseine" ~ "speargun",
+        gear == "net" ~ "gillnet",
+        gear == "handline" ~ "setnet",
+        gear == "speargun___hook___stick" ~ "traps",
+        gear == "traps" ~ "handline",
+        gear == "ringnet" ~ "monofilament",
         gear == "beachseine_1" ~ "beachseine",
         gear == "ringnet_1" ~ "ringnet",
         TRUE ~ .data$gear
       )
     ) %>%
-    tidyr::separate(.data$catch_name, into = c("catch_name", "size"), sep = "_")
+    tidyr::separate(.data$fish_category, into = c("fish_category", "size"), sep = "_")
 
   # Convert data types
   field_raw <-
@@ -126,7 +132,7 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
   catch_data$`FALSE` <-
     catch_data$`FALSE` %>%
     dplyr::mutate(
-      catch_name = NA_character_,
+      fish_category = NA_character_,
       size = NA_character_,
       catch_kg = 0
     ) %>%
@@ -238,10 +244,36 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
       dplyr::across(.cols = c(
         "catch_name", "gear", "gear_new",
         "fish_category", "ecology"
-      ), tolower)
+      ), tolower),
+      fixed_gear = dplyr::case_when(
+        .data$gear == "gillnet" ~ "gillnet",
+        .data$gear_new == "trap" ~ "traps",
+        .data$gear == "monofillament" ~ "monofilament",
+        .data$gear_new == "handline" ~ "handline",
+        .data$gear == "longline" ~ "handline",
+        .data$gear %in% c("prawnseine", "jarife", "sardinenet", "scoopnet", "net", "chachacha", "mosquitonet", "sharknet", "castnet", "squidnet", "trumnet") ~ "other_nets",
+        .data$gear == "setnet" ~ "setnet",
+        .data$gear == "ringnet" ~ "ringnet",
+        .data$gear %in% c("spear", "harpoon") ~ "speargun",
+        .data$gear == "fencetrap" ~ "fence_trap",
+        .data$gear == "reefseine" ~ "reefseine",
+        .data$gear == "beachseine" ~ "beachseine",
+        .data$gear %in% c("stick", "gleaning") ~ "hook_and_stick",
+        TRUE ~ NA_character_
+      )
     ) %>%
-    clean_catch_names()
-
+    clean_catch_names() %>%
+    dplyr::mutate(
+      fish_category = dplyr::case_when(
+        .data$catch_name %in% c("stringrays", "rays") ~ "ray",
+        .data$catch_name %in% c("sharks", "shark") ~ "shark",
+        .data$fish_category == "pelagic" ~ "pelagics",
+        TRUE ~ .data$fish_category
+      )
+    ) %>%
+    dplyr::filter(.data$fish_category == "0") %>%
+    dplyr::select(-c("gear", "gear_new", "catch_name")) %>%
+    dplyr::rename(gear = "fixed_gear")
 
   logger::log_info("Uploading preprocessed legacy data to mongodb")
   # upload preprocessed landings
