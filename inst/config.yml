@@ -19,6 +19,7 @@ default:
               raw: raw
               preprocessed: preprocessed
               validated: validated
+              merged_landings: merged-landings
         dashboard:
           name: app
           collection_name:

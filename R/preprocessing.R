@@ -108,6 +108,7 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     renamed_raw %>%
     dplyr::mutate(
       landing_date = lubridate::as_datetime(.data$landing_date),
+      submission_id = as.character(.data$submission_id),
       dplyr::across(
         c("no_of_fishers", "n_boats", "catch_kg", "lat", "lon"), ~ as.numeric(.x)
       )
@@ -217,19 +218,19 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
       n_boats = "no_boats"
     ) %>%
     dplyr::rowwise() %>%
-    dplyr::mutate(survey_id = digest::digest(
+    dplyr::mutate(submission_id = digest::digest(
       paste(.data$landing_date, .data$landing_site, .data$gear, .data$n_boats,
         sep = "_"
       ),
       algo = "crc32"
     )) %>%
-    dplyr::group_by(.data$survey_id) %>%
+    dplyr::group_by(.data$submission_id) %>%
     dplyr::mutate(
       n_catch = seq(1, dplyr::n(), 1),
-      catch_id = paste(.data$survey_id, .data$n_catch, sep = "-")
+      catch_id = paste(.data$submission_id, .data$n_catch, sep = "-")
     ) %>%
     dplyr::select(
-      "survey_id",
+      "submission_id",
       "catch_id",
       "landing_date",
       "landing_site",
@@ -271,8 +272,8 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
         TRUE ~ .data$fish_category
       )
     ) %>%
-    dplyr::filter(.data$fish_category == "0") %>%
-    dplyr::select(-c("gear", "gear_new", "catch_name")) %>%
+    dplyr::filter(!.data$fish_category == "0") %>%
+    dplyr::select(-c("gear", "gear_new", "catch_name", "ecology")) %>%
     dplyr::rename(gear = "fixed_gear")
 
   logger::log_info("Uploading preprocessed legacy data to mongodb")
