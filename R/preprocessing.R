@@ -50,14 +50,15 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
       no_of_fishers = "Number_of_fishermen",
       n_boats = "Number_of_boats",
       gps = "Rekodi_GPS",
-      dplyr::contains("_kg")
+      dplyr::contains("_kg"),
+      total_catch_form = "Pato_kwa_ujumla_kg"
     ) %>%
     dplyr::rowwise() %>%
     # Generate unique survey IDs and clean text fields
     dplyr::ungroup() %>%
     dplyr::mutate(
-      landing_site = stringr::str_to_title(.data$landing_site),
-      fishing_ground = stringr::str_to_title(.data$fishing_ground),
+      landing_site = tolower(.data$landing_site),
+      fishing_ground = tolower(.data$fishing_ground),
       landing_site = trimws(.data$landing_site),
       fishing_ground = trimws(.data$fishing_ground)
     ) %>%
@@ -65,7 +66,7 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
       into = c("lat", "lon", "drop1", "drop2"),
       sep = " "
     ) %>%
-    dplyr::select(-c("Pato_kwa_ujumla_kg", "drop1", "drop2")) %>%
+    dplyr::select(-c("drop1", "drop2")) %>%
     # Pivot catch data from wide to long format
     tidyr::pivot_longer(
       cols = dplyr::contains("_kg"),
@@ -77,28 +78,33 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
       fish_category = tolower(.data$fish_category),
       fish_category = stringr::str_remove(.data$fish_category, "_kg"),
       fish_category = dplyr::case_when(
-        fish_category == "samaki_wa_maji_mengi_wakubwa" ~ "pelagics_large",
-        fish_category == "samaki_wa_maji_mengi_wadogo" ~ "pelagics_small",
-        fish_category == "papa_wakubwa" ~ "shark_large",
-        fish_category == "papa_wadogo" ~ "shark_small",
-        fish_category == "taa_wakubwa" ~ "ray_large",
-        fish_category == "taa_wadogo" ~ "ray_small",
-        fish_category == "mchanganyiko_wakubwa" ~ "rest of catch_large",
-        fish_category == "mchanganyiko_wadogo" ~ "rest of catch_small",
-        fish_category == "mchanganyiko" ~ "rest of catch",
+        .data$fish_category == "samaki_wa_maji_mengi_wakubwa" ~ "pelagics_large",
+        .data$fish_category == "samaki_wa_maji_mengi_wadogo" ~ "pelagics_small",
+        .data$fish_category == "papa_wakubwa" ~ "shark_large",
+        .data$fish_category == "papa_wadogo" ~ "shark_small",
+        .data$fish_category == "taa_wakubwa" ~ "ray_large",
+        .data$fish_category == "taa_wadogo" ~ "ray_small",
+        .data$fish_category == "mchanganyiko_wakubwa" ~ "rest of catch_large",
+        .data$fish_category == "mchanganyiko_wadogo" ~ "rest of catch_small",
+        .data$fish_category == "mchanganyiko" ~ "rest of catch",
         TRUE ~ .data$fish_category
       ),
       # Standardize gear names
       gear = dplyr::case_when(
-        gear == "beachseine" ~ "speargun",
-        gear == "net" ~ "gillnet",
-        gear == "handline" ~ "setnet",
-        gear == "speargun___hook___stick" ~ "traps",
-        gear == "traps" ~ "handline",
-        gear == "ringnet" ~ "monofilament",
-        gear == "beachseine_1" ~ "beachseine",
-        gear == "ringnet_1" ~ "ringnet",
+        .data$gear == "beachseine" ~ "speargun",
+        .data$gear == "net" ~ "gillnet",
+        .data$gear == "handline" ~ "setnet",
+        .data$gear == "speargun___hook___stick" ~ "traps",
+        .data$gear == "traps" ~ "handline",
+        .data$gear == "ringnet" ~ "monofilament",
+        .data$gear == "beachseine_1" ~ "beachseine",
+        .data$gear == "ringnet_1" ~ "ringnet",
         TRUE ~ .data$gear
+      ),
+      # Standardize landing sites
+      landing_site = dplyr::case_when(
+        landing_site == "Kijangwani_1" ~ "Kijangwani",
+        TRUE ~ .data$landing_site
       )
     ) %>%
     tidyr::separate(.data$fish_category, into = c("fish_category", "size"), sep = "_")
@@ -151,8 +157,9 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
       catch_kg = ifelse(.data$form_consent == "no", NA_real_, .data$catch_kg)
     ) %>%
     dplyr::ungroup() %>%
-    dplyr::select(-c("n_catch", "total_catch", "catch_present")) %>%
-    dplyr::select("submission_id", "form_consent", "catch_id", dplyr::everything())
+    dplyr::select(-c("n_catch", "catch_present")) %>%
+    dplyr::select("submission_id", "form_consent", "catch_id", dplyr::everything()) %>%
+    dplyr::relocate("total_catch_form", .after = "total_catch")
 
 
   logger::log_info("Uploading preprocessed legacy data to mongodb")
