@@ -116,7 +116,32 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
       landing_date = lubridate::as_datetime(.data$landing_date),
       submission_id = as.character(.data$submission_id),
       dplyr::across(
-        c("no_of_fishers", "n_boats", "catch_kg", "lat", "lon"), ~ as.numeric(.x)
+        c("no_of_fishers", "n_boats", "catch_kg", "lat", "lon", "total_catch_form"), ~ as.numeric(.x)
+      )
+    )
+
+  # manage mismatch between caluclated total catch and total catch from form
+  mismatch_total <-
+    field_raw %>%
+    dplyr::select("submission_id", "form_consent", "fish_category", "catch_kg", "size", "total_catch_form") %>%
+    dplyr::group_by(.data$submission_id) %>%
+    dplyr::mutate(total_catch = sum(.data$catch_kg, na.rm = TRUE)) %>%
+    dplyr::summarise(
+      form_consent = dplyr::first(.data$form_consent),
+      total_catch_form = dplyr::first(.data$total_catch_form),
+      total_catch = dplyr::first(.data$total_catch)
+    ) %>%
+    dplyr::mutate(
+      mismatch_label = ifelse(.data$total_catch_form != .data$total_catch, "y", "n"),
+      mismatch_value = abs(.data$total_catch_form - .data$total_catch),
+      tot_catch_fixed = dplyr::case_when(
+        .data$form_consent == "no" ~ NA_real_,
+        # If there's a mismatch, use the total_catch sum
+        .data$total_catch != .data$total_catch_form ~ .data$total_catch,
+        # If fish groups sum to 0 but total catch is not 0, trust the total_catch_form
+        .data$total_catch == 0 & .data$total_catch_form > 0 ~ .data$total_catch_form,
+        # Otherwise, keep the original total_catch value
+        TRUE ~ .data$total_catch
       )
     )
 
@@ -141,12 +166,12 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(
       fish_category = NA_character_,
       size = NA_character_,
-      catch_kg = 0
+      catch_kg = 0,
     ) %>%
     dplyr::distinct()
 
   # Combine processed data
-  preprocessed_landings <-
+  refined_landings <-
     catch_data %>%
     dplyr::bind_rows() %>%
     dplyr::arrange(.data$landing_site, .data$landing_date) %>%
@@ -154,13 +179,21 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(
       n_catch = seq(1, dplyr::n(), 1),
       catch_id = paste(.data$submission_id, .data$n_catch, sep = "-"),
-      catch_kg = ifelse(.data$form_consent == "no", NA_real_, .data$catch_kg)
+      catch_kg = ifelse(.data$form_consent == "no", NA_real_, .data$catch_kg),
+      total_catch = ifelse(.data$form_consent == "no", NA_real_, .data$total_catch)
     ) %>%
     dplyr::ungroup() %>%
     dplyr::select(-c("n_catch", "catch_present")) %>%
-    dplyr::select("submission_id", "form_consent", "catch_id", dplyr::everything()) %>%
-    dplyr::relocate("total_catch_form", .after = "total_catch")
+    dplyr::select("submission_id", "form_consent", "catch_id", dplyr::everything())
 
+  # Use fixed total catch values
+  preprocessed_landings <-
+    mismatch_total %>%
+    dplyr::select("submission_id", "tot_catch_fixed") %>%
+    dplyr::right_join(refined_landings, by = "submission_id") %>%
+    dplyr::select(-c("total_catch", "total_catch_form")) %>%
+    dplyr::relocate(.data$tot_catch_fixed, .after = "catch_kg") %>%
+    dplyr::rename(total_catch_kg = "tot_catch_fixed")
 
   logger::log_info("Uploading preprocessed legacy data to mongodb")
   # upload preprocessed landings
