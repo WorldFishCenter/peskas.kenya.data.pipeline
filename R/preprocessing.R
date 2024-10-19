@@ -314,7 +314,12 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
     ) %>%
     dplyr::filter(!.data$fish_category == "0") %>%
     dplyr::select(-c("gear", "gear_new", "catch_name", "ecology")) %>%
-    dplyr::rename(gear = "fixed_gear")
+    dplyr::rename(gear = "fixed_gear") |>
+    # caluclate total catch per submission
+    dplyr::arrange(.data$landing_date, .data$submission_id) |>
+    dplyr::group_by(.data$submission_id) |>
+    dplyr::mutate(total_catch_kg = sum(.data$catch_kg, na.rm = T)) |>
+    dplyr::ungroup()
 
   logger::log_info("Uploading preprocessed legacy data to mongodb")
   # upload preprocessed landings

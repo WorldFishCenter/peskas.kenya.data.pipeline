@@ -50,7 +50,7 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::select(
       "version", "form_consent", "submission_id", "catch_id", "landing_site",
       "fishing_ground", "lat", "lon", "no_of_fishers", "n_boats", "gear", "fish_category",
-      "size", "catch_kg", "total_catch", "total_catch_form"
+      "size", "catch_kg", "total_catch_kg"
     )
 
   logger::log_info("Uploading merged landings data to mongodb")

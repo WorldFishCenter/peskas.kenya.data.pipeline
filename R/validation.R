@@ -29,9 +29,9 @@
 validate_legacy_landings <- function() {
   conf <- read_config()
 
-  preprocessed_legacy_landings <-
+  merged_landings <-
     mdb_collection_pull(
-      collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$preprocessed,
+      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$merged_landings,
       db_name = conf$storage$mongodb$database$pipeline$name,
       connection_string = conf$storage$mongodb$connection_string
     ) |>
@@ -40,15 +40,15 @@ validate_legacy_landings <- function() {
 
   validation_output <-
     list(
-      dates_alert = validate_dates(data = preprocessed_legacy_landings),
-      fishers_alert = validate_nfishers(data = preprocessed_legacy_landings, k = conf$validation$k_nfishers),
-      nboats_alert = validate_nboats(data = preprocessed_legacy_landings, k = conf$validation$k_nboats),
-      catch_alert = validate_catch(data = preprocessed_legacy_landings, k = conf$validation$k_catch)
+      dates_alert = validate_dates(data = merged_landings),
+      fishers_alert = validate_nfishers(data = merged_landings, k = conf$validation$k_nfishers),
+      nboats_alert = validate_nboats(data = merged_landings, k = conf$validation$k_nboats),
+      catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch)
     )
 
   # validated data
   base_data <-
-    preprocessed_legacy_landings %>%
+    merged_landings %>%
     dplyr::select(
       "survey_id", "catch_id", "landing_site",
       "gear", "gear_new", "fish_category",
