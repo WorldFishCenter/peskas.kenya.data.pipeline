@@ -37,7 +37,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_catch_bounds</span><span class="op">(</span>data <span class="op">=</span> <span class="cn">NULL</span>, k <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_catch_bounds</span><span class="op">(</span>data <span class="op">=</span> <span class="cn">NULL</span>, k <span class="op">=</span> <span class="cn">NULL</span>, total_catch <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -45,25 +45,22 @@
 
 
 <dl><dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>A data frame containing columns: gear_new, fish_category, and catch_kg.</p></dd>
+<dd><p>A data frame containing columns: gear, fish_category (or total_catch_kg), and catch_kg (or total_catch_kg).</p></dd>
 
 
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
 <dd><p>A numeric value used in the LocScaleB function for outlier detection.</p></dd>
 
+
+<dt id="arg-total-catch">total_catch<a class="anchor" aria-label="anchor" href="#arg-total-catch"></a></dt>
+<dd><p>A logical value indicating whether to calculate bounds for total catch (TRUE) or individual catch (FALSE).</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A data frame with columns: gear, fish_category, and upper.up (upper bound).</p>
+    <p>A data frame with columns: gear, fish_category (if applicable), and upper.up (upper bound).</p>
     </div>
 
-    <div class="section level2">
-    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">catch_bounds</span> <span class="op">&lt;-</span> <span class="fu">get_catch_bounds</span><span class="op">(</span><span class="va">your_data</span>, k <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
-</code></pre></div>
-    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
