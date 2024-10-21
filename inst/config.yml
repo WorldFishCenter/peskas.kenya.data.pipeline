@@ -14,12 +14,11 @@ default:
             legacy:
               raw: legacy-raw
               preprocessed: legacy-preprocessed
-              validated: legacy-validated
             ongoing:
               raw: raw
               preprocessed: preprocessed
-              validated: validated
               merged_landings: merged-landings
+              validated: validated
         dashboard:
           name: app
           collection_name:

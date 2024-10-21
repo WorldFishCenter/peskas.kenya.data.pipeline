@@ -40,7 +40,7 @@ export_summaries <- function() {
   valid_data <-
     mdb_collection_pull(
       connection_string = conf$storage$mongodb$connection_string,
-      collection_name = conf$storage$mongod$database$pipeline$collection_name$legacy$validated,
+      collection_name = conf$storage$mongod$database$pipeline$collection_name$ongoing$validated,
       db_name = conf$storage$mongod$database$pipeline$name
     ) |>
     dplyr::as_tibble()
@@ -52,10 +52,9 @@ export_summaries <- function() {
   summaries <-
     valid_data |>
     dplyr::rename(BMU = "landing_site") |>
-    dplyr::group_by(.data$survey_id) |>
-    dplyr::summarise(dplyr::across(c("BMU":"ecology"), ~ dplyr::first(.x)),
-      catch_kg = sum(.data$catch_kg, na.rm = T),
-      price = mean(.data$price, na.rm = T)
+    dplyr::group_by(.data$catch_id) |>
+    dplyr::summarise(dplyr::across(c("version":"ecology"), ~ dplyr::first(.x)),
+      catch_kg = sum(.data$catch_kg, na.rm = T)
     ) |>
     dplyr::ungroup() |>
     dplyr::left_join(bmu_size, by = "BMU") |>
