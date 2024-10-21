@@ -15,6 +15,7 @@
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_catch_bounds.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_kobo_data.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_metadata.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_total_catch_bounds.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/index.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/ingest_landings.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/mdb_collection_pull.html</loc></url>
@@ -28,8 +29,9 @@
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/tidyeval.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_catch.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_dates.html</loc></url>
-<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_legacy_landings.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_landings.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_nboats.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_nfishers.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_total_catch.html</loc></url>
 </urlset>
 
