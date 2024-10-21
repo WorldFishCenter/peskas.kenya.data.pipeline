@@ -259,7 +259,7 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
     ) %>%
     dplyr::rowwise() %>%
     dplyr::mutate(submission_id = digest::digest(
-      paste(.data$landing_date, .data$landing_site, .data$gear, .data$n_boats,
+      paste(.data$landing_date, .data$landing_site, .data$gear, .data$n_boats, .data$no_of_fishers,
         sep = "_"
       ),
       algo = "crc32"

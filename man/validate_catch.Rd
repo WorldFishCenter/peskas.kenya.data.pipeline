@@ -4,22 +4,21 @@
 \alias{validate_catch}
 \title{Validate Catch Data}
 \usage{
-validate_catch(data = NULL, k = NULL)
+validate_catch(data = NULL, k = NULL, total_catch = FALSE, flag_value = 4)
 }
 \arguments{
-\item{data}{A data frame containing catch data with columns: catch_id, gear, fish_category, and catch_kg.}
+\item{data}{A data frame containing catch data with columns: catch_id, gear, fish_category (or total_catch_kg), and catch_kg (or total_catch_kg).}
 
 \item{k}{A numeric value used in the get_catch_bounds function for outlier detection.}
+
+\item{total_catch}{A logical value indicating whether to validate total catch (TRUE) or individual catch (FALSE).}
+
+\item{flag_value}{A numeric value to use as the flag for catches exceeding the upper bound. Default is 4.}
 }
 \value{
-A data frame with columns: catch_id, catch_kg, and alert_catch.
+A data frame with columns: catch_id, catch_kg (or total_catch_kg), and alert_catch.
 }
 \description{
 This function validates the catch data by comparing it to calculated upper bounds.
-}
-\examples{
-\dontrun{
-validated_catch <- validate_catch(your_data, k = 3)
-}
 }
 \keyword{validation}

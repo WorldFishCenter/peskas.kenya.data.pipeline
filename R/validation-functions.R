@@ -164,10 +164,11 @@ validate_nboats <- function(data = NULL, k = NULL) {
 #'
 #' This function calculates the upper bounds for catch data based on gear type and fish category.
 #'
-#' @param data A data frame containing columns: gear_new, fish_category, and catch_kg.
+#' @param data A data frame containing columns: gear, fish_category (or total_catch_kg), and catch_kg (or total_catch_kg).
 #' @param k A numeric value used in the LocScaleB function for outlier detection.
+#' @param total_catch A logical value indicating whether to calculate bounds for total catch (TRUE) or individual catch (FALSE).
 #'
-#' @return A data frame with columns: gear, fish_category, and upper.up (upper bound).
+#' @return A data frame with columns: gear, fish_category (if applicable), and upper.up (upper bound).
 #'
 #' @importFrom dplyr select filter bind_rows mutate
 #' @importFrom purrr discard map
@@ -175,26 +176,25 @@ validate_nboats <- function(data = NULL, k = NULL) {
 #' @importFrom magrittr extract2
 #'
 #' @keywords validation
-#' @examples
-#' \dontrun{
-#' catch_bounds <- get_catch_bounds(your_data, k = 2)
-#' }
 #' @export
-get_catch_bounds <- function(data = NULL, k = NULL) {
+get_catch_bounds <- function(data = NULL, k = NULL, total_catch = FALSE) {
   get_bounds <- function(x = NULL, k = NULL) {
-    univOutl::LocScaleB(x$catch_kg, logt = TRUE, k = k) %>%
+    catch_column <- if (total_catch) "total_catch_kg" else "catch_kg"
+    univOutl::LocScaleB(x[[catch_column]], logt = TRUE, k = k) %>%
       magrittr::extract2("bounds")
   }
 
   data %>%
-    dplyr::select("gear", "fish_category", "catch_kg") %>%
-    dplyr::filter(!.data$fish_category == "0") %>%
-    split(interaction(.$gear, .$fish_category)) %>%
+    dplyr::select(if (total_catch) c("gear", "total_catch_kg") else c("gear", "fish_category", "catch_kg")) %>%
+    {
+      if (!total_catch) dplyr::filter(., !.data$fish_category == "0") else .
+    } %>%
+    split(if (total_catch) interaction(.$gear) else interaction(.$gear, .$fish_category)) %>%
     purrr::discard(~ nrow(.) == 0) %>%
     purrr::map(get_bounds, k = k) %>%
     dplyr::bind_rows(.id = "gear_catch") %>%
     dplyr::mutate(upper.up = exp(.data$upper.up)) %>%
-    tidyr::separate(col = "gear_catch", into = c("gear", "fish_category")) %>%
+    tidyr::separate(col = "gear_catch", into = if (total_catch) "gear" else c("gear", "fish_category")) %>%
     dplyr::select(-"lower.low")
 }
 
@@ -202,99 +202,28 @@ get_catch_bounds <- function(data = NULL, k = NULL) {
 #'
 #' This function validates the catch data by comparing it to calculated upper bounds.
 #'
-#' @param data A data frame containing catch data with columns: catch_id, gear, fish_category, and catch_kg.
+#' @param data A data frame containing catch data with columns: catch_id, gear, fish_category (or total_catch_kg), and catch_kg (or total_catch_kg).
 #' @param k A numeric value used in the get_catch_bounds function for outlier detection.
+#' @param total_catch A logical value indicating whether to validate total catch (TRUE) or individual catch (FALSE).
+#' @param flag_value A numeric value to use as the flag for catches exceeding the upper bound. Default is 4.
 #'
-#' @return A data frame with columns: catch_id, catch_kg, and alert_catch.
-#'
-#' @importFrom dplyr select left_join mutate
+#' @return A data frame with columns: catch_id, catch_kg (or total_catch_kg), and alert_catch.
 #'
 #' @keywords validation
-#' @examples
-#' \dontrun{
-#' validated_catch <- validate_catch(your_data, k = 3)
-#' }
 #' @export
-validate_catch <- function(data = NULL, k = NULL) {
-  bounds <- get_catch_bounds(data = data, k = k)
+validate_catch <- function(data = NULL, k = NULL, total_catch = FALSE, flag_value = 4) {
+  bounds <- get_catch_bounds(data = data, k = k, total_catch = total_catch)
+
+  catch_column <- if (total_catch) "total_catch_kg" else "catch_kg"
 
   data %>%
-    dplyr::select("catch_id", "gear", "fish_category", "catch_kg") %>%
-    dplyr::left_join(bounds, by = c("gear", "fish_category")) %>%
-    dplyr::rowwise() |>
+    dplyr::select("catch_id", "gear", if (!total_catch) "fish_category", dplyr::all_of(catch_column)) %>%
+    dplyr::left_join(bounds, by = if (total_catch) "gear" else c("gear", "fish_category")) %>%
+    dplyr::rowwise() %>%
     dplyr::mutate(
-      alert_catch = ifelse(.data$catch_kg >= .data$upper.up, 4, NA_real_),
-      catch_kg = ifelse(is.na(.data$alert_catch), .data$catch_kg, NA_real_)
+      alert_catch = ifelse(.data[[catch_column]] >= .data$upper.up, flag_value, NA_real_),
+      !!catch_column := ifelse(is.na(.data$alert_catch), .data[[catch_column]], NA_real_)
     ) %>%
-    dplyr::ungroup() |>
-    dplyr::select(-c("upper.up", "gear", "fish_category"))
-}
-
-#' Get Total Catch Bounds
-#'
-#' This function calculates the upper bounds for total catch data based on gear type.
-#'
-#' @param data A data frame containing columns: gear, and total_catch_kg.
-#' @param k A numeric value used in the LocScaleB function for outlier detection.
-#'
-#' @return A data frame with columns: gear and upper.up (upper bound).
-#'
-#' @importFrom dplyr select filter bind_rows mutate
-#' @importFrom purrr discard map
-#' @importFrom tidyr separate
-#' @importFrom magrittr extract2
-#'
-#' @keywords validation
-#' @examples
-#' \dontrun{
-#' total_catch_bounds <- get_total_catch_bounds(your_data, k = 2)
-#' }
-#' @export
-get_total_catch_bounds <- function(data = NULL, k = NULL) {
-  get_bounds <- function(x = NULL, k = NULL) {
-    univOutl::LocScaleB(x$total_catch_kg, logt = TRUE, k = k) %>%
-      magrittr::extract2("bounds")
-  }
-
-  data %>%
-    dplyr::select("gear", "total_catch_kg") %>%
-    split(interaction(.$gear)) %>%
-    purrr::discard(~ nrow(.) == 0) %>%
-    purrr::map(get_bounds, k = k) %>%
-    dplyr::bind_rows(.id = "gear_catch") %>%
-    dplyr::mutate(upper.up = exp(.data$upper.up)) %>%
-    tidyr::separate(col = "gear_catch", into = "gear") %>%
-    dplyr::select(-"lower.low")
-}
-
-#' Validate Total Catch Data
-#'
-#' This function validates the catch data by comparing it to calculated upper bounds.
-#'
-#' @param data A data frame containing catch data with columns: catch_id, gear, and total_catch_kg.
-#' @param k A numeric value used in the get_catch_bounds function for outlier detection.
-#'
-#' @return A data frame with columns: catch_id, total_catch_kg, and alert_catch.
-#'
-#' @importFrom dplyr select left_join mutate
-#'
-#' @keywords validation
-#' @examples
-#' \dontrun{
-#' validated_catch <- validate_total_catch(your_data, k = 3)
-#' }
-#' @export
-validate_total_catch <- function(data = NULL, k = NULL) {
-  bounds <- get_total_catch_bounds(data = data, k = k)
-
-  data %>%
-    dplyr::select("catch_id", "gear", "total_catch_kg") %>%
-    dplyr::left_join(bounds, by = "gear") %>%
-    dplyr::rowwise() |>
-    dplyr::mutate(
-      alert_catch = ifelse(.data$total_catch_kg >= .data$upper.up, 4, NA_real_),
-      total_catch_kg = ifelse(is.na(.data$alert_catch), .data$total_catch_kg, NA_real_)
-    ) %>%
-    dplyr::ungroup() |>
-    dplyr::select(-c("upper.up", "gear"))
+    dplyr::ungroup() %>%
+    dplyr::select(-c("upper.up", "gear", if (!total_catch) "fish_category"))
 }

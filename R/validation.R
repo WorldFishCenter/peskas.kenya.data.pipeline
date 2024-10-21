@@ -43,8 +43,8 @@ validate_landings <- function() {
       dates_alert = validate_dates(data = merged_landings),
       fishers_alert = validate_nfishers(data = merged_landings, k = conf$validation$k_nfishers),
       nboats_alert = validate_nboats(data = merged_landings, k = conf$validation$k_nboats),
-      catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch),
-      total_catch_alert = validate_total_catch(data = merged_landings, k = conf$validation$k_catch)
+      catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 4),
+      total_catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch, total_catch = TRUE, flag_value = 5)
     )
 
   validated_vars <-

@@ -4,22 +4,19 @@
 \alias{get_catch_bounds}
 \title{Get Catch Bounds}
 \usage{
-get_catch_bounds(data = NULL, k = NULL)
+get_catch_bounds(data = NULL, k = NULL, total_catch = FALSE)
 }
 \arguments{
-\item{data}{A data frame containing columns: gear_new, fish_category, and catch_kg.}
+\item{data}{A data frame containing columns: gear, fish_category (or total_catch_kg), and catch_kg (or total_catch_kg).}
 
 \item{k}{A numeric value used in the LocScaleB function for outlier detection.}
+
+\item{total_catch}{A logical value indicating whether to calculate bounds for total catch (TRUE) or individual catch (FALSE).}
 }
 \value{
-A data frame with columns: gear, fish_category, and upper.up (upper bound).
+A data frame with columns: gear, fish_category (if applicable), and upper.up (upper bound).
 }
 \description{
 This function calculates the upper bounds for catch data based on gear type and fish category.
-}
-\examples{
-\dontrun{
-catch_bounds <- get_catch_bounds(your_data, k = 2)
-}
 }
 \keyword{validation}
