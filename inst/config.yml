@@ -25,6 +25,9 @@ default:
             legacy:
               fishery_metrics: legacy-metrics
               fishery_metrics_monthly: legacy-metrics_monthly
+            ongoing:
+              fishery_metrics: metrics
+              fishery_metrics_monthly: metrics_monthly
     google:
       key: gcs
       options:
@@ -36,7 +39,7 @@ default:
       name: metadata-tables
       sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
       tables:
-        - fishing_grounds
+        - BMUs
   validation:
     k_nboats: 3
     k_nfishers: 3

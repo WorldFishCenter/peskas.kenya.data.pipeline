@@ -40,34 +40,32 @@ export_summaries <- function() {
   valid_data <-
     mdb_collection_pull(
       connection_string = conf$storage$mongodb$connection_string,
-      collection_name = conf$storage$mongod$database$pipeline$collection_name$ongoing$validated,
+      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$validated,
       db_name = conf$storage$mongod$database$pipeline$name
     ) |>
     dplyr::as_tibble()
 
   bmu_size <-
-    get_metadata()$fishing_grounds |>
+    get_metadata()$BMUs |>
     dplyr::mutate(size_km = as.numeric(.data$size_km))
 
   summaries <-
     valid_data |>
     dplyr::rename(BMU = "landing_site") |>
-    dplyr::group_by(.data$catch_id) |>
-    dplyr::summarise(dplyr::across(c("version":"ecology"), ~ dplyr::first(.x)),
-      catch_kg = sum(.data$catch_kg, na.rm = T)
-    ) |>
+    dplyr::group_by(.data$submission_id) |>
+    dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) |>
     dplyr::ungroup() |>
     dplyr::left_join(bmu_size, by = "BMU") |>
     dplyr::rowwise() |>
     dplyr::mutate(
       effort = .data$no_of_fishers / .data$size_km,
-      cpue = .data$catch_kg / .data$effort
+      cpue = .data$total_catch_kg / .data$effort
     ) |>
     dplyr::ungroup() |>
     dplyr::select(
-      "survey_id", "BMU", "landing_date",
-      "gear", "catch_kg",
-      "price", "effort", "cpue"
+      "submission_id", "BMU", "landing_date",
+      "gear", "total_catch_kg",
+      "effort", "cpue"
     ) |>
     dplyr::group_by(.data$BMU, .data$landing_date) |>
     dplyr::arrange(.by_group = T) |>
@@ -78,8 +76,7 @@ export_summaries <- function() {
     dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = "month")) |>
     dplyr::group_by(.data$BMU, .data$date) |>
     dplyr::summarise(
-      mean_trip_catch = mean(.data$catch_kg, na.rm = T),
-      mean_trip_price = mean(.data$price, na.rm = T),
+      mean_trip_catch = mean(.data$total_catch_kg, na.rm = T),
       mean_effort = mean(.data$effort, na.rm = T),
       mean_cpue = mean(.data$cpue, na.rm = T)
     ) |>
@@ -93,8 +90,8 @@ export_summaries <- function() {
 
   # Collection names
   collection_names <- list(
-    summaries = conf$storage$mongod$database$dashboard$collection_name$legacy$fishery_metrics,
-    monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$legacy$fishery_metrics_monthly
+    summaries = conf$storage$mongod$database$dashboard$collection_name$ongoing$fishery_metrics,
+    monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$ongoing$fishery_metrics_monthly
   )
 
   # Iterate over the dataframes and upload them
