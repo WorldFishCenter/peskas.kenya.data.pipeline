@@ -284,7 +284,8 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(
       dplyr::across(.cols = c(
         "catch_name", "gear", "gear_new",
-        "fish_category", "ecology"
+        "fish_category", "ecology",
+        "landing_site"
       ), tolower),
       fixed_gear = dplyr::case_when(
         .data$gear == "gillnet" ~ "gillnet",
