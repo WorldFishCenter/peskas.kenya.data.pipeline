@@ -103,7 +103,7 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
       ),
       # Standardize landing sites
       landing_site = dplyr::case_when(
-        landing_site == "Kijangwani_1" ~ "Kijangwani",
+        landing_site == "kijangwani_1" ~ "kijangwani",
         TRUE ~ .data$landing_site
       )
     ) %>%
@@ -195,7 +195,7 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::relocate(.data$tot_catch_fixed, .after = "catch_kg") %>%
     dplyr::rename(total_catch_kg = "tot_catch_fixed")
 
-  logger::log_info("Uploading preprocessed legacy data to mongodb")
+  logger::log_info("Uploading preprocessed data to mongodb")
   # upload preprocessed landings
   mdb_collection_push(
     data = preprocessed_landings,
