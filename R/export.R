@@ -63,7 +63,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   bmu_size <-
     get_metadata()$BMUs |>
-    dplyr::mutate(size_km = as.numeric(.data$size_km))
+    dplyr::mutate(size_km = as.numeric(.data$size_km),
+                  BMU = tolower(.data$BMU))
 
   monthly_summaries <-
     valid_data |>
@@ -77,7 +78,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       cpue = .data$total_catch_kg / .data$effort
     ) |>
     dplyr::ungroup() %>%
-    dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = "month")) |>
+    dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = "month"),
+                  BMU = stringr::str_to_title(.data$BMU)) |>
     dplyr::select(.data$BMU, .data$date, .data$effort, .data$cpue, .data$total_catch_kg) %>%
     dplyr::group_by(.data$BMU, .data$date) |>
     dplyr::summarise(
@@ -102,7 +104,10 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       .groups = "drop"
     ) %>%
     dplyr::ungroup() %>%
-    tidyr::complete(.data$landing_site, .data$gear, fill = list(gear_n = 0, gear_perc = 0))
+    tidyr::complete(.data$landing_site, .data$gear, fill = list(gear_n = 0, gear_perc = 0)) %>%
+    dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
+
+
 
 
   fish_distribution <-
@@ -116,7 +121,9 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       .groups = "drop"
     ) %>%
     dplyr::ungroup() %>%
-    tidyr::complete(.data$landing_site, .data$fish_category, fill = list(catch_kg = 0, catch_percent = 0))
+    tidyr::complete(.data$landing_site, .data$fish_category, fill = list(catch_kg = 0, catch_percent = 0)) %>%
+    dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
+
 
   # Dataframes to upload
   dataframes_to_upload <- list(
