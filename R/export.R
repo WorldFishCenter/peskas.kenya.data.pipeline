@@ -63,11 +63,18 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   bmu_size <-
     get_metadata()$BMUs |>
-    dplyr::mutate(size_km = as.numeric(.data$size_km),
-                  BMU = tolower(.data$BMU))
+    dplyr::mutate(
+      size_km = as.numeric(.data$size_km),
+      BMU = tolower(.data$BMU)
+    )
+
+  valid_data %<>%
+    dplyr::filter(!.data$landing_site %in% setdiff(valid_data$landing_site, bmu_size$BMU))
+
 
   monthly_summaries <-
     valid_data |>
+    dplyr::filter(!is.na(.data$landing_date)) %>%
     dplyr::group_by(.data$submission_id) %>%
     dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
     dplyr::rename(BMU = "landing_site") |>
@@ -75,20 +82,35 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::rowwise() |>
     dplyr::mutate(
       effort = .data$no_of_fishers / .data$size_km,
-      cpue = .data$total_catch_kg / .data$effort
+      cpue = .data$total_catch_kg / .data$no_of_fishers,
+      cpua = .data$total_catch_kg / .data$size_km
     ) |>
     dplyr::ungroup() %>%
-    dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = "month"),
-                  BMU = stringr::str_to_title(.data$BMU)) |>
-    dplyr::select(.data$BMU, .data$date, .data$effort, .data$cpue, .data$total_catch_kg) %>%
+    dplyr::mutate(
+      date = lubridate::floor_date(.data$landing_date, unit = "month"),
+      BMU = stringr::str_to_title(.data$BMU)
+    ) |>
+    dplyr::select("BMU", "date", "effort", "total_catch_kg", "cpue", "cpua") %>%
     dplyr::group_by(.data$BMU, .data$date) |>
     dplyr::summarise(
       aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
       mean_trip_catch = mean(.data$total_catch_kg, na.rm = T),
       mean_effort = mean(.data$effort, na.rm = T),
-      mean_cpue = mean(.data$cpue, na.rm = T)
+      mean_cpue = mean(.data$cpue, na.rm = T),
+      mean_cpua = mean(.data$cpua, na.rm = T)
     ) |>
-    dplyr::ungroup()
+    dplyr::ungroup() %>%
+    tidyr::complete(
+      .data$BMU,
+      date = seq(min(.data$date), max(.data$date), by = "month"),
+      fill = list(
+        aggregated_catch_kg = NA,
+        mean_trip_catch = NA,
+        mean_effort = NA,
+        mean_cpue = NA,
+        mean_cpua = NA
+      )
+    )
 
 
   gear_distribution <-
@@ -124,19 +146,32 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     tidyr::complete(.data$landing_site, .data$fish_category, fill = list(catch_kg = 0, catch_percent = 0)) %>%
     dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
 
+  map_distribution <-
+    valid_data %>%
+    dplyr::select("submission_id", "landing_site", "lat", "lon") %>%
+    dplyr::group_by(.data$submission_id) %>%
+    dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-"submission_id") %>%
+    dplyr::filter(!is.na(.data$lat)) %>%
+    dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
+
+
 
   # Dataframes to upload
   dataframes_to_upload <- list(
     monthly_summaries = monthly_summaries,
     gear_distribution = gear_distribution,
-    fish_distribution = fish_distribution
+    fish_distribution = fish_distribution,
+    map_distribution = map_distribution
   )
 
   # Collection names
   collection_names <- list(
     monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$ongoing$catch_monthly,
     gear_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$gear_distribution,
-    fish_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$fish_distribution
+    fish_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$fish_distribution,
+    map_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$map_distribution
   )
 
   # Iterate over the dataframes and upload them

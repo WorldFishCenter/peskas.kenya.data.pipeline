@@ -29,6 +29,7 @@ default:
               catch_monthly: catch_monthly
               gear_distribution: gear_distribution
               fish_distribution: fish_distribution
+              map_distribution: map_distribution
     google:
       key: gcs
       options:
