@@ -117,6 +117,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     valid_data %>%
     dplyr::group_by(.data$submission_id) %>%
     dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
+    dplyr::filter(!is.na(.data$gear)) %>%
     dplyr::group_by(.data$landing_site) %>%
     dplyr::mutate(total_n = dplyr::n()) %>%
     dplyr::group_by(.data$landing_site, .data$gear) %>%
