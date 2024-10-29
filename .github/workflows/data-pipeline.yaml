@@ -112,7 +112,7 @@ jobs:
         run: Rscript -e 'peskas.kenya.data.pipeline::validate_landings()'
 
   export-landings:
-    name: Export summarized landings for web application
+    name: Export metrics to dashboard
     needs: validate-landings
     runs-on: ubuntu-latest
     container:

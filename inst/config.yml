@@ -26,6 +26,7 @@ default:
               fishery_metrics: legacy-metrics
               fishery_metrics_monthly: legacy-metrics_monthly
             ongoing:
+              monthly_stats: monthly_stats
               catch_monthly: catch_monthly
               gear_distribution: gear_distribution
               fish_distribution: fish_distribution

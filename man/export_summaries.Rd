@@ -2,67 +2,70 @@
 % Please edit documentation in R/export.R
 \name{export_summaries}
 \alias{export_summaries}
-\title{Export Summarized Fishery Data}
+\title{Export Summarized Fishery Data for Dashboard Integration}
 \usage{
 export_summaries(log_threshold = logger::DEBUG)
 }
 \arguments{
-\item{log_threshold}{Logging threshold level (default: logger::DEBUG)}
+\item{log_threshold}{The logging threshold level for monitoring operations (default: \code{logger::DEBUG}).}
 }
 \value{
-This function does not return a value. It processes the data and uploads
-three separate collections to MongoDB:
+This function does not return a value. It uploads the following collections to MongoDB:
 \itemize{
-\item Monthly catch summaries
-\item Gear distribution statistics
-\item Fish distribution statistics
+\item Monthly catch summaries (\code{monthly_stats} and \code{monthly_summaries})
+\item Gear distribution statistics (\code{gear_distribution})
+\item Fish distribution statistics (\code{fish_distribution})
+\item Landing site mapping data (\code{map_distribution})
 }
 }
 \description{
 This function processes and exports validated fishery data by calculating various
-summary metrics and distributions, then uploads the results to MongoDB for
-dashboard usage.
+summary metrics and distributions, which are then uploaded to MongoDB collections
+for usage in a dashboard.
 }
 \details{
 The function performs the following operations:
 \enumerate{
-\item Pulls validated data from the "legacy-validated" MongoDB collection
-\item Creates three distinct summary datasets:
-a. Monthly summaries: Aggregates catch, effort, and CPUE metrics by BMU and month
-b. Gear distribution: Calculates gear usage percentages by landing site
-c. Fish distribution: Calculates catch composition percentages by landing site
-\item Uploads all three datasets to their respective MongoDB collections
+\item \strong{Data Retrieval}: Pulls validated fishery data from the "legacy-validated" MongoDB collection.
+\item \strong{Summary Dataset Generation}: Creates the following summary datasets:
+\itemize{
+\item \strong{Monthly Statistics}: Aggregates metrics like catch, effort, and CPUE by BMU (Beach Management Unit) and month.
+\item \strong{Gear Distribution}: Calculates the percentage usage of each gear type by landing site.
+\item \strong{Fish Distribution}: Calculates the percentage of each fish category by landing site.
+\item \strong{Mapping Distribution}: Prepares a dataset of landing sites with geographic coordinates for spatial mapping.
+}
+\item \strong{Data Upload}: Uploads each of the summary datasets to its designated MongoDB collection.
 }
 
-The following metrics are calculated:
+\strong{Calculated Metrics}:
 \itemize{
-\item Effort = Number of fishers / Size of BMU in km
-\item CPUE = Total catch in kg / Effort
-\item Monthly aggregations include:
+\item \strong{Effort} = Number of fishers / Size of BMU in km²
+\item \strong{CPUE} = Total catch in kg / Effort
+\item \strong{Monthly Aggregations}:
 \itemize{
 \item Total catch (kg)
 \item Mean catch per trip
 \item Mean effort
-\item Mean CPUE
+\item Mean CPUE (Catch Per Unit Effort)
 }
-\item Gear distribution includes:
+\item \strong{Gear Distribution}:
 \itemize{
-\item Count of gear types used
-\item Percentage of each gear type by landing site
+\item Count of each gear type used
+\item Percentage distribution of gear types by landing site
 }
-\item Fish distribution includes:
+\item \strong{Fish Distribution}:
 \itemize{
 \item Total catch by fish category
-\item Percentage of each fish category in total catch
+\item Percentage of each fish category within the total catch
 }
 }
 }
 \note{
-This function requires:
+\strong{Dependencies}:
 \itemize{
-\item A configuration file readable by the 'read_config' function with MongoDB connection details
-\item Access to a 'bmu_size' dataset through the 'get_metadata()' function
-\item The following R packages: dplyr, tidyr, lubridate, purrr, logger
+\item Requires a configuration file compatible with the \code{read_config} function, containing MongoDB connection information.
+\item Access to a \code{bmu_size} dataset, which provides size details of BMUs, retrieved via the \code{get_metadata()} function.
+\item R packages required: \code{dplyr}, \code{tidyr}, \code{lubridate}, \code{purrr}, \code{logger}.
 }
 }
 \examples{
@@ -71,6 +74,7 @@ export_summaries()
 }
 
 }
-\keyword{data-processing}
-\keyword{export}
-\keyword{workflow}
+\keyword{MongoDB}
+\keyword{data-processing,}
+\keyword{export,}
+\keyword{workflow,}
