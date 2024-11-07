@@ -1,0 +1,687 @@
+---
+title: "WCS small scale fisheries data"
+subtitle: "This document aims to outline the data structure and summarize the available information from small-scale fishery WCS surveys starting from September 1995. The code and functions used in this analysis are part of an R package within a GitHub repository."
+format:
+  lumo-html: 
+    #logo: "https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/raw/main/man/figures/logo.png"                               
+    github-repo: "https://github.com/WorldFishCenter/peskas.kenya.data.pipeline"       
+    primary-color: "#3493bb"
+    self-contained: true
+    code-link: true
+    is-particlejs-enabled: false                          
+    bg-image: "https://github.com/WorldFishCenter/peskas-blog/blob/master/static/img/zanzibar_fishers_horizon.jpg?raw=true" 
+author: Lorenzo Longobardi
+date: last-modified
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load all required libraries here
+library(magrittr)
+library(ggplot2)
+library(ggiraph)
+library(dplyr)
+library(tidyr)
+library(tidytext)
+library(ggsci)
+```
+
+```{r load_initial, warning=FALSE, message=FALSE, include=FALSE, cache=TRUE, dependson="setup"}
+# Remove library loads from here and keep only data loading
+root <- rprojroot::find_package_root_file()
+setwd(root)
+
+# Load configuration
+conf <- peskas.kenya.data.pipeline::read_config()
+
+# Load data
+valid_data <-
+  peskas.kenya.data.pipeline::mdb_collection_pull(
+    connection_string = conf$storage$mongodb$connection_string,
+    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$validated,
+    db_name = conf$storage$mongod$database$pipeline$name
+  ) |>
+  dplyr::as_tibble()
+
+bmu_size <-
+  peskas.kenya.data.pipeline::get_metadata()$BMUs |>
+  dplyr::mutate(
+    size_km = as.numeric(.data$size_km),
+    BMU = tolower(.data$BMU)
+  )
+
+# Create fake data for outlier detection example
+fake_data <- dplyr::tibble(n_boats = c(rnorm(100, 10, 2), 56, 87, 23))
+
+# Calculate threshold for outlier detection
+thr <-
+  univOutl::LocScaleB(c(fake_data$n_boats, 12987, 378), logt = TRUE, k = 1.5) %>%
+  magrittr::extract2("bounds")
+upb <- (exp(thr) - 1)[2]
+```
+
+## Data Structure
+
+The dataset comprises small-scale fishery survey data collected since `r format(min(valid_data$landing_date, na.rm = T), '%B %Y')` across various landing sites or Beach Management Units (BMUs). The dataset merges two versions: one from the legacy database (`r format(min(valid_data$landing_date, na.rm = T), '%B %Y')` - `r format(as.Date("2022-10-31"), '%B %Y')`) and another from the ongoing survey (from `r format(as.Date("2022-12-01"), '%B %Y')`). The data are stored in a MongoDB database and are accessible through the peskas.kenya.data.pipeline package.
+
+Before analysis and visualization, the data underwent preprocessing and validation to:
+
+- Convert the data into a tidy format, where each column represents a single variable, each row corresponds to one observation, and all variables have the same unit of observation. (For more information, see [Tidying Data](https://dimewiki.worldbank.org/Tidying_Data)).
+
+- Retain informative and meaningful variables while removing biased, stale, or non-informative variables. Derived variables were removed as they can be generated as needed, making the dataset more efficient.
+
+- Ensure consistency of categorical values across the dataset.
+
+The dataset contains the following variables:
+
+```{r data_table, warning=FALSE, message=FALSE, dependson="load_initial"}
+data_table <- dplyr::tibble(
+  N. = seq(1, length(names(valid_data))),
+  Variable = names(valid_data),
+  Type = c(
+    "Numeric", "Categorical", "Categorical", "Categorical", "Date", "Categorical", "Categorical",
+    "Numeric", "Numeric", "Numeric", "Numeric", "Categorical", "Categorical", "Text", "Numeric", "Numeric"
+  ),
+  Description = c(
+    "Data version identifier, 1 indicates legacy landings, 2 ongoing landings",
+    "Consent information for the form",
+    "Unique identifier for each survey submission",
+    "Unique identifier for each catch in the survey",
+    "Date of the fishing landing",
+    "Name of the site where landing occurs (BMU)",
+    "Name of the fishing ground",
+    "Latitude of the fishing site",
+    "Longitude of the fishing site",
+    "Number of fishers involved in the catch",
+    "Number of boats observed on the landing site",
+    "Specific type of fishing gear used",
+    "Category of fish caught",
+    "Size category of the fish caught",
+    "Weight of the catch in kilograms",
+    "Total weight of the catch in kilograms"
+  )
+)
+
+reactable::reactable(data_table,
+  striped = TRUE,
+  highlight = TRUE,
+  pagination = FALSE,
+  columns = list(
+    "N." = reactable::colDef(maxWidth = 100),
+    Description = reactable::colDef(minWidth = 240)
+  ),
+  theme = reactable::reactableTheme(
+    borderColor = "#dfe2e5",
+    stripedColor = "#f6f8fa",
+    highlightColor = "#f0f5f9",
+    cellPadding = "8px 12px",
+    style = list(
+      fontFamily = "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif"
+    )
+  )
+)
+```
+
+Below is a breakdown of the categorical variables:
+
+```{r categorical_vars, warning=FALSE, message=FALSE, fig.width=11, dependson="load_initial"}
+ranked <-
+  valid_data %>%
+  dplyr::select(dplyr::where(is.character)) %>%
+  dplyr::select(-c("submission_id", "catch_id", "version", "form_consent", "fishing_ground", "size")) %>%
+  tidyr::pivot_longer(dplyr::everything(), names_to = "variable", values_to = "value") %>%
+  dplyr::count(variable, value)
+
+catch_names_minor <-
+  ranked %>%
+  dplyr::filter(variable == "fish_category") %>%
+  dplyr::mutate(
+    tot = sum(n),
+    perc = n / tot * 100
+  ) %>%
+  dplyr::filter(perc < 0.5) %>%
+  dplyr::pull(value)
+
+plt <-
+  ranked %>%
+  dplyr::mutate(value = dplyr::case_when(
+    variable == "fish_category" & value %in% catch_names_minor ~ "Other",
+    TRUE ~ value
+  )) %>%
+  ggplot(aes(x = tidytext::reorder_within(value, n, variable), y = n)) +
+  ggiraph::geom_bar_interactive(aes(fill = variable, tooltip = paste("Value:", value, "<br>Count:", n)),
+    stat = "identity", alpha = 0.5
+  ) +
+  facet_wrap(~variable, scales = "free") +
+  tidytext::scale_x_reordered() +
+  coord_flip() +
+  theme_minimal() +
+  ggsci::scale_fill_jama() +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = ""
+  ) +
+  labs(
+    title = "Ranking of categorical variables",
+    x = "",
+    y = ""
+  )
+
+ggiraph::girafe(
+  ggobj = plt,
+  options = list(
+    ggiraph::opts_tooltip(
+      opacity = 0.8, use_fill = TRUE,
+      use_stroke = FALSE,
+      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
+    )
+  )
+)
+```
+
+## Data Processing
+
+### Preprocessing
+
+The preprocessing operations were performed using the  `preprocess_legacy_landings` and `preprocess_landings` function, which:
+
+- Renamed variables according to the [Snake case convention](https://developer.mozilla.org/en-US/docs/Glossary/Snake_case)
+
+- Generated unique IDs for each survey and catch
+
+- Removed derived variables (e.g., Month, Year, Day) as they can be generated when needed
+
+- Stored static information related to landing sites in Google Sheets metadata tables
+
+- Standardized species names using the clean_catch_names function to ensure consistency (e.g., "surgeoms", "surgeon", and "surgeonfish" were unified)
+
+### Validation 
+
+Currently, validation operations were performed to assess the validity of the landing date, the number of boats, the number of fishermen, and the catch weight. The process involves the examination of outliers and anomalous values, which, when identified, are excluded from further analysis by replacing their values with NA. The validation procedure is organized through a systematic labeling process, wherein each data entry is assigned a specific code reflecting its validation status.
+
+The landing date was validated by ensuring that dates were not earlier than 1990. For the other variables, validation was performed using the Median Absolute Deviation (MAD) to identify potential outliers. Specifically, MAD was used to detect outliers based on the data's distribution itself, rather than applying an arbitrary threshold. By adjusting the value of k, we control the sensitivity to outliers—lower values of k make the method more sensitive, flagging more points as outliers, while higher values make it less sensitive. This approach ensures that outliers are identified in relation to the natural variability of the data, providing a robust method for detecting anomalies without imposing an external standard.
+
+In the histogram below, the dashed line indicates the outlier threshold at `r round(upb, 2)` boats, determined by the data using a k value of 1.5. Adjusting k changes sensitivity: lower k detects more outliers, while higher k detects fewer.
+
+```{r outlier_detection, warning=FALSE, message=FALSE, fig.height=4 ,dependson="load_initial"}
+plt <- 
+  ggplot(fake_data, aes(n_boats)) +
+  theme_minimal() +
+  geom_histogram(bins = 30, fill = "#52817f", color = "white", alpha = 0.5) +
+  geom_vline(xintercept = upb, color = "firebrick", linetype = 2) +
+  theme(panel.grid = element_blank()) +
+  annotate("text", x = upb + 0.5, y = Inf, label = "k value = 1.5", color = "firebrick", vjust = 2, hjust = 0) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_continuous(n.breaks = 10) +
+  coord_cartesian(expand = FALSE) +
+  labs(
+    x = "Number of boats",
+    y = "Count",
+    title = "Outlier detection for number of boats using MAD"
+  )
+
+girafe(
+  ggobj = plt,
+  options = list(
+    opts_tooltip(
+      opacity = 0.8, use_fill = TRUE,
+      use_stroke = FALSE,
+      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
+    )
+  )
+)
+```
+
+For catch weight, data were grouped by gear type and fish category to account for variations in catch sizes across different fishing methods. By grouping catch weight data by gear type and fish category, we account for these variations, allowing for a more accurate identification of outliers specific to each gear category and fish group. A k value of 3 was used for each feature.
+
+
+## Data Analysis
+
+### Temporal Distribution
+
+The following plot shows survey activity across BMUs from `r format(min(valid_data$landing_date, na.rm = T), '%B %Y')` to `r format(as.Date("2022-10-31"), '%B %Y')`. Hover over tiles to view the number of surveys conducted in specific quarters and landing sites:
+
+```{r temporal_distribution, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
+quarter_format <- function(date) {
+  year <- lubridate::year(date)
+  quarter <- lubridate::quarter(date)
+  return(paste0("Q", quarter, "\n", year))
+}
+
+basedata <-
+  valid_data %>%
+  dplyr::mutate(landing_date = as.Date(as.POSIXct(landing_date, origin = "1970-01-01"))) %>%
+  dplyr::group_by(submission_id) %>%
+  dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(quarter_date = lubridate::floor_date(landing_date, unit = "quarter")) %>%
+  dplyr::group_by(quarter_date, landing_site) %>%
+  dplyr::count() %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(quarter_date, landing_site, fill = list(n = 0))
+
+main_plot <-
+  basedata %>%
+  ggplot() +
+  theme_bw() +
+  geom_tile_interactive(aes(
+    x = quarter_date,
+    y = reorder(landing_site, n),
+    fill = n,
+    alpha = log(n),
+    tooltip = paste("Quarter:", quarter_format(quarter_date), "<br>Landing Site:", landing_site, "<br>Surveys:", n)
+  ), color = "white", size = 0.3) +
+  scale_fill_viridis_c(direction = -1) +
+  coord_cartesian(expand = FALSE) +
+  theme(
+    panel.grid = element_blank(),
+    strip.background = element_rect(fill = "white"),
+    legend.position = "bottom",
+    legend.key.width = unit(1, "cm"),
+    strip.text.y = element_text(angle = 0, vjust = 0.5, hjust = 0.5, face = "bold"),
+  ) +
+  guides(alpha = "none") +
+  scale_x_date(
+    date_breaks = "3 years",
+    labels = quarter_format,
+    expand = c(0, 0)
+  ) +
+  labs(
+    title = "BMUs activity",
+    subtitle = "Ranked temporal distribution of survey activities across BMU's from\nSep 1995 to Oct 2022, illustrating survey frequency over time.",
+    x = "Quarter of the Year",
+    fill = "Number of surveys",
+    y = ""
+  )
+
+side_plot <-
+  basedata %>%
+  dplyr::group_by(landing_site) %>%
+  dplyr::summarise(total_surveys = sum(n, na.rm = TRUE)) %>%
+  ggplot() +
+  theme_minimal() +
+  geom_bar_interactive(
+    aes(
+      y = reorder(landing_site, total_surveys),
+      x = total_surveys,
+      tooltip = paste("Landing site:", landing_site, "<br>Total surveys:", total_surveys)
+    ),
+    stat = "identity", fill = "#52817f", alpha = 0.5
+  ) +
+  geom_text_interactive(
+    aes(
+      y = reorder(landing_site, total_surveys),
+      x = total_surveys,
+      label = scales::label_number(scale = 1 / 1000, suffix = "K")(total_surveys),
+      tooltip = paste("Total surveys:", total_surveys)
+    ),
+    hjust = -0.1, size = 3
+  ) +
+  labs(x = "", y = "") +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank()
+  ) +
+  coord_cartesian(x = c(0, 11000))
+
+combined_plot <- cowplot::plot_grid(main_plot,
+  side_plot + theme(plot.margin = margin(0, 10, 0, -5)),
+  ncol = 2,
+  rel_widths = c(4, 1),
+  align = "h"
+)
+
+girafe(
+  ggobj = combined_plot,
+  options = list(
+    ggiraph::opts_tooltip(
+      opacity = 0.8, use_fill = TRUE,
+      use_stroke = FALSE,
+      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
+    )
+  )
+)
+```
+
+### Fishery Indicators
+
+The following indicators were calculated at monthly intervals for each Beach Management Unit (BMU). BMUs with more than 75% missing observations were excluded from the analysis to ensure data quality and reliability of the trends shown.
+
+::: {.panel-tabset}
+
+## Catch (kg)
+
+::: {.cell .page-columns .page-full .column-screen .blue-section}
+Monthly aggregated catch represents the sum of all catches within each month and BMU:
+
+$$
+\text{Aggregated Catch}_\text{month} = \sum_{i=1}^n \text{total\_catch\_kg}_i
+$$
+:::
+
+```{r catch_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
+
+# Get monthly summaries
+monthly_summaries <-
+  valid_data |>
+  dplyr::filter(!is.na(.data$landing_date)) %>%
+  dplyr::group_by(.data$submission_id) %>%
+  dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
+  dplyr::rename(BMU = "landing_site") |>
+  dplyr::left_join(bmu_size, by = "BMU") |>
+  dplyr::rowwise() |>
+  dplyr::mutate(
+    effort = .data$no_of_fishers / .data$size_km,
+    cpue = .data$total_catch_kg / .data$no_of_fishers,
+    cpua = .data$total_catch_kg / .data$size_km
+  ) |>
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    date = lubridate::floor_date(.data$landing_date, unit = "month"),
+    BMU = stringr::str_to_title(.data$BMU)
+  ) |>
+  dplyr::select("BMU", "date", "effort", "total_catch_kg", "cpue", "cpua") %>%
+  dplyr::group_by(.data$BMU, .data$date) |>
+  dplyr::summarise(
+    aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
+    mean_trip_catch = mean(.data$total_catch_kg, na.rm = T),
+    mean_effort = mean(.data$effort, na.rm = T),
+    mean_cpue = mean(.data$cpue, na.rm = T),
+    mean_cpua = mean(.data$cpua, na.rm = T),
+    n = dplyr::n()
+  ) |>
+  dplyr::mutate(dplyr::across(is.numeric, ~ ifelse(is.infinite(.x), NA_real_, .x))) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(
+    .data$BMU,
+    date = seq(min(.data$date), max(.data$date), by = "month"),
+    fill = list(
+      aggregated_catch_kg = NA,
+      mean_trip_catch = NA,
+      mean_effort = NA,
+      mean_cpue = NA,
+      mean_cpua = NA,
+      n = NA
+    )
+  )
+
+bmus_selected <-
+  monthly_summaries %>%
+  dplyr::group_by(BMU) %>%
+  dplyr::summarise(missing_cpue = mean(is.na(mean_cpue)) * 100) %>%
+  dplyr::arrange(dplyr::desc(missing_cpue)) %>%
+  dplyr::filter(missing_cpue < 75) %>%
+  dplyr::pull(BMU)
+
+
+int_plot_catch <- 
+  monthly_summaries %>%
+  dplyr::filter(BMU %in% bmus_selected) %>%
+  ggplot(aes(x = date, y = aggregated_catch_kg)) +
+  theme_minimal() +
+  facet_wrap(~BMU, scales = "free_y", ncol = 3) +
+  ggiraph::geom_line_interactive(
+    aes(
+      group = 1,
+      tooltip = sprintf(
+        "Date: %s\nTotal Catch: %.1f kg\nObservations: %d",
+        format(date, "%B %Y"),
+        aggregated_catch_kg,
+        n
+      )
+    ),
+    size = 0.5,
+    alpha = 0.25,
+    color = "#628395"
+  ) +
+  ggiraph::geom_point_interactive(
+    aes(
+      tooltip = sprintf(
+        "Date: %s\nTotal Catch: %.1f kg\nObservations: %d",
+        format(date, "%B %Y"),
+        aggregated_catch_kg,
+        n
+      ),
+      alpha = sqrt(n)
+    ),
+    color = "#628395"
+  ) +
+  scale_alpha_continuous(
+    range = c(0.2, 0.8),
+    guide = "none"
+  ) +
+  stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
+  labs(x = "", y = "Total Catch (kg)") +
+  theme(
+    panel.grid = element_blank()
+  )
+
+ggiraph::girafe(
+  ggobj = int_plot_catch,
+  options = list(
+    ggiraph::opts_tooltip(
+      opacity = 0.8,
+      use_fill = TRUE,
+      use_stroke = FALSE,
+      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
+    )
+  )
+)
+```
+
+## CPUE
+
+::: {.cell .page-columns .page-full .column-screen .blue-section}
+Catch Per Unit Effort (CPUE) is calculated for each landing and then averaged monthly:
+
+$$
+\text{CPUE}_i = \frac{\text{total\_catch\_kg}_i}{\text{no\_of\_fishers}_i}
+$$
+
+$$
+\text{Mean CPUE}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{CPUE}_i
+$$
+:::
+
+```{r cpue_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
+int_plot_cpue <- 
+  monthly_summaries %>%
+  dplyr::filter(BMU %in% bmus_selected) %>%
+  ggplot(aes(x = date, y = mean_cpue)) +
+  theme_minimal() +
+  facet_wrap(~BMU, scales = "free_y", ncol = 3) +
+  ggiraph::geom_line_interactive(
+    aes(
+      group = 1,
+      tooltip = sprintf(
+        "Date: %s\nCPUE: %.2f\nObservations: %d",
+        format(date, "%B %Y"),
+        mean_cpue,
+        n
+      )
+    ),
+    size = 0.5,
+    alpha = 0.25,
+    color = "#628395"
+  ) +
+  ggiraph::geom_point_interactive(
+    aes(
+      tooltip = sprintf(
+        "Date: %s\nCPUE: %.2f\nObservations: %d",
+        format(date, "%B %Y"),
+        mean_cpue,
+        n
+      ),
+      alpha = sqrt(n)
+    ),
+    color = "#628395"
+  ) +
+  scale_alpha_continuous(
+    range = c(0.2, 0.8),
+    guide = "none"
+  ) +
+  stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
+  labs(x = "", y = "Mean CPUE (kg/fisher)") +
+  theme(
+    panel.grid = element_blank()
+  )
+
+ggiraph::girafe(
+  ggobj = int_plot_cpue,
+  options = list(
+    ggiraph::opts_tooltip(
+      opacity = 0.8,
+      use_fill = TRUE,
+      use_stroke = FALSE,
+      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
+    )
+  )
+)
+```
+
+## CPUA
+
+
+::: {.cell .page-columns .page-full .column-screen .blue-section}
+Catch Per Unit Area (CPUA) is calculated for each landing and then averaged monthly:
+
+$$
+\text{CPUA}_i = \frac{\text{total\_catch\_kg}_i}{\text{size\_km}}
+$$
+
+$$
+\text{Mean CPUA}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{CPUA}_i
+$$
+:::
+
+```{r cpua_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
+int_plot_cpua <- 
+  monthly_summaries %>%
+  dplyr::filter(BMU %in% bmus_selected) %>%
+  ggplot(aes(x = date, y = mean_cpua)) +
+  theme_minimal() +
+  facet_wrap(~BMU, scales = "free_y", ncol = 3) +
+  ggiraph::geom_line_interactive(
+    aes(
+      group = 1,
+      tooltip = sprintf(
+        "Date: %s\nCPUA: %.2f\nObservations: %d",
+        format(date, "%B %Y"),
+        mean_cpua,
+        n
+      )
+    ),
+    size = 0.5,
+    alpha = 0.25,
+    color = "#628395"
+  ) +
+  ggiraph::geom_point_interactive(
+    aes(
+      tooltip = sprintf(
+        "Date: %s\nCPUA: %.2f\nObservations: %d",
+        format(date, "%B %Y"),
+        mean_cpua,
+        n
+      ),
+      alpha = sqrt(n)
+    ),
+    color = "#628395"
+  ) +
+  scale_alpha_continuous(
+    range = c(0.2, 0.8),
+    guide = "none"
+  ) +
+  stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
+  labs(x = "", y = "Mean CPUA (kg/km²)") +
+  theme(
+    panel.grid = element_blank()
+  )
+
+ggiraph::girafe(
+  ggobj = int_plot_cpua,
+  options = list(
+    ggiraph::opts_tooltip(
+      opacity = 0.8,
+      use_fill = TRUE,
+      use_stroke = FALSE,
+      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
+    )
+  )
+)
+```
+
+## Effort
+
+::: {.cell .page-columns .page-full .column-screen .blue-section}
+Fishing effort density is calculated for each landing and then averaged monthly:
+
+$$
+\text{Effort}_i = \frac{\text{no\_of\_fishers}_i}{\text{size\_km}}
+$$
+
+$$
+\text{Mean Effort}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{Effort}_i
+$$
+:::
+
+```{r effort_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
+int_plot_effort <- 
+  monthly_summaries %>%
+  dplyr::filter(BMU %in% bmus_selected) %>%
+  ggplot(aes(x = date, y = mean_effort)) +
+  theme_minimal() +
+  facet_wrap(~BMU, scales = "free_y", ncol = 3) +
+  ggiraph::geom_line_interactive(
+    aes(
+      group = 1,
+      tooltip = sprintf(
+        "Date: %s\nEffort: %.2f\nObservations: %d",
+        format(date, "%B %Y"),
+        mean_effort,
+        n
+      )
+    ),
+    size = 0.5,
+    alpha = 0.25,
+    color = "#628395"
+  ) +
+  ggiraph::geom_point_interactive(
+    aes(
+      tooltip = sprintf(
+        "Date: %s\nEffort: %.2f\nObservations: %d",
+        format(date, "%B %Y"),
+        mean_effort,
+        n
+      ),
+      alpha = sqrt(n)
+    ),
+    color = "#628395"
+  ) +
+  scale_alpha_continuous(
+    range = c(0.2, 0.8),
+    guide = "none"
+  ) +
+  stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
+  labs(x = "", y = "Mean Effort (fishers/km²)") +
+  theme(
+    panel.grid = element_blank()
+  )
+
+ggiraph::girafe(
+  ggobj = int_plot_effort,
+  options = list(
+    ggiraph::opts_tooltip(
+      opacity = 0.8,
+      use_fill = TRUE,
+      use_stroke = FALSE,
+      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
+    )
+  )
+)
+```
+
+:::
+
