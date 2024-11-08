@@ -32,7 +32,6 @@ Imports:
     mongolite,
     purrr,
     rlang,
-    rprojroot,
     stringr,
     tibble,
     tidyr,

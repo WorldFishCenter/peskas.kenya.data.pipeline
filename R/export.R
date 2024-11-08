@@ -42,9 +42,8 @@
 #' **Dependencies**:
 #' - Requires a configuration file compatible with the `read_config` function, containing MongoDB connection information.
 #' - Access to a `bmu_size` dataset, which provides size details of BMUs, retrieved via the `get_metadata()` function.
-#' - R packages required: `dplyr`, `tidyr`, `lubridate`, `purrr`, `logger`.
 #'
-#' @keywords workflow, export, data-processing, MongoDB
+#' @keywords workflow export
 #' @examples
 #' \dontrun{
 #' export_summaries()

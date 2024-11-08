@@ -65,7 +65,6 @@ The function performs the following operations:
 \itemize{
 \item Requires a configuration file compatible with the \code{read_config} function, containing MongoDB connection information.
 \item Access to a \code{bmu_size} dataset, which provides size details of BMUs, retrieved via the \code{get_metadata()} function.
-\item R packages required: \code{dplyr}, \code{tidyr}, \code{lubridate}, \code{purrr}, \code{logger}.
 }
 }
 \examples{
@@ -74,7 +73,5 @@ export_summaries()
 }
 
 }
-\keyword{MongoDB}
-\keyword{data-processing,}
-\keyword{export,}
-\keyword{workflow,}
+\keyword{export}
+\keyword{workflow}
