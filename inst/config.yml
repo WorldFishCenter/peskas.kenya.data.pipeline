@@ -31,6 +31,7 @@ default:
               gear_distribution: gear_distribution
               fish_distribution: fish_distribution
               map_distribution: map_distribution
+              gear_summaries: gear_summaries
     google:
       key: gcs
       options:
@@ -46,7 +47,7 @@ default:
   validation:
     k_nboats: 3
     k_nfishers: 3
-    k_catch: 2.5
+    k_catch: 1.5
 
 production:
   storage:
