@@ -31,6 +31,7 @@ default:
               gear_distribution: gear_distribution
               fish_distribution: fish_distribution
               map_distribution: map_distribution
+              gear_summaries: gear_summaries
     google:
       key: gcs
       options:

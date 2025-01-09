@@ -178,6 +178,43 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::filter(!is.na(.data$lat) & !is.na(.data$landing_site)) %>%
     dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
 
+  gear_summaries <-
+    valid_data |>
+    dplyr::filter(!is.na(.data$gear)) %>%
+    dplyr::group_by(.data$submission_id) %>%
+    dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
+    dplyr::rename(BMU = "landing_site") |>
+    dplyr::left_join(bmu_size, by = "BMU") |>
+    dplyr::rowwise() |>
+    dplyr::mutate(
+      effort = .data$no_of_fishers / .data$size_km,
+      cpue = .data$total_catch_kg / .data$no_of_fishers,
+      cpua = .data$total_catch_kg / .data$size_km
+    ) |>
+    dplyr::ungroup() %>%
+    dplyr::mutate(
+      BMU = stringr::str_to_title(.data$BMU)
+    ) |>
+    dplyr::select("BMU", "gear", "effort", "total_catch_kg", "cpue", "cpua") %>%
+    dplyr::group_by(.data$BMU, .data$gear) |>
+    dplyr::summarise(
+      mean_trip_catch = mean(.data$total_catch_kg, na.rm = T),
+      mean_effort = mean(.data$effort, na.rm = T),
+      mean_cpue = mean(.data$cpue, na.rm = T),
+      mean_cpua = mean(.data$cpua, na.rm = T)
+    ) |>
+    dplyr::ungroup() |> 
+    dplyr::mutate(dplyr::across(is.numeric, ~ ifelse(is.infinite(.x), NA_real_, .x))) %>%
+  tidyr::complete(
+    .data$BMU,
+    .data$gear,
+    fill = list(
+      mean_trip_catch = NA,
+      mean_effort = NA,
+      mean_cpue = NA,
+      mean_cpua = NA
+    ))
+
 
 
   # Dataframes to upload
@@ -186,7 +223,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     monthly_summaries = monthly_summaries,
     gear_distribution = gear_distribution,
     fish_distribution = fish_distribution,
-    map_distribution = map_distribution
+    map_distribution = map_distribution,
+    gear_summaries = gear_summaries
   )
 
   # Collection names
@@ -195,7 +233,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$ongoing$catch_monthly,
     gear_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$gear_distribution,
     fish_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$fish_distribution,
-    map_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$map_distribution
+    map_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$map_distribution,
+    gear_summaries = conf$storage$mongod$database$dashboard$collection_name$ongoing$gear_summaries
   )
 
   # Iterate over the dataframes and upload them
