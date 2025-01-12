@@ -2,23 +2,21 @@
 % Please edit documentation in R/validation-functions.R
 \name{validate_catch}
 \alias{validate_catch}
-\title{Validate Catch Data}
+\title{Validate Individual Catch Data}
 \usage{
-validate_catch(data = NULL, k = NULL, total_catch = FALSE, flag_value = 4)
+validate_catch(data = NULL, k = NULL, flag_value = 4)
 }
 \arguments{
-\item{data}{A data frame containing catch data with columns: catch_id, gear, fish_category (or total_catch_kg), and catch_kg (or total_catch_kg).}
+\item{data}{A data frame containing columns: \code{catch_id}, \code{gear}, \code{fish_category}, \code{catch_kg}.}
 
-\item{k}{A numeric value used in the get_catch_bounds function for outlier detection.}
-
-\item{total_catch}{A logical value indicating whether to validate total catch (TRUE) or individual catch (FALSE).}
+\item{k}{A numeric value passed to \code{\link{get_catch_bounds}} for outlier detection.}
 
 \item{flag_value}{A numeric value to use as the flag for catches exceeding the upper bound. Default is 4.}
 }
 \value{
-A data frame with columns: catch_id, catch_kg (or total_catch_kg), and alert_catch.
+A data frame with columns: \code{catch_id}, \code{catch_kg}, and \code{alert_catch}.
 }
 \description{
-This function validates the catch data by comparing it to calculated upper bounds.
+Compares each fish group catch (in \code{catch_kg}) to the upper bounds and flags
+values that exceed the bound.
 }
-\keyword{validation}

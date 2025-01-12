@@ -266,7 +266,7 @@ The histogram below uses simulated data to demonstrate the MAD method's applicat
 :::
 
 ```{r outlier_detection, warning=FALSE, message=FALSE, fig.height=4 ,dependson="load_initial"}
-plt <- 
+plt <-
   ggplot(fake_data, aes(n_boats)) +
   theme_minimal() +
   geom_histogram(bins = 30, fill = "#52817f", color = "white", alpha = 0.5) +
@@ -505,7 +505,7 @@ bmus_selected <-
   dplyr::pull(BMU)
 
 
-int_plot_cpue <- 
+int_plot_cpue <-
   monthly_summaries %>%
   dplyr::filter(BMU %in% bmus_selected) %>%
   ggplot(aes(x = date, y = mean_cpue)) +
@@ -573,7 +573,7 @@ $$
 $$
 
 ```{r cpua_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
-int_plot_cpua <- 
+int_plot_cpua <-
   monthly_summaries %>%
   dplyr::filter(BMU %in% bmus_selected) %>%
   ggplot(aes(x = date, y = mean_cpua)) +
@@ -641,7 +641,7 @@ $$
 $$
 
 ```{r effort_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
-int_plot_effort <- 
+int_plot_effort <-
   monthly_summaries %>%
   dplyr::filter(BMU %in% bmus_selected) %>%
   ggplot(aes(x = date, y = mean_effort)) +

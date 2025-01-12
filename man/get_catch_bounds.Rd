@@ -2,21 +2,19 @@
 % Please edit documentation in R/validation-functions.R
 \name{get_catch_bounds}
 \alias{get_catch_bounds}
-\title{Get Catch Bounds}
+\title{Get fish groups Catch Bounds}
 \usage{
-get_catch_bounds(data = NULL, k = NULL, total_catch = FALSE)
+get_catch_bounds(data = NULL, k = NULL)
 }
 \arguments{
-\item{data}{A data frame containing columns: gear, fish_category (or total_catch_kg), and catch_kg (or total_catch_kg).}
+\item{data}{A data frame containing columns: \code{gear}, \code{fish_category}, \code{catch_kg}.}
 
-\item{k}{A numeric value used in the LocScaleB function for outlier detection.}
-
-\item{total_catch}{A logical value indicating whether to calculate bounds for total catch (TRUE) or individual catch (FALSE).}
+\item{k}{A numeric value used in the \code{univOutl::LocScaleB} function for outlier detection.}
 }
 \value{
-A data frame with columns: gear, fish_category (if applicable), and upper.up (upper bound).
+A data frame with columns: \code{gear}, \code{fish_category}, and \code{upper.up} (the upper bound).
 }
 \description{
-This function calculates the upper bounds for catch data based on gear type and fish category.
+Calculates the upper bounds for \emph{fish groups} catch data (using \code{catch_kg})
+based on gear type and fish category.
 }
-\keyword{validation}

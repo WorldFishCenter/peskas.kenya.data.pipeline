@@ -48,7 +48,7 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
   merged_landings <-
     dplyr::bind_rows(legacy, ongoing, .id = "version") %>%
     dplyr::select(
-      "version", "form_consent", "submission_id", "catch_id", "landing_date", "landing_site",
+      "version", "submission_id", "catch_id", "landing_date", "landing_site",
       "fishing_ground", "lat", "lon", "no_of_fishers", "n_boats", "gear", "fish_category",
       "size", "catch_kg", "total_catch_kg"
     )
