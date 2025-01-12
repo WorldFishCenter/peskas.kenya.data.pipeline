@@ -217,6 +217,9 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
         mean_cpue = NA,
         mean_cpua = NA
       )
+    ) |>
+    dplyr::mutate(
+      BMU = stringr::str_to_title(.data$BMU)
     )
 
 
