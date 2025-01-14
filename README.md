@@ -13,7 +13,7 @@ coverage](https://codecov.io/gh/WorldFishCenter/peskas.kenya.data.pipeline/graph
 The goal of peskas.kenya.data.pipeline is to implement, deploy, and
 execute the data and modelling pipelines that underpin Peskas in Kenya,
 a partnership between [WorldFish](https://worldfishcenter.org/) and
-[Wildlife Conservation Society](https://www.wcs.org/).
+[Wildlife Conservation Society](https://www.wcs.org/) as part of the Asia-Africa Bluetech Superhighway project funded by the FCDO of the UK Government.
 
 ## The pipeline is an R package
 
