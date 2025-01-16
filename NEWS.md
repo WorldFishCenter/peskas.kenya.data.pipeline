@@ -1,3 +1,22 @@
+# peskas.kenya.data.pipeline 0.7.0
+
+## New features
+- Introduced `get_total_catch_bounds` for calculating upper bounds on total catch data grouped by landing site and gear type.
+- Added `validate_total_catch` function for validating total catch data with improved outlier handling.
+- Updated `validate_landings` to identify and filter out inconsistent submissions (e.g., mismatched fishers and boats).
+- Enhanced `validate_catch` to set outlier values in `catch_kg` to NA and flag them for review.
+
+## Enhancements
+- Improved `get_catch_bounds` to exclude invalid categories and clarified grouping logic for gear and fish categories.
+- Updated documentation across validation and catch bounds functions to include better descriptions, keywords, and return values.
+- Refined data preprocessing in `preprocess_landings` to ensure unique rows, handle NA values, and streamline workflow.
+- Adjusted configuration parameters in `config.yml` to enhance validation sensitivity (e.g., increasing `k_catch` for outlier detection).
+- Updated export_summaries to improve monthly summaries by recalculating effort as fishers per km² per day and refining CPUE and CPUA metrics to include temporal normalization. Simplified mean trip catch calculations for consistency across datasets.
+
+## Fixes
+- Corrected plot code formatting in `data_report.qmd` for CPUE, effort, and CPUA visualizations.
+- Fixed documentation typos and inconsistencies in `.Rd` files for validation functions.
+
 # peskas.kenya.data.pipeline 0.6.0
 ## New features
 - Add merge_landings function for combining data sources
