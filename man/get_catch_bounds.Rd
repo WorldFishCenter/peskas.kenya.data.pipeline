@@ -16,5 +16,7 @@ A data frame with columns: \code{gear}, \code{fish_category}, and \code{upper.up
 }
 \description{
 Calculates the upper bounds for \emph{fish groups} catch data (using \code{catch_kg})
-based on gear type and fish category.
+based on gear type and fish category. Data is grouped by the interaction of gear
+and fish category, and category "0" is excluded from the analysis.
 }
+\keyword{validation}

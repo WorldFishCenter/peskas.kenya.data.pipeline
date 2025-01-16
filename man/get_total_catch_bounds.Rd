@@ -7,14 +7,18 @@
 get_total_catch_bounds(data = NULL, k = NULL)
 }
 \arguments{
-\item{data}{A data frame containing columns: \code{gear} and \code{total_catch_kg}.}
+\item{data}{A data frame containing columns: \code{gear}, \code{landing_site}, \code{submission_id}
+and \code{total_catch_kg}.}
 
 \item{k}{A numeric value used in the \code{univOutl::LocScaleB} function for outlier detection.}
 }
 \value{
-A data frame with columns: \code{gear} and \code{upper.up} (the upper bound).
+A data frame with columns: \code{landing_site}, \code{gear} and \code{upper.up} (the upper bound).
 }
 \description{
 Calculates the upper bounds for \emph{total} catch data (using \code{total_catch_kg})
-based on gear type.
+based on landing site and gear type combinations. NA values in total_catch_kg are
+filtered out before analysis. The function groups data by combined landing_site
+and gear identifiers before calculating bounds.
 }
+\keyword{validation}

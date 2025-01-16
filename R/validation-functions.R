@@ -163,10 +163,11 @@ validate_nboats <- function(data = NULL, k = NULL) {
 }
 
 
-#' Get fish groups Catch Bounds
+#'Get fish groups Catch Bounds
 #'
 #' Calculates the upper bounds for *fish groups* catch data (using \code{catch_kg})
-#' based on gear type and fish category.
+#' based on gear type and fish category. Data is grouped by the interaction of gear 
+#' and fish category, and category "0" is excluded from the analysis.
 #'
 #' @param data A data frame containing columns: \code{gear}, \code{fish_category}, \code{catch_kg}.
 #' @param k A numeric value used in the \code{univOutl::LocScaleB} function for outlier detection.
@@ -178,6 +179,8 @@ validate_nboats <- function(data = NULL, k = NULL) {
 #' @importFrom tidyr separate
 #' @importFrom magrittr extract2
 #' @importFrom univOutl LocScaleB
+#' 
+#' @keywords validation
 #' @export
 get_catch_bounds <- function(data = NULL, k = NULL) {
   # 1) Filter out non-valid fish categories
@@ -202,17 +205,22 @@ get_catch_bounds <- function(data = NULL, k = NULL) {
 #' Get Total Catch Bounds
 #'
 #' Calculates the upper bounds for *total* catch data (using \code{total_catch_kg})
-#' based on gear type.
+#' based on landing site and gear type combinations. NA values in total_catch_kg are 
+#' filtered out before analysis. The function groups data by combined landing_site 
+#' and gear identifiers before calculating bounds.
 #'
-#' @param data A data frame containing columns: \code{gear} and \code{total_catch_kg}.
+#' @param data A data frame containing columns: \code{gear}, \code{landing_site}, \code{submission_id} 
+#'             and \code{total_catch_kg}.
 #' @param k A numeric value used in the \code{univOutl::LocScaleB} function for outlier detection.
 #'
-#' @return A data frame with columns: \code{gear} and \code{upper.up} (the upper bound).
+#' @return A data frame with columns: \code{landing_site}, \code{gear} and \code{upper.up} (the upper bound).
 #'
 #' @importFrom dplyr select bind_rows mutate
 #' @importFrom purrr discard map
 #' @importFrom magrittr extract2
 #' @importFrom univOutl LocScaleB
+#' 
+#' @keywords validation
 #' @export
 get_total_catch_bounds <- function(data = NULL, k = NULL) {
   data |>
@@ -239,15 +247,17 @@ get_total_catch_bounds <- function(data = NULL, k = NULL) {
 #' Validate Individual Catch Data
 #'
 #' Compares each fish group catch (in \code{catch_kg}) to the upper bounds and flags
-#' values that exceed the bound.
+#' values that exceed the bound. Values exceeding bounds are set to NA in the catch_kg column.
 #'
 #' @param data A data frame containing columns: \code{catch_id}, \code{gear}, \code{fish_category}, \code{catch_kg}.
 #' @param k A numeric value passed to \code{\link{get_catch_bounds}} for outlier detection.
 #' @param flag_value A numeric value to use as the flag for catches exceeding the upper bound. Default is 4.
 #'
-#' @return A data frame with columns: \code{catch_id}, \code{catch_kg}, and \code{alert_catch}.
+#' @return A data frame with columns: \code{submission_id}, \code{catch_id}, \code{catch_kg}, and \code{alert_catch}.
 #'
 #' @importFrom dplyr select left_join rowwise mutate ungroup
+#' 
+#' @keywords validation
 #' @export
 validate_catch <- function(data = NULL, k = NULL, flag_value = 4) {
   # Calculate bounds
@@ -270,15 +280,19 @@ validate_catch <- function(data = NULL, k = NULL, flag_value = 4) {
 #' Validate Total Catch Data
 #'
 #' Compares the total catch (in \code{total_catch_kg}) to the upper bounds and flags
-#' values that exceed the bound.
+#' values that exceed the bound. Values exceeding bounds are set to NA in the total_catch_kg column.
+#' Bounds are calculated based on landing site and gear type combinations.
 #'
-#' @param data A data frame containing columns: \code{catch_id}, \code{gear}, \code{total_catch_kg}.
+#' @param data A data frame containing columns: \code{submission_id}, \code{landing_site}, \code{gear}, 
+#'             \code{total_catch_kg}.
 #' @param k A numeric value passed to \code{\link{get_total_catch_bounds}} for outlier detection.
 #' @param flag_value A numeric value to use as the flag for catches exceeding the upper bound. Default is 4.
 #'
-#' @return A data frame with columns: \code{catch_id}, \code{total_catch_kg}, and \code{alert_catch}.
+#' @return A data frame with columns: \code{submission_id}, \code{total_catch_kg}, and \code{alert_catch}.
 #'
 #' @importFrom dplyr select left_join rowwise mutate ungroup
+#' 
+#' @keywords validation
 #' @export
 validate_total_catch <- function(data = NULL, k = NULL, flag_value = 4) {
   # Calculate bounds
