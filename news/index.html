@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,29 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.7.0" id="peskaskenyadatapipeline-070">peskas.kenya.data.pipeline 0.7.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-070"></a></h2>
+<div class="section level3">
+<h3 id="new-features-0-7-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-7-0"></a></h3>
+<ul><li>Introduced <code>get_total_catch_bounds</code> for calculating upper bounds on total catch data grouped by landing site and gear type.</li>
+<li>Added <code>validate_total_catch</code> function for validating total catch data with improved outlier handling.</li>
+<li>Updated <code>validate_landings</code> to identify and filter out inconsistent submissions (e.g., mismatched fishers and boats).</li>
+<li>Enhanced <code>validate_catch</code> to set outlier values in <code>catch_kg</code> to NA and flag them for review.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-0-7-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-0-7-0"></a></h3>
+<ul><li>Improved <code>get_catch_bounds</code> to exclude invalid categories and clarified grouping logic for gear and fish categories.</li>
+<li>Updated documentation across validation and catch bounds functions to include better descriptions, keywords, and return values.</li>
+<li>Refined data preprocessing in <code>preprocess_landings</code> to ensure unique rows, handle NA values, and streamline workflow.</li>
+<li>Adjusted configuration parameters in <code>config.yml</code> to enhance validation sensitivity (e.g., increasing <code>k_catch</code> for outlier detection).</li>
+<li>Updated export_summaries to improve monthly summaries by recalculating effort as fishers per km² per day and refining CPUE and CPUA metrics to include temporal normalization. Simplified mean trip catch calculations for consistency across datasets.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-0-7-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-0-7-0"></a></h3>
+<ul><li>Corrected plot code formatting in <code>data_report.qmd</code> for CPUE, effort, and CPUA visualizations.</li>
+<li>Fixed documentation typos and inconsistencies in <code>.Rd</code> files for validation functions.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.0" id="peskaskenyadatapipeline-060">peskas.kenya.data.pipeline 0.6.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-060"></a></h2>
 <div class="section level3">
