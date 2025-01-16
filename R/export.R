@@ -187,9 +187,9 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   gear_summaries <-
     valid_data |>
+    dplyr::filter(!is.na(.data$gear) & !is.na(.data$landing_date)) %>%
     dplyr::rename(BMU = "landing_site") |>
     dplyr::select(-c("version", "catch_id", "fishing_ground", "lat", "lon", "fish_category", "size", "catch_kg")) |>
-    dplyr::filter(!is.na(.data$landing_date)) |>
     dplyr::distinct() |>
     dplyr::left_join(bmu_size, by = "BMU") |>
     dplyr::group_by(.data$BMU, .data$gear) |>

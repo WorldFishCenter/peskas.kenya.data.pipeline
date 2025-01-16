@@ -215,20 +215,22 @@ get_catch_bounds <- function(data = NULL, k = NULL) {
 #' @importFrom univOutl LocScaleB
 #' @export
 get_total_catch_bounds <- function(data = NULL, k = NULL) {
-  # 1) Split by gear
-  # 2) Calculate upper bounds (on log scale, then exponentiate)
   data |>
     dplyr::filter(!is.na(.data$total_catch_kg)) |>
-    dplyr::select("submission_id", "gear", "total_catch_kg") %>%
+    dplyr::select("landing_site", "submission_id", "gear", "total_catch_kg") %>%
     dplyr::distinct() |>
     dplyr::select(-"submission_id") %>%
-    split(.$gear) |>
+    # Create a grouping identifier combining landing_site and gear
+    dplyr::mutate(group_id = paste(.data$landing_site, .data$gear, sep = ".")) %>%
+    split(.$group_id) |>
     purrr::discard(~ nrow(.) == 0) |>
     purrr::map(~ {
       univOutl::LocScaleB(.x[["total_catch_kg"]], logt = TRUE, k = k) %>%
         magrittr::extract2("bounds")
     }) %>%
-    dplyr::bind_rows(.id = "gear") %>%
+    dplyr::bind_rows(.id = "group_id") |>
+    # Split the group_id back into landing_site and gear
+    tidyr::separate(.data$group_id, into = c("landing_site", "gear"), sep = "\\.", remove = TRUE) |>
     dplyr::mutate(upper.up = exp(.data$upper.up)) |>
     dplyr::select(-"lower.low")
 }
@@ -284,13 +286,12 @@ validate_total_catch <- function(data = NULL, k = NULL, flag_value = 4) {
 
   # Join bounds and flag outliers
   data %>%
-    dplyr::select("submission_id", "gear", "total_catch_kg") %>%
+    dplyr::select("submission_id", "landing_site", "gear", "total_catch_kg") %>%
     dplyr::distinct() %>%
-    dplyr::left_join(bounds, by = "gear") %>%
+    dplyr::left_join(bounds, by = c("landing_site", "gear")) %>%
     dplyr::rowwise() %>%
     dplyr::mutate(
       alert_catch = ifelse(.data$total_catch_kg >= .data$upper.up, flag_value, NA_real_),
-      # Optionally remove outliers from the dataset by setting them to NA
       total_catch_kg = ifelse(is.na(.data$alert_catch), .data$total_catch_kg, NA_real_)
     ) %>%
     dplyr::ungroup() %>%
