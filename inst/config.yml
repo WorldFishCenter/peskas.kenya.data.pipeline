@@ -47,7 +47,7 @@ default:
   validation:
     k_nboats: 5
     k_nfishers: 3
-    k_catch: 3
+    k_catch: 2.5
 
 production:
   storage:

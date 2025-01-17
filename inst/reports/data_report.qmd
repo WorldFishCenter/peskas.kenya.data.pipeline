@@ -44,6 +44,14 @@ valid_data <-
   ) |>
   dplyr::as_tibble()
 
+export_data <-
+  peskas.kenya.data.pipeline::mdb_collection_pull(
+    connection_string = conf$storage$mongodb$connection_string,
+    collection_name = conf$storage$mongodb$database$dashboard$collection_name$ongoing$catch_monthly,
+    db_name = conf$storage$mongod$database$dashboard$name
+  ) |>
+  dplyr::as_tibble()
+
 bmu_size <-
   peskas.kenya.data.pipeline::get_metadata()$BMUs |>
   dplyr::mutate(
@@ -57,10 +65,15 @@ bmu_size <-
 fake_data <- dplyr::tibble(n_boats = c(rnorm(100, 10, 2), 56, 87, 23))
 
 # Calculate threshold for outlier detection
-thr <-
+thr1.5 <-
   univOutl::LocScaleB(c(fake_data$n_boats, 12987, 378), logt = TRUE, k = 1.5) %>%
   magrittr::extract2("bounds")
-upb <- (exp(thr) - 1)[2]
+
+thr3 <-
+  univOutl::LocScaleB(c(fake_data$n_boats, 12987, 378), logt = TRUE, k = 3) %>%
+  magrittr::extract2("bounds")
+upb1.5 <- (exp(thr1.5) - 1)[2]
+upb3 <- (exp(thr3) - 1)[2]
 ```
 
 ## Data Structure
@@ -74,12 +87,11 @@ data_table <- dplyr::tibble(
   N. = seq(1, length(names(valid_data))),
   Variable = names(valid_data),
   Type = c(
-    "Numeric", "Categorical", "Categorical", "Categorical", "Date", "Categorical", "Categorical",
+    "Numeric", "Categorical", "Categorical", "Date", "Categorical", "Categorical",
     "Numeric", "Numeric", "Numeric", "Numeric", "Categorical", "Categorical", "Text", "Numeric", "Numeric"
   ),
   Description = c(
     "Data version identifier, 1 indicates legacy landings, 2 ongoing landings",
-    "Consent information for the form",
     "Unique identifier for each survey submission",
     "Unique identifier for each catch in the survey",
     "Date of the fishing landing",
@@ -123,7 +135,7 @@ Below is a breakdown of the categorical variables:
 ranked <-
   valid_data %>%
   dplyr::select(dplyr::where(is.character)) %>%
-  dplyr::select(-c("submission_id", "catch_id", "version", "form_consent", "fishing_ground", "size")) %>%
+  dplyr::select(-c("submission_id", "catch_id", "version", "fishing_ground", "size")) %>%
   tidyr::pivot_longer(dplyr::everything(), names_to = "variable", values_to = "value") %>%
   dplyr::count(variable, value)
 
@@ -225,54 +237,73 @@ The preprocessing system also handles catch reporting inconsistencies. When tota
 
 The validation process employs a systematic approach to identify and handle potential data quality issues. The process uses different alert codes to flag specific validation concerns:
 
-\- Alert code 1: Invalid dates
+- **Alert code 1**: Invalid dates  
+- **Alert code 2**: Anomalous number of fishers  
+- **Alert code 3**: Unusual number of boats  
+- **Alert code 4**: Outliers in individual catch records  
+- **Alert code 5**: Anomalous total catch values  
 
-\- Alert code 2: Anomalous number of fishers
+### Logical Checks
 
-\- Alert code 3: Unusual number of boats
+Before applying outlier detection, each record undergoes **logical checks** to spot fundamentally inconsistent data:
 
-\- Alert code 4: Outliers in individual catch records
+1. **Fishers vs. Boats**  
+   - A submission is flagged if `no_of_fishers < n_boats`.  
+2. **Gear Requiring Boats**  
+   - Certain gears (e.g., _gillnet, handline, traps, monofilament, reefseine, ringnet, setnet_) require at least one boat. If `n_boats == 0` and the gear is in this list, the submission is flagged.  
+3. **Negative Catch**  
+   - Any record with a negative total catch is flagged.  
+4. **Non-positive Effort**  
+   - Submissions with zero or negative fishers, or negative boat values, are flagged.  
+5. **Zero Catch With Non-zero Effort**  
+   - Having a total catch of zero while reporting one or more fishers or boats is illogical and gets flagged.
 
-\- Alert code 5: Anomalous total catch values
+Records that fail any of these checks are removed from the dataset prior to further validation and outlier screening.
 
-#### Temporal Validation
+### Temporal Validation
 
-The most basic validation step ensures landing dates are not earlier than 1990 (alert code 1). Records failing this check have their dates set to NA and are flagged for review.
+The most basic validation step ensures landing dates are not earlier than 1990 (alert code 1). Records failing this check have their dates set to `NA` and are flagged for review.
 
-#### Statistical Validation Approach
+### Statistical Validation Approach
 
-For numerical variables (number of fishers, boats, and catches), we implemented the Median Absolute Deviation (MAD) method to identify outliers. This statistical approach was chosen because it provides a robust way to identify outliers while accounting for the natural variability in fisheries data. Specifically, MAD detects outliers based on the data's distribution itself, rather than applying an arbitrary threshold. By adjusting the value of k, we control the sensitivity to outliers—lower values of k make the method more sensitive, flagging more points as outliers, while higher values make it less sensitive. This approach ensures that outliers are identified in relation to the natural variability of the data, providing a robust method for detecting anomalies without imposing an external standard.
+For numerical variables (number of fishers, boats, and catches), we implemented the **Median Absolute Deviation (MAD)** method to identify outliers. This approach provides a robust way to detect anomalies while accounting for natural variability in fisheries data. Specifically:
 
-The method is particularly suitable for fisheries data because it:
-- Bases thresholds on the data's own distribution rather than arbitrary cutoffs 
-- Is robust to extreme values and non-normal distributions 
-- Can be tuned through a sensitivity parameter (k)
+- **MAD** flags outliers based on the data’s own distribution, rather than an arbitrary threshold.  
+- By adjusting the value of _k_, analysts can control the sensitivity to outliers:
+  - Lower _k_ = more sensitive (flags more points)
+  - Higher _k_ = less sensitive (flags fewer points)  
+- This method is well-suited for fisheries because:
+  - It automatically adapts to distribution extremes.
+  - It is robust against non-normal distributions.
+  - It can be fine-tuned via _k_ to match expected variability.  
 
 ::: callout-note
 ## Sensitivity Parameters
 
-Different k values were chosen based on the expected variability of each metric: 
-- Catch data: k = 2.5 (more sensitive due to high natural variability) 
-- Number of fishers: k = 3 (less sensitive to accommodate different fishing operations) 
+Different _k_ values were chosen based on the expected variability for each metric:
+- Catch data: k = 2 (more sensitive due to high natural variability)  
+- Number of fishers: k = 3 (less sensitive to accommodate different fishing operations)  
 - Number of boats: k = 3 (less sensitive to accommodate fleet variations)
 :::
 
-The histogram below demonstrates how MAD identifies outliers, using number of boats as an example. The dashed line shows the outlier threshold at `r round(upb, 2)` boats, calculated with k = 1.5. Lower k values result in more stringent outlier detection, while higher values are more permissive.
+The histogram below demonstrates how MAD identifies outliers using the example of boat counts (`n_boats`). The dashed lines show thresholds at `r round(upb1.5, 2)` and `r round(upb3, 2)` boats (k = 1.5 and k = 3, respectively). Lower _k_ results in more stringent outlier detection, while higher _k_ is more permissive.
 
 ::: callout-note
 ## Example Data
 
-The histogram below uses simulated data to demonstrate the MAD method's application. While the numbers are artificial, the principles shown here are the same ones applied to the actual fisheries data.
+This histogram uses simulated data to illustrate MAD-based outlier detection. Although the numbers are artificial, the concept mirrors what is applied to real fisheries data.
 :::
 
-```{r outlier_detection, warning=FALSE, message=FALSE, fig.height=4 ,dependson="load_initial"}
+```{r outlier_detection, warning=FALSE, message=FALSE, fig.height=4, dependson="load_initial"}
 plt <-
   ggplot(fake_data, aes(n_boats)) +
   theme_minimal() +
   geom_histogram(bins = 30, fill = "#52817f", color = "white", alpha = 0.5) +
-  geom_vline(xintercept = upb, color = "firebrick", linetype = 2) +
+  geom_vline(xintercept = upb1.5, color = "firebrick", linetype = 2) +
+  geom_vline(xintercept = upb3, color = "firebrick", linetype = 2) +
   theme(panel.grid = element_blank()) +
-  annotate("text", x = upb + 0.5, y = Inf, label = "k value = 1.5", color = "firebrick", vjust = 2, hjust = 0) +
+  annotate("text", x = upb1.5 + 0.5, y = Inf, label = "k value = 1.5", color = "firebrick", vjust = 2, hjust = 0) +
+  annotate("text", x = upb3 + 0.5, y = Inf, label = "k value = 3", color = "firebrick", vjust = 4, hjust = 0) +
   scale_y_continuous(labels = scales::comma) +
   scale_x_continuous(n.breaks = 10) +
   coord_cartesian(expand = FALSE) +
@@ -286,7 +317,8 @@ girafe(
   ggobj = plt,
   options = list(
     opts_tooltip(
-      opacity = 0.8, use_fill = TRUE,
+      opacity = 0.8,
+      use_fill = TRUE,
       use_stroke = FALSE,
       css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
     )
@@ -306,7 +338,7 @@ The system implements:
     -   Accounts for gear-specific catch variations
 2.  **Total Catch Validation**:
     -   Validates the total catch independently
-    -   Uses gear type as a grouping factor
+    -   Uses gear type and landing site as a grouping factor
     -   Flags anomalies with alert code 5
     -   Cross-checks with sum of individual catches
 
@@ -318,7 +350,7 @@ When an alert is triggered, the corresponding value is set to NA for analytical 
 
 The following plot shows survey activity across BMUs. Hover over tiles to view the number of surveys conducted in specific quarters and landing sites:
 
-```{r temporal_distribution, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
+```{r temporal_distribution, warning=FALSE, message=FALSE, fig.height=6,dependson="load_initial"}
 quarter_format <- function(date) {
   year <- lubridate::year(date)
   quarter <- lubridate::quarter(date)
@@ -425,23 +457,22 @@ girafe(
 
 ### Fishery Metrics
 
-This section presents key metrics used to monitor and assess fishery dynamics across different Beach Management Units (BMUs). These standardized indicators allow for comparisons across different areas and time periods while accounting for sampling effort and spatial variations.
+This section presents key metrics used to monitor and assess fishery dynamics across different Beach Management Units (BMUs). These standardized indicators allow for comparisons across areas and time periods while accounting for sampling effort, spatial variations, and temporal normalization.
 
-The metrics are calculated at different scales:
+The metrics are calculated at two main scales:
 
-1.  **Sample Level**: Basic metrics are first calculated for each landing record
-2.  **Monthly Aggregation**: Sample-level metrics are then aggregated monthly by BMU
+1. **Sample Level**: For each day at a specific BMU, metrics are computed by aggregating data from all landing events on that day. This involves summing the number of fishers and total catch, calculating the average catch per trip, and deriving normalized indicators such as effort (fishers per km²), CPUE (kg per fisher), and CPUA (kg per km²) based on the BMU's area.
 
-::: callout-note
-**Quality Control**: BMUs with more than 75% missing observations are excluded
+2. **Monthly Aggregation**: The sample-level metrics are further aggregated by BMU and month. This involves averaging daily measures over each month, yielding monthly mean values for trip catch, effort, CPUE, and CPUA.
 
-Point size in plots indicates number of samples, providing visual indication of data reliability.
-:::
+- **Effort**: Expressed as fishers per km² per day.
+- **CPUE**: Reported as kg per fisher per day.
+- **CPUA**: Calculated as kg per km² per day.
 
 ::: {.panel-tabset .nav-pills}
 ## CPUE
 
-Catch Per Unit Effort (CPUE) is calculated for each landing and then averaged monthly:
+Catch Per Unit Effort (CPUE) is calculated daily for each BMU and then averaged monthly:
 
 $$
 \text{CPUE}_i = \frac{\text{total\_catch\_kg}_i}{\text{no\_of\_fishers}_i}
@@ -450,63 +481,19 @@ $$
 $$
 \text{Mean CPUE}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{CPUE}_i
 $$
+*where \(i\) denotes a specific day for a given BMU.*
 
-```{r cpue_plot, warning=FALSE, message=FALSE, fig.height=8, dependson="load_initial"}
-# Get monthly summaries
-monthly_summaries <-
-  valid_data |>
-  dplyr::filter(!is.na(.data$landing_date)) %>%
-  dplyr::group_by(.data$submission_id) %>%
-  dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
-  dplyr::rename(BMU = "landing_site") |>
-  dplyr::left_join(bmu_size, by = "BMU") |>
-  dplyr::rowwise() |>
-  dplyr::mutate(
-    effort = .data$no_of_fishers / .data$size_km,
-    cpue = .data$total_catch_kg / .data$no_of_fishers,
-    cpua = .data$total_catch_kg / .data$size_km
-  ) |>
-  dplyr::ungroup() %>%
-  dplyr::mutate(
-    date = lubridate::floor_date(.data$landing_date, unit = "month"),
-    BMU = stringr::str_to_title(.data$BMU)
-  ) |>
-  dplyr::select("BMU", "date", "effort", "total_catch_kg", "cpue", "cpua") %>%
-  dplyr::group_by(.data$BMU, .data$date) |>
-  dplyr::summarise(
-    aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
-    mean_trip_catch = mean(.data$total_catch_kg, na.rm = T),
-    mean_effort = mean(.data$effort, na.rm = T),
-    mean_cpue = mean(.data$cpue, na.rm = T),
-    mean_cpua = mean(.data$cpua, na.rm = T),
-    n = dplyr::n()
-  ) |>
-  dplyr::mutate(dplyr::across(is.numeric, ~ ifelse(is.infinite(.x), NA_real_, .x))) %>%
-  dplyr::ungroup() %>%
-  tidyr::complete(
-    .data$BMU,
-    date = seq(min(.data$date), max(.data$date), by = "month"),
-    fill = list(
-      aggregated_catch_kg = NA,
-      mean_trip_catch = NA,
-      mean_effort = NA,
-      mean_cpue = NA,
-      mean_cpua = NA,
-      n = NA
-    )
-  )
-
+```{r cpue_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
 bmus_selected <-
-  monthly_summaries %>%
+  export_data %>%
   dplyr::group_by(BMU) %>%
   dplyr::summarise(missing_cpue = mean(is.na(mean_cpue)) * 100) %>%
   dplyr::arrange(dplyr::desc(missing_cpue)) %>%
   dplyr::filter(missing_cpue < 75) %>%
   dplyr::pull(BMU)
 
-
 int_plot_cpue <-
-  monthly_summaries %>%
+  export_data %>%
   dplyr::filter(BMU %in% bmus_selected) %>%
   ggplot(aes(x = date, y = mean_cpue)) +
   theme_minimal() +
@@ -515,10 +502,9 @@ int_plot_cpue <-
     aes(
       group = 1,
       tooltip = sprintf(
-        "Date: %s\nCPUE: %.2f\nObservations: %d",
+        "Date: %s\nCPUE: %.2f",
         format(date, "%B %Y"),
-        mean_cpue,
-        n
+        mean_cpue
       )
     ),
     size = 0.5,
@@ -528,12 +514,11 @@ int_plot_cpue <-
   ggiraph::geom_point_interactive(
     aes(
       tooltip = sprintf(
-        "Date: %s\nCPUE: %.2f\nObservations: %d",
+        "Date: %s\nCPUE: %.2f",
         format(date, "%B %Y"),
-        mean_cpue,
-        n
-      ),
-      alpha = sqrt(n)
+        mean_cpue
+      )
+      # alpha = sqrt(n)
     ),
     color = "#628395"
   ) +
@@ -542,7 +527,7 @@ int_plot_cpue <-
     guide = "none"
   ) +
   stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
-  labs(x = "", y = "Mean CPUE (kg/fisher)") +
+  labs(x = "", y = "Mean CPUE (kg/fisher/day)") +
   theme(
     panel.grid = element_blank()
   )
@@ -562,7 +547,7 @@ ggiraph::girafe(
 
 ## CPUA
 
-Catch Per Unit Area (CPUA) is calculated for each landing and then averaged monthly:
+Catch Per Unit Area (CPUA) is calculated daily for each BMU by dividing the total catch for the day by the area of the BMU in square kilometers. These daily CPUA values are then averaged across all days within each month for the corresponding BMU:
 
 $$
 \text{CPUA}_i = \frac{\text{total\_catch\_kg}_i}{\text{size\_km}}
@@ -572,9 +557,11 @@ $$
 \text{Mean CPUA}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{CPUA}_i
 $$
 
-```{r cpua_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
+*where \(i\) denotes a specific day for a given BMU.*
+
+```{r cpua_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
 int_plot_cpua <-
-  monthly_summaries %>%
+  export_data %>%
   dplyr::filter(BMU %in% bmus_selected) %>%
   ggplot(aes(x = date, y = mean_cpua)) +
   theme_minimal() +
@@ -583,10 +570,9 @@ int_plot_cpua <-
     aes(
       group = 1,
       tooltip = sprintf(
-        "Date: %s\nCPUA: %.2f\nObservations: %d",
+        "Date: %s\nCPUA: %.2f",
         format(date, "%B %Y"),
-        mean_cpua,
-        n
+        mean_cpua
       )
     ),
     size = 0.5,
@@ -596,12 +582,10 @@ int_plot_cpua <-
   ggiraph::geom_point_interactive(
     aes(
       tooltip = sprintf(
-        "Date: %s\nCPUA: %.2f\nObservations: %d",
+        "Date: %s\nCPUA: %.2f",
         format(date, "%B %Y"),
-        mean_cpua,
-        n
-      ),
-      alpha = sqrt(n)
+        mean_cpua
+      )
     ),
     color = "#628395"
   ) +
@@ -610,7 +594,7 @@ int_plot_cpua <-
     guide = "none"
   ) +
   stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
-  labs(x = "", y = "Mean CPUA (kg/km²)") +
+  labs(x = "", y = "Mean CPUA (kg/km²/day)") +
   theme(
     panel.grid = element_blank()
   )
@@ -630,7 +614,7 @@ ggiraph::girafe(
 
 ## Effort
 
-Fishing effort density is calculated for each landing and then averaged monthly:
+Fishing effort density is calculated daily for each BMU by dividing the number of fishers by the area of the BMU in square kilometers. These daily effort values are then averaged across all days within each month for the corresponding BMU.
 
 $$
 \text{Effort}_i = \frac{\text{no\_of\_fishers}_i}{\text{size\_km}}
@@ -640,9 +624,11 @@ $$
 \text{Mean Effort}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{Effort}_i
 $$
 
+*where \(i\) denotes a specific day for a given BMU.*
+
 ```{r effort_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
 int_plot_effort <-
-  monthly_summaries %>%
+  export_data %>%
   dplyr::filter(BMU %in% bmus_selected) %>%
   ggplot(aes(x = date, y = mean_effort)) +
   theme_minimal() +
@@ -651,10 +637,9 @@ int_plot_effort <-
     aes(
       group = 1,
       tooltip = sprintf(
-        "Date: %s\nEffort: %.2f\nObservations: %d",
+        "Date: %s\nEffort: %.2f",
         format(date, "%B %Y"),
-        mean_effort,
-        n
+        mean_effort
       )
     ),
     size = 0.5,
@@ -664,12 +649,10 @@ int_plot_effort <-
   ggiraph::geom_point_interactive(
     aes(
       tooltip = sprintf(
-        "Date: %s\nEffort: %.2f\nObservations: %d",
+        "Date: %s\nEffort: %.2f",
         format(date, "%B %Y"),
-        mean_effort,
-        n
-      ),
-      alpha = sqrt(n)
+        mean_effort
+      )
     ),
     color = "#628395"
   ) +
@@ -678,7 +661,7 @@ int_plot_effort <-
     guide = "none"
   ) +
   stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
-  labs(x = "", y = "Mean Effort (fishers/km²)") +
+  labs(x = "", y = "Mean Effort (fishers/km²/day)") +
   theme(
     panel.grid = element_blank()
   )
