@@ -520,6 +520,8 @@ int_plot_cpue <-
       )
       # alpha = sqrt(n)
     ),
+    size = 0.5,
+    alpha = 0.5,
     color = "#628395"
   ) +
   scale_alpha_continuous(
@@ -587,6 +589,8 @@ int_plot_cpua <-
         mean_cpua
       )
     ),
+    size = 0.5,
+    alpha = 0.5,
     color = "#628395"
   ) +
   scale_alpha_continuous(
@@ -654,7 +658,10 @@ int_plot_effort <-
         mean_effort
       )
     ),
+    size = 0.5,
+    alpha = 0.5,
     color = "#628395"
+
   ) +
   scale_alpha_continuous(
     range = c(0.2, 0.8),
