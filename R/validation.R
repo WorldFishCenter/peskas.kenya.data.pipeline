@@ -103,11 +103,16 @@ validate_landings <- function() {
     purrr::reduce(dplyr::full_join, by = c("submission_id", "catch_id")) %>%
     tidyr::unite(col = "alert_number", dplyr::contains("alert"), sep = "-", na.rm = TRUE)
 
+  filtered_data <-
+    validated_data |>
+    dplyr::left_join(alert_flags, by = c("submission_id", "catch_id")) |>
+    dplyr::filter(.data$alert_number == "") |>
+    dplyr::select(-"alert_number")
 
   # upload validated outputs
   logger::log_info("Uploading validated data to mongodb")
   mdb_collection_push(
-    data = validated_data,
+    data = filtered_data,
     connection_string = conf$storage$mongodb$connection_string,
     collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$validated,
     db_name = conf$storage$mongodb$database$pipeline$name

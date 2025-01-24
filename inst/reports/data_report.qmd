@@ -661,7 +661,6 @@ int_plot_effort <-
     size = 0.5,
     alpha = 0.5,
     color = "#628395"
-
   ) +
   scale_alpha_continuous(
     range = c(0.2, 0.8),

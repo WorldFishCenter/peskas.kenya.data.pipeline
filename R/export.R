@@ -104,10 +104,10 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::left_join(bmu_size, by = "BMU") |>
     dplyr::group_by(.data$landing_date, .data$BMU) |>
     dplyr::summarise(
-      total_fishers = sum(.data$no_of_fishers),
-      aggregated_catch_kg = sum(.data$total_catch_kg),
+      total_fishers = sum(.data$no_of_fishers, na.rm = T),
+      aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
       size_km = dplyr::first(.data$size_km),
-      mean_trip_catch = mean(.data$total_catch_kg)
+      mean_trip_catch = mean(.data$total_catch_kg, na.rm = T)
     ) |>
     dplyr::ungroup() |>
     dplyr::mutate(
