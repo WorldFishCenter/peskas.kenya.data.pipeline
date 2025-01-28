@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,29 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.8.0" id="peskaskenyadatapipeline-080">peskas.kenya.data.pipeline 0.8.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-080"></a></h2>
+<div class="section level3">
+<h3 id="new-features-0-8-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-8-0"></a></h3>
+<ul><li>Introduced <code>flag_value</code> parameter to validation functions (<code>validate_dates</code>, <code>validate_nfishers</code>, <code>validate_nboats</code>, and <code>validate_catch</code>) for customizable alert thresholds.</li>
+<li>Added <code>logical_check</code> and <code>anomalous_submissions</code> workflows to improve anomaly detection in <code>validate_landings</code>.</li>
+<li>Enhanced data upload pipeline with <code><a href="https://purrr.tidyverse.org/reference/map2.html" class="external-link">purrr::walk2</a></code> for streamlined MongoDB uploads of validated and flagged data.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-0-8-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-0-8-0"></a></h3>
+<ul><li>Updated <code>export_summaries</code> to calculate <code>mean_trip_catch</code> using the median for improved robustness against skewed data.</li>
+<li>Improved documentation for validation functions to include detailed descriptions and examples for the new <code>flag_value</code> parameter.</li>
+<li>Refined the logic in <code>validate_landings</code> for clearer alert flagging and better handling of edge cases.</li>
+<li>Added the <code>validation_flags</code> collection to the configuration file (<code>config.yml</code>) for centralized management of flagging outputs.</li>
+<li>Updated anomaly alert flags to use descriptive string values instead of numeric codes for better interpretability.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-0-8-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-0-8-0"></a></h3>
+<ul><li>Fixed inconsistencies in the handling of alert flags during data validation.</li>
+<li>Resolved potential mismatches in merged datasets by improving join logic in <code>validate_landings</code>.</li>
+<li>Corrected documentation typos and improved consistency across <code>.Rd</code> files.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.7.0" id="peskaskenyadatapipeline-070">peskas.kenya.data.pipeline 0.7.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-070"></a></h2>
 <div class="section level3">
