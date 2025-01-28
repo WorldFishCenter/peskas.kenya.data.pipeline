@@ -4,12 +4,14 @@
 \alias{validate_nboats}
 \title{Validate Number of Boats}
 \usage{
-validate_nboats(data = NULL, k = NULL)
+validate_nboats(data = NULL, k = NULL, flag_value = NULL)
 }
 \arguments{
 \item{data}{A data frame containing the \code{n_boats} column.}
 
 \item{k}{a numeric value used in the LocScaleB function for outlier detection.}
+
+\item{flag_value}{A numeric value to use as the flag for catches exceeding the upper bound.}
 }
 \value{
 A data frame with two columns: \code{n_boats} and \code{alert_n_boats}.
@@ -27,7 +29,7 @@ is set to \code{NA}.
 }
 \examples{
 \dontrun{
-validate_nboats(data, k = 2)
+validate_nboats(data, k = 2, flag_value = 3)
 }
 }
 \keyword{validation}

@@ -1,3 +1,22 @@
+# peskas.kenya.data.pipeline 0.8.0
+
+## New features
+- Introduced `flag_value` parameter to validation functions (`validate_dates`, `validate_nfishers`, `validate_nboats`, and `validate_catch`) for customizable alert thresholds.
+- Added `logical_check` and `anomalous_submissions` workflows to improve anomaly detection in `validate_landings`.
+- Enhanced data upload pipeline with `purrr::walk2` for streamlined MongoDB uploads of validated and flagged data.
+
+## Enhancements
+- Updated `export_summaries` to calculate `mean_trip_catch` using the median for improved robustness against skewed data.
+- Improved documentation for validation functions to include detailed descriptions and examples for the new `flag_value` parameter.
+- Refined the logic in `validate_landings` for clearer alert flagging and better handling of edge cases.
+- Added the `validation_flags` collection to the configuration file (`config.yml`) for centralized management of flagging outputs.
+- Updated anomaly alert flags to use descriptive string values instead of numeric codes for better interpretability.
+
+## Fixes
+- Fixed inconsistencies in the handling of alert flags during data validation.
+- Resolved potential mismatches in merged datasets by improving join logic in `validate_landings`.
+- Corrected documentation typos and improved consistency across `.Rd` files.
+
 # peskas.kenya.data.pipeline 0.7.0
 
 ## New features

@@ -19,6 +19,7 @@ default:
               preprocessed: preprocessed
               merged_landings: merged-landings
               validated: validated
+            validation_flags: validation_flags
         dashboard:
           name: app
           collection_name:

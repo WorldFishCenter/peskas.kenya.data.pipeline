@@ -4,12 +4,14 @@
 \alias{validate_nfishers}
 \title{Validate Number of Fishers}
 \usage{
-validate_nfishers(data = NULL, k = NULL)
+validate_nfishers(data = NULL, k = NULL, flag_value = NULL)
 }
 \arguments{
 \item{data}{A data frame containing the \code{no_of_fishers} column.}
 
 \item{k}{a numeric value used in the LocScaleB function for outlier detection.}
+
+\item{flag_value}{A numeric value to use as the flag for catches exceeding the upper bound.}
 }
 \value{
 A data frame with two columns: \code{no_of_fishers} and \code{alert_n_fishers}.
@@ -27,7 +29,7 @@ is set to \code{NA}.
 }
 \examples{
 \dontrun{
-validate_nfishers(data, k = 3)
+validate_nfishers(data, k = 3, flag_value = 2)
 }
 }
 \keyword{validation}

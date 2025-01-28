@@ -38,29 +38,31 @@ validate_landings <- function() {
     dplyr::as_tibble()
 
   # Spot weird observations
-
   gear_requires_boats <- c("gillnet", "handline", "traps", "monofilament", "reefseine", "ringnet", "setnet")
 
-  weird_submissions <-
+  logical_check <-
     merged_landings |>
-    dplyr::select("submission_id", "landing_date", "landing_site", "no_of_fishers", "n_boats", "gear", "total_catch_kg") |>
+    dplyr::select("version", "submission_id", "landing_date", "landing_site", "no_of_fishers", "n_boats", "gear", "total_catch_kg") |>
     dplyr::distinct() |>
     dplyr::mutate(
       alert_flag = dplyr::case_when(
-        # Condition 1: No. of Fishers must be >= No. of Boats
-        .data$no_of_fishers < .data$n_boats ~ 1,
+        # Condition 1: No. of Fishers must be > No. of Boats, unless both are 1
+        (.data$no_of_fishers < .data$n_boats | (.data$no_of_fishers == .data$n_boats & .data$no_of_fishers != 1)) ~ "1",
         # Condition 2: No. of Boats must be > 0 for gear types that require boats
-        .data$n_boats == 0 & .data$gear %in% gear_requires_boats ~ 2,
+        .data$n_boats == 0 & .data$gear %in% gear_requires_boats ~ "2",
         # Condition 3: Total Catch cannot be negative
-        .data$total_catch_kg < 0 ~ 3,
+        .data$total_catch_kg < 0 ~ "3",
         # Condition 4: No. of Fishers or Boats must be positive integers
-        .data$no_of_fishers <= 0 | .data$n_boats < 0 ~ 4,
+        .data$no_of_fishers <= 0 | .data$n_boats < 0 ~ "4",
         # Condition 5: Total Catch is zero but fishers/boats are non-zero
-        .data$total_catch_kg == 0 & (.data$no_of_fishers > 0 | .data$n_boats > 0) ~ 5,
-        # If none of the conditions are met, it's not weird
-        TRUE ~ NA_real_
+        .data$total_catch_kg == 0 & (.data$no_of_fishers > 0 | .data$n_boats > 0) ~ "5",
+        # If none of the conditions are met, it's not anomalous
+        TRUE ~ NA_character_
       )
-    ) |>
+    )
+
+  anomalous_submissions <-
+    logical_check |>
     dplyr::filter(!is.na(.data$alert_flag)) |>
     dplyr::pull("submission_id") |>
     unique()
@@ -68,16 +70,15 @@ validate_landings <- function() {
   # Remove weird submissions
   merged_landings <-
     merged_landings |>
-    dplyr::filter(!.data$submission_id %in% weird_submissions)
-
+    dplyr::filter(!.data$submission_id %in% anomalous_submissions)
 
   validation_output <-
     list(
-      dates_alert = validate_dates(data = merged_landings),
-      fishers_alert = validate_nfishers(data = merged_landings, k = conf$validation$k_nfishers),
-      nboats_alert = validate_nboats(data = merged_landings, k = conf$validation$k_nboats),
-      catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 4),
-      total_catch_alert = validate_total_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 5)
+      dates_alert = validate_dates(data = merged_landings, flag_value = 6),
+      fishers_alert = validate_nfishers(data = merged_landings, k = conf$validation$k_nfishers, flag_value = 7),
+      nboats_alert = validate_nboats(data = merged_landings, k = conf$validation$k_nboats, flag_value = 8),
+      catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 9),
+      total_catch_alert = validate_total_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 10)
     )
 
   validated_vars <-
@@ -101,20 +102,40 @@ validate_landings <- function() {
     purrr::discard(names(validation_output) == "total_catch_alert") %>%
     purrr::map(~ dplyr::select(.x, "submission_id", "catch_id", dplyr::contains("alert"))) %>%
     purrr::reduce(dplyr::full_join, by = c("submission_id", "catch_id")) %>%
+    tidyr::unite(col = "alert_number", dplyr::contains("alert"), sep = "-", na.rm = TRUE) |>
+    dplyr::select("submission_id", "alert_number") |>
+    dplyr::distinct() |>
+    dplyr::full_join(logical_check, by = c("submission_id")) |>
+    dplyr::select("version", "submission_id", "alert_number", "alert_flag") |>
     tidyr::unite(col = "alert_number", dplyr::contains("alert"), sep = "-", na.rm = TRUE)
 
-  filtered_data <-
+  clean_data <-
     validated_data |>
-    dplyr::left_join(alert_flags, by = c("submission_id", "catch_id")) |>
+    dplyr::left_join(alert_flags, by = c("version", "submission_id")) |>
     dplyr::filter(.data$alert_number == "") |>
     dplyr::select(-"alert_number")
 
-  # upload validated outputs
-  logger::log_info("Uploading validated data to mongodb")
-  mdb_collection_push(
-    data = filtered_data,
-    connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$validated,
-    db_name = conf$storage$mongodb$database$pipeline$name
+  # Define the data and their corresponding collection names
+  upload_data <- list(
+    list(data = clean_data, collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$validated),
+    list(data = alert_flags, collection_name = conf$storage$mongodb$database$pipeline$collection_name$validation_flags)
+  )
+  # Log messages for each upload
+  log_messages <- c(
+    "Uploading validated data to mongodb",
+    "Uploading validation flags data to mongodb"
+  )
+  # Walk through both the data and the log messages
+  purrr::walk2(
+    upload_data, log_messages,
+    ~ {
+      logger::log_info(.y) # Log the current message
+      mdb_collection_push(
+        data = .x$data,
+        connection_string = conf$storage$mongodb$connection_string,
+        collection_name = .x$collection_name,
+        db_name = conf$storage$mongodb$database$pipeline$name
+      )
+    }
   )
 }

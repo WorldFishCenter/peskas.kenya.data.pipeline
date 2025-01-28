@@ -59,6 +59,7 @@ alert_outlier <- function(
 #' The `landing_date` is then set to `NA` for those records.
 #'
 #' @param data A data frame containing the `landing_date` column.
+#' @param flag_value A numeric value to use as the flag for catches exceeding the upper bound.
 #'
 #' @return A data frame with two columns: `landing_date` and `alert_date`.
 #'   - `landing_date`: The original date if valid, otherwise `NA`.
@@ -69,16 +70,16 @@ alert_outlier <- function(
 #' @keywords validation
 #' @examples
 #' \dontrun{
-#' validate_dates(data)
+#' validate_dates(data, flag_value = 1)
 #' }
 #' @export
-validate_dates <- function(data = NULL) {
+validate_dates <- function(data = NULL, flag_value = NULL) {
   data %>%
     dplyr::transmute(
       submission_id = .data$submission_id,
       catch_id = .data$catch_id,
       landing_date = .data$landing_date,
-      alert_date = ifelse(.data$landing_date < "1990-01-01", 1, NA_real_)
+      alert_date = ifelse(.data$landing_date < "1990-01-01", flag_value, NA_real_)
     ) %>%
     dplyr::mutate(
       landing_date = dplyr::case_when(
@@ -98,6 +99,7 @@ validate_dates <- function(data = NULL) {
 #'
 #' @param data A data frame containing the `no_of_fishers` column.
 #' @param k a numeric value used in the LocScaleB function for outlier detection.
+#' @param flag_value A numeric value to use as the flag for catches exceeding the upper bound.
 #'
 #' @return A data frame with two columns: `no_of_fishers` and `alert_n_fishers`.
 #'   - `no_of_fishers`: The original number of fishers if valid, otherwise `NA`.
@@ -108,10 +110,10 @@ validate_dates <- function(data = NULL) {
 #' @keywords validation
 #' @examples
 #' \dontrun{
-#' validate_nfishers(data, k = 3)
+#' validate_nfishers(data, k = 3, flag_value = 2)
 #' }
 #' @export
-validate_nfishers <- function(data = NULL, k = NULL) {
+validate_nfishers <- function(data = NULL, k = NULL, flag_value = NULL) {
   data %>%
     dplyr::transmute(
       .data$submission_id,
@@ -119,7 +121,7 @@ validate_nfishers <- function(data = NULL, k = NULL) {
       .data$no_of_fishers,
       alert_n_fishers = alert_outlier(
         x = .data$no_of_fishers,
-        alert_if_larger = 2, logt = TRUE, k = k
+        alert_if_larger = flag_value, logt = TRUE, k = k
       )
     ) %>%
     dplyr::mutate(no_of_fishers = ifelse(is.na(.data$alert_n_fishers), .data$no_of_fishers, NA_real_))
@@ -135,6 +137,7 @@ validate_nfishers <- function(data = NULL, k = NULL) {
 #'
 #' @param data A data frame containing the `n_boats` column.
 #' @param k a numeric value used in the LocScaleB function for outlier detection.
+#' @param flag_value A numeric value to use as the flag for catches exceeding the upper bound.
 #'
 #' @return A data frame with two columns: `n_boats` and `alert_n_boats`.
 #'   - `n_boats`: The original number of boats if valid, otherwise `NA`.
@@ -145,10 +148,10 @@ validate_nfishers <- function(data = NULL, k = NULL) {
 #' @keywords validation
 #' @examples
 #' \dontrun{
-#' validate_nboats(data, k = 2)
+#' validate_nboats(data, k = 2, flag_value = 3)
 #' }
 #' @export
-validate_nboats <- function(data = NULL, k = NULL) {
+validate_nboats <- function(data = NULL, k = NULL, flag_value = NULL) {
   data %>%
     dplyr::transmute(
       .data$submission_id,
@@ -156,7 +159,7 @@ validate_nboats <- function(data = NULL, k = NULL) {
       .data$n_boats,
       alert_n_boats = alert_outlier(
         x = .data$n_boats,
-        alert_if_larger = 3, logt = TRUE, k = k
+        alert_if_larger = flag_value, logt = TRUE, k = k
       )
     ) %>%
     dplyr::mutate(n_boats = ifelse(is.na(.data$alert_n_boats), .data$n_boats, NA_real_))

@@ -4,10 +4,12 @@
 \alias{validate_dates}
 \title{Validate Landing Dates}
 \usage{
-validate_dates(data = NULL)
+validate_dates(data = NULL, flag_value = NULL)
 }
 \arguments{
 \item{data}{A data frame containing the \code{landing_date} column.}
+
+\item{flag_value}{A numeric value to use as the flag for catches exceeding the upper bound.}
 }
 \value{
 A data frame with two columns: \code{landing_date} and \code{alert_date}.
@@ -23,7 +25,7 @@ The \code{landing_date} is then set to \code{NA} for those records.
 }
 \examples{
 \dontrun{
-validate_dates(data)
+validate_dates(data, flag_value = 1)
 }
 }
 \keyword{validation}

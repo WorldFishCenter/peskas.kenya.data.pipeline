@@ -235,34 +235,33 @@ The preprocessing system also handles catch reporting inconsistencies. When tota
 
 ## Validation
 
-The validation process employs a systematic approach to identify and handle potential data quality issues. The process uses different alert codes to flag specific validation concerns:
-
-- **Alert code 1**: Invalid dates  
-- **Alert code 2**: Anomalous number of fishers  
-- **Alert code 3**: Unusual number of boats  
-- **Alert code 4**: Outliers in individual catch records  
-- **Alert code 5**: Anomalous total catch values  
+The validation process employs a systematic approach to identify and handle potential data quality issues. The process uses different alert codes to flag specific validation concerns.
 
 ### Logical Checks
 
 Before applying outlier detection, each record undergoes **logical checks** to spot fundamentally inconsistent data:
 
 1. **Fishers vs. Boats**  
-   - A submission is flagged if `no_of_fishers < n_boats`.  
-2. **Gear Requiring Boats**  
-   - Certain gears (e.g., _gillnet, handline, traps, monofilament, reefseine, ringnet, setnet_) require at least one boat. If `n_boats == 0` and the gear is in this list, the submission is flagged.  
-3. **Negative Catch**  
-   - Any record with a negative total catch is flagged.  
-4. **Non-positive Effort**  
-   - Submissions with zero or negative fishers, or negative boat values, are flagged.  
-5. **Zero Catch With Non-zero Effort**  
-   - Having a total catch of zero while reporting one or more fishers or boats is illogical and gets flagged.
+   - A submission is flagged if the **number of fishers (`no_of_fishers`) is less than the number of boats (`n_boats`)**.  
+   - **Exception:** Submissions with **exactly 1 fisher and 1 boat** are considered valid and are not flagged.
 
-Records that fail any of these checks are removed from the dataset prior to further validation and outlier screening.
+2. **Gear Requiring Boats**  
+   - Certain fishing gears (_gillnet, handline, traps, monofilament, reefseine, ringnet, setnet_) **require at least one boat**. If `n_boats == 0` and the `gear` used is in this list, the submission is flagged.
+
+3. **Negative Catch**  
+   - Any submission with a **negative total catch (`total_catch_kg < 0`)** is flagged.
+
+4. **Non-positive Effort**  
+   - Submissions with **zero or negative fishers (`no_of_fishers <= 0`)** or **negative boat values (`n_boats < 0`)** are flagged.
+
+5. **Zero Catch With Non-zero Effort**  
+   - Submissions where the **total catch is zero (`total_catch_kg == 0`)** while reporting **non-zero effort** (fishers or boats) are flagged.
+
+Records flagged by any of these conditions are removed from the dataset prior to further validation and outlier screening.
 
 ### Temporal Validation
 
-The most basic validation step ensures landing dates are not earlier than 1990 (alert code 1). Records failing this check have their dates set to `NA` and are flagged for review.
+The most basic validation step ensures landing dates are not earlier than 1990 (alert code 6). Records failing this check have their dates set to `NA` and are flagged for review.
 
 ### Statistical Validation Approach
 
@@ -334,15 +333,57 @@ The system implements:
 
 1.  **Individual Catch Validation**:
     -   Computes separate thresholds for each gear type and fish category combination
-    -   Flags outliers with alert code 4
+    -   Flags outliers with alert code 9
     -   Accounts for gear-specific catch variations
 2.  **Total Catch Validation**:
     -   Validates the total catch independently
     -   Uses gear type and landing site as a grouping factor
-    -   Flags anomalies with alert code 5
+    -   Flags anomalies with alert code 10
     -   Cross-checks with sum of individual catches
 
 When an alert is triggered, the corresponding value is set to NA for analytical purposes while preserving the original value and alert code in the database for review.
+
+### Validation flags summary
+
+- **Alert Code 1:**  
+  **Condition:** The number of fishers is **less than** the number of boats, or the number of fishers **equals** the number of boats but is **not 1**.  
+  **Purpose:** Ensures that the number of fishers is logically sufficient to operate the reported number of boats. Captures cases where the data might indicate unrealistic or inconsistent entries.
+
+- **Alert Code 2:**  
+  **Condition:** The number of boats is **0** for gear types that require boats (e.g., "gillnet," "handline," "traps," etc.).  
+  **Purpose:** Ensures that boat-dependent fishing methods report at least one boat. Flags missing or incorrect entries for boat counts when specific gear types are used.
+
+- **Alert Code 3:**  
+  **Condition:** The total catch weight is **negative**.  
+  **Purpose:** Ensures that the reported catch weight is valid, as negative values are impossible and typically indicate data entry errors.
+
+- **Alert Code 4:**  
+  **Condition:** The number of fishers is **less than or equal to 0**, or the number of boats is **less than 0**.  
+  **Purpose:** Ensures that both the number of fishers and boats are positive integers, identifying cases with invalid or missing data for these variables.
+
+- **Alert Code 5:**  
+  **Condition:** The total catch weight is **0**, but the number of fishers or boats is **greater than 0**.  
+  **Purpose:** Flags cases where fishers or boats are reported but no catch is recorded. Indicates possible missing data or inconsistencies.
+
+- **Alert Code 6:**  
+  **Condition:** The `landing_date` is before **1990-01-01**.  
+  **Purpose:** Ensures that the `landing_date` is valid and falls within the expected range. Invalid dates are flagged, and the corresponding entries are set to `NA`.
+
+- **Alert Code 7:**  
+  **Condition:** The number of fishers (`no_of_fishers`) is an **outlier** detected using statistical bounds calculated by `univOutl::LocScaleB()`.  
+  **Purpose:** Identifies unrealistic values in the number of fishers by applying robust outlier detection methods. Values exceeding the bounds are flagged and set to `NA`.
+
+- **Alert Code 8:**  
+  **Condition:** The number of boats (`n_boats`) is an **outlier** detected using statistical bounds calculated by `univOutl::LocScaleB()`.  
+  **Purpose:** Identifies unrealistic values in the number of boats using statistical thresholds. Outliers are flagged and set to `NA`.
+
+- **Alert Code 9:**  
+  **Condition:** The catch weight for individual fish groups (`catch_kg`) exceeds statistical bounds based on gear type and fish category, calculated by `univOutl::LocScaleB()`.  
+  **Purpose:** Detects outliers in individual catch records, ensuring consistency and accuracy in reported fish group catch weights.
+
+- **Alert Code 10:**  
+  **Condition:** The total catch weight (`total_catch_kg`) exceeds statistical bounds based on landing site and gear type, calculated by `univOutl::LocScaleB()`.  
+  **Purpose:** Identifies anomalies in total catch weight across landing sites and gear combinations. Outliers are flagged and set to `NA`.
 
 ## Data Analysis
 
