@@ -1,3 +1,35 @@
+# peskas.kenya.data.pipeline 0.9.0
+
+## New features
+- **Price Data Integration**: Added support for processing fish price data alongside catch data.
+  - Introduced `ingest_landings_price()` to download price surveys from KoboToolbox.
+  - Implemented `preprocess_price_landings()` to clean and standardize fish price data.
+  - Added `merge_prices()` to combine and aggregate legacy and ongoing price data.
+  - Created `summarise_catch_price()` to compute median price per kilogram by landing site and fish category.
+- **Extended Workflow Automation**:
+  - Added a new GitHub Actions job `merge-price-data` to automate the processing and merging of price data.
+- **Expanded MongoDB Collections**:
+  - Introduced new collections in `config.yml` for handling raw, preprocessed, and aggregated price data (`raw_price`, `preprocessed_price`, and `price_table`).
+
+## Enhancements
+- **Validation and Alert Flagging**:
+  - Improved handling of validation alert flags by introducing dynamic `flag_value` parameters.
+  - Adjusted anomaly detection in `validate_landings()` to use more descriptive alert codes.
+- **Configuration Updates**:
+  - Updated `.github/workflows/data-pipeline.yaml` to include price survey ingestion and processing.
+  - Extended `config.yml` to support price data processing in both local and production environments.
+- **Namespace Expansion**:
+  - Exported new functions (`ingest_landings_price`, `merge_prices`, `preprocess_price_landings`, `summarise_catch_price`) to make them available for package use.
+
+## Fixes
+- **Documentation Corrections**:
+  - Updated `.Rd` documentation for `ingest_landings()` to clarify that it processes **catch surveys** (not all WCS surveys).
+  - Added descriptions for new parameters (`flag_value`) in validation function documentation.
+- **Bug Fixes**:
+  - Resolved inconsistencies in price data processing by ensuring column renaming and format standardization.
+  - Fixed logical errors in merging price data to prevent duplicate records.
+  - Improved MongoDB push operations to correctly handle newly introduced price data collections.
+
 # peskas.kenya.data.pipeline 0.8.0
 
 ## New features

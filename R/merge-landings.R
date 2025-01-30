@@ -62,3 +62,104 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
     db_name = conf$storage$mongodb$database$pipeline$name
   )
 }
+
+#' Merge Price Data
+#'
+#' This function combines and processes legacy and ongoing catch price data from MongoDB collections,
+#' aggregating prices by year and uploading the results back to MongoDB.
+#' 
+#' @param log_threshold Logging threshold level (default: logger::DEBUG)
+#' @return A tibble containing the processed and combined price data
+#'
+#' @details
+#' The function performs the following main operations:
+#' 1. Pulls legacy price data from MongoDB and summarizes it yearly
+#' 2. Pulls ongoing price data from MongoDB and summarizes it yearly
+#' 3. Combines legacy and ongoing data
+#' 4. Filters data after 1990
+#' 5. Removes duplicate entries
+#' 6. Uploads the processed data back to MongoDB
+#'
+#' @keywords workflow
+#' @examples
+#' \dontrun{
+#' merge_prices()
+#' }
+#' @export
+merge_prices <- function(log_threshold = logger::DEBUG) {
+  conf <- read_config()
+
+  logger::log_info("Downloading legacy price data from mongodb")
+
+  legacy <-
+    mdb_collection_pull(
+      collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$preprocessed,
+      db_name = conf$storage$mongodb$database$pipeline$name,
+      connection_string = conf$storage$mongodb$connection_string
+    ) |>
+    dplyr::as_tibble() |>
+    dplyr::mutate(size = NA_character_) |> 
+    dplyr::select("landing_date", "landing_site", "fish_category", "size", "ksh_kg") |>
+    summarise_catch_price(unit = "year")
+
+  logger::log_info("Downloading ongoing price data from mongodb")
+  
+  ongoing_price <-
+    mdb_collection_pull(
+      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$preprocessed_price,
+      db_name = conf$storage$mongodb$database$pipeline$name,
+      connection_string = conf$storage$mongodb$connection_string
+    ) |>
+    dplyr::as_tibble() |>
+    dplyr::select("landing_date", "landing_site", "fish_category", "size", "ksh_kg") |>
+    summarise_catch_price(unit = "year")
+
+  price_table <-
+    dplyr::bind_rows(legacy, ongoing_price) |>
+    dplyr::filter(.data$date > "1990-01-01") |>
+    dplyr::distinct()
+
+  logger::log_info("Uploading price table to mongodb")
+  mdb_collection_push(
+    data = price_table,
+    connection_string = conf$storage$mongodb$connection_string,
+    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$price_table,
+    db_name = conf$storage$mongodb$database$pipeline$name
+  )
+}
+
+#' Summarize Catch Price Data
+#'
+#' This function aggregates catch price data by a specified time unit,
+#' calculating median prices per kilogram for each fish category at each landing site.
+#'
+#' @param data A tibble containing catch price data with columns: landing_date,
+#'             landing_site, fish_category, and ksh_kg
+#' @param unit Character string specifying the time unit for aggregation
+#'             (e.g., "year", "month", "week"). Passed to lubridate::floor_date()
+#'
+#' @return A tibble containing summarized price data with columns:
+#'         date, landing_site, fish_category, size, and median_ksh_kg
+#'
+#' @details
+#' The function:
+#' 1. Floors dates to the specified unit using lubridate
+#' 2. Groups data by date, landing site, fish category and size
+#' 3. Calculates median price per kilogram for each group
+#'
+#' @keywords helper
+#' @examples
+#' \dontrun{
+#' summarise_catch_price(data = price_data, unit = "year")
+#' summarise_catch_price(data = price_data, unit = "month")
+#' }
+#' @export
+summarise_catch_price <- function(data = NULL, unit = NULL) {
+  data |>
+    dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = unit)) |>
+    dplyr::group_by(.data$date, .data$landing_site, .data$fish_category, .data$size) |>
+    dplyr::summarise(
+      median_ksh_kg = stats::median(.data$ksh_kg, na.rm = T)
+    ) |>
+    dplyr::ungroup()
+}

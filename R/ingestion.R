@@ -1,4 +1,4 @@
-#' Download and Process WCS Surveys from Kobotoolbox
+#' Download and Process WCS Catch Surveys from Kobotoolbox
 #'
 #' This function retrieves survey data from Kobotoolbox for a specific project,
 #' processes it, and uploads the raw data to a MongoDB database. It uses the
@@ -74,6 +74,85 @@ ingest_landings <- function(url = NULL,
     db_name = conf$storage$mongodb$database$pipeline$name
   )
 }
+
+#' Download and Process WCS Price Surveys from Kobotoolbox
+#'
+#' This function retrieves survey data from Kobotoolbox for a specific project,
+#' processes it, and uploads the raw data to a MongoDB database. It uses the
+#' `get_kobo_data` function, which is a wrapper for `kobotools_kpi_data` from
+#' the KoboconnectR package.
+#'
+#' @param url The URL of Kobotoolbox (default is NULL, uses value from configuration).
+#' @param project_id The asset ID of the project to download data from (default is NULL, uses value from configuration).
+#' @param username Username for Kobotoolbox account (default is NULL, uses value from configuration).
+#' @param psswd Password for Kobotoolbox account (default is NULL, uses value from configuration).
+#' @param encoding Encoding to be used for data retrieval (default is NULL, uses "UTF-8").
+#'
+#' @return No return value. Function downloads data, processes it, and uploads to MongoDB.
+#'
+#' @details
+#' The function performs the following steps:
+#' 1. Reads configuration settings.
+#' 2. Downloads survey data from Kobotoolbox using `get_kobo_data`.
+#' 3. Checks for uniqueness of submissions.
+#' 4. Converts data to tabular format.
+#' 5. Uploads raw data to MongoDB.
+#'
+#' Note that while parameters are provided for customization, the function
+#' currently uses hardcoded values and configuration settings for some parameters.
+#'
+#' @keywords workflow ingestion
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' ingest_landings_price(
+#'   url = "eu.kobotoolbox.org",
+#'   project_id = "my_project_id",
+#'   username = "admin",
+#'   psswd = "admin",
+#'   encoding = "UTF-8"
+#' )
+#' }
+ingest_landings_price <- function(
+    url = NULL,
+    project_id = NULL,
+    username = NULL,
+    psswd = NULL,
+    encoding = NULL) {
+  conf <- read_config()
+
+  logger::log_info("Downloading WCS Fish Price Survey Kobo data...")
+  data_raw <-
+    get_kobo_data(
+      url = "eu.kobotoolbox.org",
+      assetid = conf$ingestion$koboform$asset_id_price,
+      uname = conf$ingestion$koboform$username,
+      pwd = conf$ingestion$koboform$password,
+      encoding = "UTF-8",
+      format = "json"
+    )
+
+  # Check that submissions are unique in case there is overlap in the pagination
+  if (dplyr::n_distinct(purrr::map_dbl(data_raw, ~ .$`_id`)) != length(data_raw)) {
+    stop("Number of submission ids not the same as number of records")
+  }
+
+  logger::log_info("Converting WCS Fish Catch Survey Kobo data to tabular format...")
+  raw_survey <-
+    purrr::map(data_raw, flatten_row) %>%
+    dplyr::bind_rows() %>%
+    dplyr::rename(submission_id = "_id")
+
+  logger::log_info("Uploading raw data to mongodb")
+  mdb_collection_push(
+    data = raw_survey,
+    connection_string = conf$storage$mongodb$connection_string,
+    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$raw_price,
+    db_name = conf$storage$mongodb$database$pipeline$name
+  )
+}
+
 
 #' Retrieve Data from Kobotoolbox API
 #'

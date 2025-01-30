@@ -1,0 +1,470 @@
+diff --git a/.github/workflows/data-pipeline.yaml b/.github/workflows/data-pipeline.yaml
+index 0e5deb5..f6a3405 100644
+--- a/.github/workflows/data-pipeline.yaml
++++ b/.github/workflows/data-pipeline.yaml
+@@ -7,6 +7,7 @@ on:
+ 
+ env:
+   KOBO_ASSET_ID: ${{ secrets.KOBO_ASSET_ID }}
++  KOBO_ASSET_ID_PRICE: ${{ secrets.KOBO_ASSET_ID_PRICE }}
+   KOBO_USERNAME: ${{ secrets.KOBO_USERNAME }}
+   KOBO_PASSWORD: ${{ secrets.KOBO_PASSWORD }}
+   MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
+@@ -95,6 +96,22 @@ jobs:
+       - name: Call merge_landings()
+         run: Rscript -e 'peskas.kenya.data.pipeline::merge_landings()'
+ 
++  merge-price-data:
++    name: Merge legacy and ongoing price data
++    needs: [preprocess-legacy-landings, preprocess-landings]
++    runs-on: ubuntu-latest
++    container:
++      image: docker.pkg.github.com/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya
++      credentials:
++        username: ${{ github.actor }}
++        password: ${{ secrets.GITHUB_TOKEN }}
++    steps:
++      - name: Set env to production
++        if: endsWith(github.ref, '/main')
++        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
++      - name: Call merge_prices()
++        run: Rscript -e 'peskas.kenya.data.pipeline::merge_prices()'
++
+   validate-landings:
+     name: Validate landings
+     needs: merge-landings
+diff --git a/NAMESPACE b/NAMESPACE
+index 00d43cc..112ae9e 100644
+--- a/NAMESPACE
++++ b/NAMESPACE
+@@ -18,12 +18,16 @@ export(get_kobo_data)
+ export(get_metadata)
+ export(get_total_catch_bounds)
+ export(ingest_landings)
++export(ingest_landings_price)
+ export(mdb_collection_pull)
+ export(mdb_collection_push)
+ export(merge_landings)
++export(merge_prices)
+ export(preprocess_landings)
+ export(preprocess_legacy_landings)
++export(preprocess_price_landings)
+ export(read_config)
++export(summarise_catch_price)
+ export(sym)
+ export(syms)
+ export(validate_catch)
+diff --git a/R/export.R b/R/export.R
+index a33558d..f27e297 100644
+--- a/R/export.R
++++ b/R/export.R
+@@ -122,8 +122,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
+     dplyr::select("BMU", "date", "mean_trip_catch", "effort", "aggregated_catch_kg", "cpue", "cpua") %>%
+     dplyr::group_by(.data$BMU, .data$date) |>
+     dplyr::summarise(
+-      aggregated_catch_kg = sum(.data$aggregated_catch_kg, na.rm = T),
+-      mean_trip_catch = mean(.data$mean_trip_catch, na.rm = T),
++      #aggregated_catch_kg = sum(.data$aggregated_catch_kg, na.rm = T),
++      #mean_trip_catch = mean(.data$mean_trip_catch, na.rm = T),
+       mean_effort = mean(.data$effort, na.rm = T),
+       mean_cpue = mean(.data$cpue, na.rm = T),
+       mean_cpua = mean(.data$cpua, na.rm = T)
+@@ -133,8 +133,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
+       .data$BMU,
+       date = seq(min(.data$date), max(.data$date), by = "month"),
+       fill = list(
+-        aggregated_catch_kg = NA,
+-        mean_trip_catch = NA,
++        #aggregated_catch_kg = NA,
++        #mean_trip_catch = NA,
+         mean_effort = NA,
+         mean_cpue = NA,
+         mean_cpua = NA
+diff --git a/R/ingestion.R b/R/ingestion.R
+index e208e44..ef1f499 100644
+--- a/R/ingestion.R
++++ b/R/ingestion.R
+@@ -1,4 +1,4 @@
+-#' Download and Process WCS Surveys from Kobotoolbox
++#' Download and Process WCS Catch Surveys from Kobotoolbox
+ #'
+ #' This function retrieves survey data from Kobotoolbox for a specific project,
+ #' processes it, and uploads the raw data to a MongoDB database. It uses the
+@@ -75,6 +75,85 @@ ingest_landings <- function(url = NULL,
+   )
+ }
+ 
++#' Download and Process WCS Price Surveys from Kobotoolbox
++#'
++#' This function retrieves survey data from Kobotoolbox for a specific project,
++#' processes it, and uploads the raw data to a MongoDB database. It uses the
++#' `get_kobo_data` function, which is a wrapper for `kobotools_kpi_data` from
++#' the KoboconnectR package.
++#'
++#' @param url The URL of Kobotoolbox (default is NULL, uses value from configuration).
++#' @param project_id The asset ID of the project to download data from (default is NULL, uses value from configuration).
++#' @param username Username for Kobotoolbox account (default is NULL, uses value from configuration).
++#' @param psswd Password for Kobotoolbox account (default is NULL, uses value from configuration).
++#' @param encoding Encoding to be used for data retrieval (default is NULL, uses "UTF-8").
++#'
++#' @return No return value. Function downloads data, processes it, and uploads to MongoDB.
++#'
++#' @details
++#' The function performs the following steps:
++#' 1. Reads configuration settings.
++#' 2. Downloads survey data from Kobotoolbox using `get_kobo_data`.
++#' 3. Checks for uniqueness of submissions.
++#' 4. Converts data to tabular format.
++#' 5. Uploads raw data to MongoDB.
++#'
++#' Note that while parameters are provided for customization, the function
++#' currently uses hardcoded values and configuration settings for some parameters.
++#'
++#' @keywords workflow ingestion
++#' @export
++#'
++#' @examples
++#' \dontrun{
++#' ingest_landings_price(
++#'   url = "eu.kobotoolbox.org",
++#'   project_id = "my_project_id",
++#'   username = "admin",
++#'   psswd = "admin",
++#'   encoding = "UTF-8"
++#' )
++#' }
++ingest_landings_price <- function(
++    url = NULL,
++    project_id = NULL,
++    username = NULL,
++    psswd = NULL,
++    encoding = NULL) {
++  conf <- read_config()
++
++  logger::log_info("Downloading WCS Fish Price Survey Kobo data...")
++  data_raw <-
++    get_kobo_data(
++      url = "eu.kobotoolbox.org",
++      assetid = conf$ingestion$koboform$asset_id_price,
++      uname = conf$ingestion$koboform$username,
++      pwd = conf$ingestion$koboform$password,
++      encoding = "UTF-8",
++      format = "json"
++    )
++
++  # Check that submissions are unique in case there is overlap in the pagination
++  if (dplyr::n_distinct(purrr::map_dbl(data_raw, ~ .$`_id`)) != length(data_raw)) {
++    stop("Number of submission ids not the same as number of records")
++  }
++
++  logger::log_info("Converting WCS Fish Catch Survey Kobo data to tabular format...")
++  raw_survey <-
++    purrr::map(data_raw, flatten_row) %>%
++    dplyr::bind_rows() %>%
++    dplyr::rename(submission_id = "_id")
++
++  logger::log_info("Uploading raw data to mongodb")
++  mdb_collection_push(
++    data = raw_survey,
++    connection_string = conf$storage$mongodb$connection_string,
++    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$raw_price,
++    db_name = conf$storage$mongodb$database$pipeline$name
++  )
++}
++
++
+ #' Retrieve Data from Kobotoolbox API
+ #'
+ #' This function retrieves survey data from Kobotoolbox API for a specific asset.
+diff --git a/R/merge-landings.R b/R/merge-landings.R
+index 3476c06..d471ee1 100644
+--- a/R/merge-landings.R
++++ b/R/merge-landings.R
+@@ -62,3 +62,104 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
+     db_name = conf$storage$mongodb$database$pipeline$name
+   )
+ }
++
++#' Merge Price Data
++#'
++#' This function combines and processes legacy and ongoing catch price data from MongoDB collections,
++#' aggregating prices by year and uploading the results back to MongoDB.
++#' 
++#' @param log_threshold Logging threshold level (default: logger::DEBUG)
++#' @return A tibble containing the processed and combined price data
++#'
++#' @details
++#' The function performs the following main operations:
++#' 1. Pulls legacy price data from MongoDB and summarizes it yearly
++#' 2. Pulls ongoing price data from MongoDB and summarizes it yearly
++#' 3. Combines legacy and ongoing data
++#' 4. Filters data after 1990
++#' 5. Removes duplicate entries
++#' 6. Uploads the processed data back to MongoDB
++#'
++#' @keywords workflow
++#' @examples
++#' \dontrun{
++#' merge_prices()
++#' }
++#' @export
++merge_prices <- function(log_threshold = logger::DEBUG) {
++  conf <- read_config()
++
++  logger::log_info("Downloading legacy price data from mongodb")
++
++  legacy <-
++    mdb_collection_pull(
++      collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$preprocessed,
++      db_name = conf$storage$mongodb$database$pipeline$name,
++      connection_string = conf$storage$mongodb$connection_string
++    ) |>
++    dplyr::as_tibble() |>
++    dplyr::mutate(size = NA_character_) |> 
++    dplyr::select("landing_date", "landing_site", "fish_category", "size", "ksh_kg") |>
++    summarise_catch_price(unit = "year")
++
++  logger::log_info("Downloading ongoing price data from mongodb")
++  
++  ongoing_price <-
++    mdb_collection_pull(
++      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$preprocessed_price,
++      db_name = conf$storage$mongodb$database$pipeline$name,
++      connection_string = conf$storage$mongodb$connection_string
++    ) |>
++    dplyr::as_tibble() |>
++    dplyr::select("landing_date", "landing_site", "fish_category", "size", "ksh_kg") |>
++    summarise_catch_price(unit = "year")
++
++  price_table <-
++    dplyr::bind_rows(legacy, ongoing_price) |>
++    dplyr::filter(.data$date > "1990-01-01") |>
++    dplyr::distinct()
++
++  logger::log_info("Uploading price table to mongodb")
++  mdb_collection_push(
++    data = price_table,
++    connection_string = conf$storage$mongodb$connection_string,
++    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$price_table,
++    db_name = conf$storage$mongodb$database$pipeline$name
++  )
++}
++
++#' Summarize Catch Price Data
++#'
++#' This function aggregates catch price data by a specified time unit,
++#' calculating median prices per kilogram for each fish category at each landing site.
++#'
++#' @param data A tibble containing catch price data with columns: landing_date,
++#'             landing_site, fish_category, and ksh_kg
++#' @param unit Character string specifying the time unit for aggregation
++#'             (e.g., "year", "month", "week"). Passed to lubridate::floor_date()
++#'
++#' @return A tibble containing summarized price data with columns:
++#'         date, landing_site, fish_category, size, and median_ksh_kg
++#'
++#' @details
++#' The function:
++#' 1. Floors dates to the specified unit using lubridate
++#' 2. Groups data by date, landing site, fish category and size
++#' 3. Calculates median price per kilogram for each group
++#'
++#' @keywords helper
++#' @examples
++#' \dontrun{
++#' summarise_catch_price(data = price_data, unit = "year")
++#' summarise_catch_price(data = price_data, unit = "month")
++#' }
++#' @export
++summarise_catch_price <- function(data = NULL, unit = NULL) {
++  data |>
++    dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = unit)) |>
++    dplyr::group_by(.data$date, .data$landing_site, .data$fish_category, .data$size) |>
++    dplyr::summarise(
++      median_ksh_kg = stats::median(.data$ksh_kg, na.rm = T)
++    ) |>
++    dplyr::ungroup()
++}
+diff --git a/R/preprocessing.R b/R/preprocessing.R
+index 840bb6a..d2d0f7e 100644
+--- a/R/preprocessing.R
++++ b/R/preprocessing.R
+@@ -306,7 +306,10 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
+     ) %>%
+     dplyr::filter(!.data$fish_category == "0") %>%
+     dplyr::select(-c("gear", "gear_new", "catch_name", "ecology")) %>%
+-    dplyr::rename(gear = "fixed_gear") |>
++    dplyr::rename(
++      gear = "fixed_gear",
++      ksh_kg = "price"
++    ) |>
+     # caluclate total catch per submission
+     dplyr::arrange(.data$landing_date, .data$submission_id) |>
+     dplyr::group_by(.data$submission_id) |>
+@@ -323,6 +326,116 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
+   )
+ }
+ 
++#' Preprocess Price Data
++#'
++#' This function preprocesses raw price data from a MongoDB collection.
++#' It performs various data cleaning and transformation operations, including
++#' column renaming, data pivoting, and standardization of fish categories and prices.
++#'
++#' @param log_threshold Logging threshold level (default: logger::DEBUG)
++#'
++#' @return A tibble containing the preprocessed price data
++#'
++#' @details
++#' The function performs the following main operations:
++#' 1. Pulls raw price data from the MongoDB collection
++#' 2. Renames columns and selects relevant fields (submission_id, landing_site, landing_date, and price fields)
++#' 3. Cleans and standardizes text fields
++#' 4. Pivots price data from wide to long format
++#' 5. Standardizes fish category names and separates size information
++#' 6. Converts data types (datetime, character, numeric)
++#' 7. Removes duplicate entries
++#' 8. Uploads the processed data to the preprocessed MongoDB collection
++#'
++#' @keywords workflow preprocessing
++#' @examples
++#' \dontrun{
++#' preprocessed_data <- preprocess_price_landings()
++#' }
++#' @export
++preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
++  conf <- read_config()
++
++  # get raw landings from mongodb
++  raw_dat <- mdb_collection_pull(
++    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$raw_price,
++    db_name = conf$storage$mongodb$database$pipeline$name,
++    connection_string = conf$storage$mongodb$connection_string
++  ) |>
++    dplyr::as_tibble()
++
++  # Rename columns and select relevant fields
++  renamed_raw <-
++    raw_dat |>
++    dplyr::rename_with(~ stringr::str_remove(., "group_ww6lp73/")) %>%
++    dplyr::select(
++      "submission_id",
++      landing_site = "Tambua_BMU",
++      landing_date = "Tambua_tarehe",
++      dplyr::contains("_kg")
++    ) %>%
++    dplyr::mutate(
++      landing_site = tolower(.data$landing_site),
++      landing_site = trimws(.data$landing_site),
++    ) %>%
++    # Pivot catch data from wide to long format
++    tidyr::pivot_longer(
++      cols = dplyr::contains("_kg"),
++      names_to = "fish_category",
++      values_to = "ksh_kg"
++    ) %>%
++    # Standardize catch names and separate size information
++    dplyr::mutate(
++      fish_category = tolower(.data$fish_category),
++      fish_category = stringr::str_remove(.data$fish_category, "_kg"),
++      fish_category = dplyr::case_when(
++        .data$fish_category == "tafi_wakubwa_ksh" ~ "rabbitfish_large",
++        .data$fish_category == "tafi_wadogo_ksh" ~ "rabbitfish_small",
++        .data$fish_category == "changu_wakubwa_ksh" ~ "scavengers_large",
++        .data$fish_category == "changu_wadogo_ksh" ~ "scavengers_small",
++        .data$fish_category == "pono_wakubwa_ksh" ~ "parrotfish_large",
++        .data$fish_category == "pono_wadogo_ksh" ~ "parrotfish_small",
++        .data$fish_category == "pweza_wakubwa_ksh" ~ "octopus_large",
++        .data$fish_category == "pweza_wadogo_ksh" ~ "octopus_small",
++        .data$fish_category == "kamba_wakubwa_ksh" ~ "lobster_large",
++        .data$fish_category == "kamba_wadogo_ksh" ~ "lobster_small",
++        .data$fish_category == "mchanganyiko_wakubwa_ksh" ~ "rest of catch_large",
++        .data$fish_category == "mchanganyiko_wadogo_ksh" ~ "rest of catch_small",
++        .data$fish_category == "mchanganyiko_ksh" ~ "rest of catch_small",
++        .data$fish_category == "mkundaji_wakubwa_ksh" ~ "goatfish_large",
++        .data$fish_category == "mkundaji_wadogo_ksh" ~ "goatfish_small",
++        .data$fish_category == "samaki_wa_maji_mengi_wakubwa_ksh" ~ "pelagics_large",
++        .data$fish_category == "samaki_wa_maji_mengi_wadogo_ksh" ~ "pelagics_small",
++        .data$fish_category == "papa_wakubwa_ksh" ~ "shark_large",
++        .data$fish_category == "papa_wadogo_ksh" ~ "shark_small",
++        .data$fish_category == "taa_wakubwa_ksh" ~ "rabbitfish_large",
++        .data$fish_category == "taa_wadogo_ksh" ~ "rabbitfish_small",
++        TRUE ~ .data$fish_category # Default case to keep original if no match
++      )
++    ) |>
++    tidyr::separate(.data$fish_category, into = c("fish_category", "size"), sep = "_")
++
++  # Convert data types
++  preprocessed_landings_price <-
++    renamed_raw %>%
++    dplyr::mutate(
++      landing_date = lubridate::as_datetime(.data$landing_date),
++      submission_id = as.character(.data$submission_id),
++      ksh_kg = as.numeric(.data$ksh_kg)
++    ) |>
++    dplyr::distinct()
++  # manage mismatch between caluclated total catch and total catch from form
++  # Combine processed data
++  logger::log_info("Uploading preprocessed data to mongodb")
++  # upload preprocessed landings
++  mdb_collection_push(
++    data = preprocessed_landings_price,
++    connection_string = conf$storage$mongodb$connection_string,
++    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$preprocessed_price,
++    db_name = conf$storage$mongodb$database$pipeline$name
++  )
++}
++
+ 
+ #' Clean Catch Names
+ #'
+@@ -353,3 +466,4 @@ clean_catch_names <- function(data = NULL) {
+       TRUE ~ catch_name
+     ))
+ }
++
+diff --git a/inst/config.yml b/inst/config.yml
+index 9ef366c..bc78c4e 100644
+--- a/inst/config.yml
++++ b/inst/config.yml
+@@ -2,6 +2,7 @@ default:
+   ingestion:
+     koboform:
+       asset_id: !expr Sys.getenv('KOBO_ASSET_ID')
++      asset_id_price: !expr Sys.getenv('KOBO_ASSET_ID_PRICE')
+       username: !expr Sys.getenv('KOBO_USERNAME')
+       password: !expr Sys.getenv('KOBO_PASSWORD')
+   storage:
+@@ -16,8 +17,11 @@ default:
+               preprocessed: legacy-preprocessed
+             ongoing:
+               raw: raw
++              raw_price: raw_price
+               preprocessed: preprocessed
++              preprocessed_price: preprocessed_price
+               merged_landings: merged-landings
++              price_table: price_table
+               validated: validated
+             validation_flags: validation_flags
+         dashboard:
+@@ -60,6 +64,7 @@ local:
+   ingestion:
+     koboform:
+       asset_id: !expr readLines("auth/kobo-asset-id")
++      asset_id_price: !expr readLines("auth/kobo-asset-id-price")
+       username: !expr readLines("auth/kobo-username")
+       password: !expr readLines("auth/kobo-password")
+   storage:
+diff --git a/man/ingest_landings.Rd b/man/ingest_landings.Rd
+index bd14d85..b256da3 100644
+--- a/man/ingest_landings.Rd
++++ b/man/ingest_landings.Rd
+@@ -2,7 +2,7 @@
+ % Please edit documentation in R/ingestion.R
+ \name{ingest_landings}
+ \alias{ingest_landings}
+-\title{Download and Process WCS Surveys from Kobotoolbox}
++\title{Download and Process WCS Catch Surveys from Kobotoolbox}
+ \usage{
+ ingest_landings(
+   url = NULL,

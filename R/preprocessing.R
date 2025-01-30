@@ -306,7 +306,10 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
     ) %>%
     dplyr::filter(!.data$fish_category == "0") %>%
     dplyr::select(-c("gear", "gear_new", "catch_name", "ecology")) %>%
-    dplyr::rename(gear = "fixed_gear") |>
+    dplyr::rename(
+      gear = "fixed_gear",
+      ksh_kg = "price"
+    ) |>
     # caluclate total catch per submission
     dplyr::arrange(.data$landing_date, .data$submission_id) |>
     dplyr::group_by(.data$submission_id) |>
@@ -319,6 +322,116 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
     data = processed_legacy_landings,
     connection_string = conf$storage$mongodb$connection_string,
     collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$preprocessed,
+    db_name = conf$storage$mongodb$database$pipeline$name
+  )
+}
+
+#' Preprocess Price Data
+#'
+#' This function preprocesses raw price data from a MongoDB collection.
+#' It performs various data cleaning and transformation operations, including
+#' column renaming, data pivoting, and standardization of fish categories and prices.
+#'
+#' @param log_threshold Logging threshold level (default: logger::DEBUG)
+#'
+#' @return A tibble containing the preprocessed price data
+#'
+#' @details
+#' The function performs the following main operations:
+#' 1. Pulls raw price data from the MongoDB collection
+#' 2. Renames columns and selects relevant fields (submission_id, landing_site, landing_date, and price fields)
+#' 3. Cleans and standardizes text fields
+#' 4. Pivots price data from wide to long format
+#' 5. Standardizes fish category names and separates size information
+#' 6. Converts data types (datetime, character, numeric)
+#' 7. Removes duplicate entries
+#' 8. Uploads the processed data to the preprocessed MongoDB collection
+#'
+#' @keywords workflow preprocessing
+#' @examples
+#' \dontrun{
+#' preprocessed_data <- preprocess_price_landings()
+#' }
+#' @export
+preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
+  conf <- read_config()
+
+  # get raw landings from mongodb
+  raw_dat <- mdb_collection_pull(
+    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$raw_price,
+    db_name = conf$storage$mongodb$database$pipeline$name,
+    connection_string = conf$storage$mongodb$connection_string
+  ) |>
+    dplyr::as_tibble()
+
+  # Rename columns and select relevant fields
+  renamed_raw <-
+    raw_dat |>
+    dplyr::rename_with(~ stringr::str_remove(., "group_ww6lp73/")) %>%
+    dplyr::select(
+      "submission_id",
+      landing_site = "Tambua_BMU",
+      landing_date = "Tambua_tarehe",
+      dplyr::contains("_kg")
+    ) %>%
+    dplyr::mutate(
+      landing_site = tolower(.data$landing_site),
+      landing_site = trimws(.data$landing_site),
+    ) %>%
+    # Pivot catch data from wide to long format
+    tidyr::pivot_longer(
+      cols = dplyr::contains("_kg"),
+      names_to = "fish_category",
+      values_to = "ksh_kg"
+    ) %>%
+    # Standardize catch names and separate size information
+    dplyr::mutate(
+      fish_category = tolower(.data$fish_category),
+      fish_category = stringr::str_remove(.data$fish_category, "_kg"),
+      fish_category = dplyr::case_when(
+        .data$fish_category == "tafi_wakubwa_ksh" ~ "rabbitfish_large",
+        .data$fish_category == "tafi_wadogo_ksh" ~ "rabbitfish_small",
+        .data$fish_category == "changu_wakubwa_ksh" ~ "scavengers_large",
+        .data$fish_category == "changu_wadogo_ksh" ~ "scavengers_small",
+        .data$fish_category == "pono_wakubwa_ksh" ~ "parrotfish_large",
+        .data$fish_category == "pono_wadogo_ksh" ~ "parrotfish_small",
+        .data$fish_category == "pweza_wakubwa_ksh" ~ "octopus_large",
+        .data$fish_category == "pweza_wadogo_ksh" ~ "octopus_small",
+        .data$fish_category == "kamba_wakubwa_ksh" ~ "lobster_large",
+        .data$fish_category == "kamba_wadogo_ksh" ~ "lobster_small",
+        .data$fish_category == "mchanganyiko_wakubwa_ksh" ~ "rest of catch_large",
+        .data$fish_category == "mchanganyiko_wadogo_ksh" ~ "rest of catch_small",
+        .data$fish_category == "mchanganyiko_ksh" ~ "rest of catch_small",
+        .data$fish_category == "mkundaji_wakubwa_ksh" ~ "goatfish_large",
+        .data$fish_category == "mkundaji_wadogo_ksh" ~ "goatfish_small",
+        .data$fish_category == "samaki_wa_maji_mengi_wakubwa_ksh" ~ "pelagics_large",
+        .data$fish_category == "samaki_wa_maji_mengi_wadogo_ksh" ~ "pelagics_small",
+        .data$fish_category == "papa_wakubwa_ksh" ~ "shark_large",
+        .data$fish_category == "papa_wadogo_ksh" ~ "shark_small",
+        .data$fish_category == "taa_wakubwa_ksh" ~ "rabbitfish_large",
+        .data$fish_category == "taa_wadogo_ksh" ~ "rabbitfish_small",
+        TRUE ~ .data$fish_category # Default case to keep original if no match
+      )
+    ) |>
+    tidyr::separate(.data$fish_category, into = c("fish_category", "size"), sep = "_")
+
+  # Convert data types
+  preprocessed_landings_price <-
+    renamed_raw %>%
+    dplyr::mutate(
+      landing_date = lubridate::as_datetime(.data$landing_date),
+      submission_id = as.character(.data$submission_id),
+      ksh_kg = as.numeric(.data$ksh_kg)
+    ) |>
+    dplyr::distinct()
+  # manage mismatch between caluclated total catch and total catch from form
+  # Combine processed data
+  logger::log_info("Uploading preprocessed data to mongodb")
+  # upload preprocessed landings
+  mdb_collection_push(
+    data = preprocessed_landings_price,
+    connection_string = conf$storage$mongodb$connection_string,
+    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$preprocessed_price,
     db_name = conf$storage$mongodb$database$pipeline$name
   )
 }
@@ -353,3 +466,4 @@ clean_catch_names <- function(data = NULL) {
       TRUE ~ catch_name
     ))
 }
+

@@ -2,6 +2,7 @@ default:
   ingestion:
     koboform:
       asset_id: !expr Sys.getenv('KOBO_ASSET_ID')
+      asset_id_price: !expr Sys.getenv('KOBO_ASSET_ID_PRICE')
       username: !expr Sys.getenv('KOBO_USERNAME')
       password: !expr Sys.getenv('KOBO_PASSWORD')
   storage:
@@ -16,8 +17,11 @@ default:
               preprocessed: legacy-preprocessed
             ongoing:
               raw: raw
+              raw_price: raw_price
               preprocessed: preprocessed
+              preprocessed_price: preprocessed_price
               merged_landings: merged-landings
+              price_table: price_table
               validated: validated
             validation_flags: validation_flags
         dashboard:
@@ -60,6 +64,7 @@ local:
   ingestion:
     koboform:
       asset_id: !expr readLines("auth/kobo-asset-id")
+      asset_id_price: !expr readLines("auth/kobo-asset-id-price")
       username: !expr readLines("auth/kobo-username")
       password: !expr readLines("auth/kobo-password")
   storage:
