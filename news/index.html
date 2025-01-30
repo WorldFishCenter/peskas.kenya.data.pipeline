@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,59 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.0.0" id="peskaskenyadatapipeline-100">peskas.kenya.data.pipeline 1.0.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-100"></a></h2>
+<div class="section level3">
+<h3 id="new-features-1-0-0">New features<a class="anchor" aria-label="anchor" href="#new-features-1-0-0"></a></h3>
+<ul><li>
+<strong>Catch Validation Enhancements</strong>:
+<ul><li>Added <code><a href="../reference/validate_fishers_catch.html">validate_fishers_catch()</a></code> to flag cases where a single fisher reports an excessively high catch.</li>
+<li>Introduced <code><a href="../reference/impute_price.html">impute_price()</a></code> to fill missing fish prices using median values across landing sites and sizes.</li>
+<li>Integrated price validation in <code><a href="../reference/validate_landings.html">validate_landings()</a></code> to ensure missing or zero prices are flagged.</li>
+</ul></li>
+<li>
+<strong>Revenue Metrics in Summaries</strong>:
+<ul><li>
+<code><a href="../reference/export_summaries.html">export_summaries()</a></code> now calculates revenue-based effort metrics:
+<ul><li>
+<code>rpue</code> (Revenue Per Unit Effort) as aggregated price per fisher</li>
+<li>
+<code>rpua</code> (Revenue Per Unit Area) as aggregated price per square km</li>
+</ul></li>
+</ul></li>
+<li>
+<strong>Extended Workflow Automation</strong>:
+<ul><li>Updated GitHub Actions workflow (<code>data-pipeline.yaml</code>) to include a job for processing and merging price data.</li>
+<li>Added price-related MongoDB collections (<code>raw_price</code>, <code>preprocessed_price</code>, <code>price_table</code>) to <code>config.yml</code>.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-1-0-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-1-0-0"></a></h3>
+<ul><li>
+<strong>Improved Validation and Data Processing</strong>:
+<ul><li>
+<code><a href="../reference/validate_total_catch.html">validate_total_catch()</a></code> and <code><a href="../reference/validate_catch.html">validate_catch()</a></code> now allow customizable <code>flag_value</code> parameters.</li>
+<li>Enhanced <code><a href="../reference/merge_prices.html">merge_prices()</a></code> with fixes for site name inconsistencies (e.g., “Rigati” → “Rigata”).</li>
+<li>
+<code><a href="../reference/preprocess_legacy_landings.html">preprocess_legacy_landings()</a></code> now ensures valid dates by correcting invalid timestamps.</li>
+</ul></li>
+<li>
+<strong>Refined Data Summarization</strong>:
+<ul><li>
+<code><a href="../reference/export_summaries.html">export_summaries()</a></code> now includes revenue metrics while maintaining prior CPUE and CPUA calculations.</li>
+<li>Updated <code>.qmd</code> reports to reflect new price fields in the summary tables.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-1-0-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-1-0-0"></a></h3>
+<ul><li>
+<strong>Bug Fixes and Consistency Improvements</strong>:
+<ul><li>Fixed potential issues in <code><a href="../reference/merge_prices.html">merge_prices()</a></code> that could lead to duplicate price records.</li>
+<li>Ensured <code><a href="../reference/impute_price.html">impute_price()</a></code> correctly applies median imputation across all relevant data points.</li>
+<li>Updated <code>.Rd</code> documentation for all modified functions to reflect new parameters and changes.</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.0" id="peskaskenyadatapipeline-090">peskas.kenya.data.pipeline 0.9.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-090"></a></h2>
 <div class="section level3">
