@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,58 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.0" id="peskaskenyadatapipeline-090">peskas.kenya.data.pipeline 0.9.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-090"></a></h2>
+<div class="section level3">
+<h3 id="new-features-0-9-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-9-0"></a></h3>
+<ul><li>
+<strong>Price Data Integration</strong>: Added support for processing fish price data alongside catch data.
+<ul><li>Introduced <code><a href="../reference/ingest_landings_price.html">ingest_landings_price()</a></code> to download price surveys from KoboToolbox.</li>
+<li>Implemented <code><a href="../reference/preprocess_price_landings.html">preprocess_price_landings()</a></code> to clean and standardize fish price data.</li>
+<li>Added <code><a href="../reference/merge_prices.html">merge_prices()</a></code> to combine and aggregate legacy and ongoing price data.</li>
+<li>Created <code><a href="../reference/summarise_catch_price.html">summarise_catch_price()</a></code> to compute median price per kilogram by landing site and fish category.</li>
+</ul></li>
+<li>
+<strong>Extended Workflow Automation</strong>:
+<ul><li>Added a new GitHub Actions job <code>merge-price-data</code> to automate the processing and merging of price data.</li>
+</ul></li>
+<li>
+<strong>Expanded MongoDB Collections</strong>:
+<ul><li>Introduced new collections in <code>config.yml</code> for handling raw, preprocessed, and aggregated price data (<code>raw_price</code>, <code>preprocessed_price</code>, and <code>price_table</code>).</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-0-9-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-0-9-0"></a></h3>
+<ul><li>
+<strong>Validation and Alert Flagging</strong>:
+<ul><li>Improved handling of validation alert flags by introducing dynamic <code>flag_value</code> parameters.</li>
+<li>Adjusted anomaly detection in <code><a href="../reference/validate_landings.html">validate_landings()</a></code> to use more descriptive alert codes.</li>
+</ul></li>
+<li>
+<strong>Configuration Updates</strong>:
+<ul><li>Updated <code>.github/workflows/data-pipeline.yaml</code> to include price survey ingestion and processing.</li>
+<li>Extended <code>config.yml</code> to support price data processing in both local and production environments.</li>
+</ul></li>
+<li>
+<strong>Namespace Expansion</strong>:
+<ul><li>Exported new functions (<code>ingest_landings_price</code>, <code>merge_prices</code>, <code>preprocess_price_landings</code>, <code>summarise_catch_price</code>) to make them available for package use.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-0-9-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-0-9-0"></a></h3>
+<ul><li>
+<strong>Documentation Corrections</strong>:
+<ul><li>Updated <code>.Rd</code> documentation for <code><a href="../reference/ingest_landings.html">ingest_landings()</a></code> to clarify that it processes <strong>catch surveys</strong> (not all WCS surveys).</li>
+<li>Added descriptions for new parameters (<code>flag_value</code>) in validation function documentation.</li>
+</ul></li>
+<li>
+<strong>Bug Fixes</strong>:
+<ul><li>Resolved inconsistencies in price data processing by ensuring column renaming and format standardization.</li>
+<li>Fixed logical errors in merging price data to prevent duplicate records.</li>
+<li>Improved MongoDB push operations to correctly handle newly introduced price data collections.</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.8.0" id="peskaskenyadatapipeline-080">peskas.kenya.data.pipeline 0.8.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-080"></a></h2>
 <div class="section level3">
