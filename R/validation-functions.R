@@ -392,6 +392,8 @@ validate_fishers_catch <- function(data = NULL, max_kg = NULL, flag_value = NULL
 #' @importFrom tidyr complete nesting
 #' @importFrom stats median
 #'
+#' @keywords helper 
+#' 
 #' @export
 impute_price <- function(price_table = NULL) {
   valid_combinations <- price_table %>%

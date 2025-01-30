@@ -48,6 +48,6 @@ reference:
   - has_keyword("export")
 
 - title: Helper functions
-  desc: Functions dedicated to data processing.
+  desc: Functions dedicated to data analytics and general statistics
   contents:
   - has_keyword("helper")
