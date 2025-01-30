@@ -88,7 +88,8 @@ data_table <- dplyr::tibble(
   Variable = names(valid_data),
   Type = c(
     "Numeric", "Categorical", "Categorical", "Date", "Categorical", "Categorical",
-    "Numeric", "Numeric", "Numeric", "Numeric", "Categorical", "Categorical", "Text", "Numeric", "Numeric"
+    "Numeric", "Numeric", "Numeric", "Numeric", "Categorical", "Categorical", "Text", "Numeric", "Numeric",
+    "Numeric", "Numeric"
   ),
   Description = c(
     "Data version identifier, 1 indicates legacy landings, 2 ongoing landings",
@@ -105,7 +106,9 @@ data_table <- dplyr::tibble(
     "Category of fish caught",
     "Size category of the fish caught",
     "Weight of the catch in kilograms",
-    "Total weight of the catch in kilograms"
+    "Total weight of the catch in kilograms",
+    "Catch price in KES",
+    "Total price of the catch in KES"
   )
 )
 

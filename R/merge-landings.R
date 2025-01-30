@@ -67,7 +67,7 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
 #'
 #' This function combines and processes legacy and ongoing catch price data from MongoDB collections,
 #' aggregating prices by year and uploading the results back to MongoDB.
-#' 
+#'
 #' @param log_threshold Logging threshold level (default: logger::DEBUG)
 #' @return A tibble containing the processed and combined price data
 #'
@@ -98,12 +98,12 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
       connection_string = conf$storage$mongodb$connection_string
     ) |>
     dplyr::as_tibble() |>
-    dplyr::mutate(size = NA_character_) |> 
+    dplyr::mutate(size = NA_character_) |>
     dplyr::select("landing_date", "landing_site", "fish_category", "size", "ksh_kg") |>
     summarise_catch_price(unit = "year")
 
   logger::log_info("Downloading ongoing price data from mongodb")
-  
+
   ongoing_price <-
     mdb_collection_pull(
       collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$preprocessed_price,
@@ -116,8 +116,12 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
 
   price_table <-
     dplyr::bind_rows(legacy, ongoing_price) |>
-    dplyr::filter(.data$date > "1990-01-01") |>
-    dplyr::distinct()
+    dplyr::distinct() |>
+    dplyr::mutate(landing_site = dplyr::case_when(
+      .data$landing_site == "rigati" ~ "rigata",
+      .data$landing_site == "kiwayuu_cha_nje" ~ "kiwayuu_cha_inde",
+      TRUE ~ .data$landing_site
+    ))
 
   logger::log_info("Uploading price table to mongodb")
   mdb_collection_push(

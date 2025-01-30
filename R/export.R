@@ -98,7 +98,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
   monthly_summaries <-
     valid_data |>
     dplyr::rename(BMU = "landing_site") |>
-    dplyr::select(-c("version", "catch_id", "fishing_ground", "lat", "lon", "fish_category", "size", "catch_kg")) |>
+    dplyr::select(-c("version", "catch_id", "fishing_ground", "lat", "lon", "fish_category", "size", "catch_kg", "catch_price")) |>
     dplyr::filter(!is.na(.data$landing_date)) %>%
     dplyr::distinct() |>
     dplyr::left_join(bmu_size, by = "BMU") |>
@@ -106,6 +106,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::summarise(
       total_fishers = sum(.data$no_of_fishers, na.rm = T),
       aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
+      aggregated_catch_price = sum(.data$total_catch_price, na.rm = T),
       size_km = dplyr::first(.data$size_km),
       mean_trip_catch = stats::median(.data$total_catch_kg, na.rm = T)
     ) |>
@@ -113,20 +114,24 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(
       effort = .data$total_fishers / .data$size_km,
       cpue = .data$aggregated_catch_kg / .data$total_fishers,
-      cpua = .data$aggregated_catch_kg / .data$size_km
+      cpua = .data$aggregated_catch_kg / .data$size_km,
+      rpue = .data$aggregated_catch_price / .data$total_fishers,
+      rpua = .data$aggregated_catch_price / .data$size_km
     ) |>
     dplyr::mutate(
       date = lubridate::floor_date(.data$landing_date, unit = "month"),
       BMU = stringr::str_to_title(.data$BMU)
     ) |>
-    dplyr::select("BMU", "date", "mean_trip_catch", "effort", "aggregated_catch_kg", "cpue", "cpua") %>%
+    dplyr::select("BMU", "date", "mean_trip_catch", "effort", "aggregated_catch_kg", "cpue", "cpua", "rpue", "rpua") %>%
     dplyr::group_by(.data$BMU, .data$date) |>
     dplyr::summarise(
       aggregated_catch_kg = sum(.data$aggregated_catch_kg, na.rm = T),
       mean_trip_catch = mean(.data$mean_trip_catch, na.rm = T),
       mean_effort = mean(.data$effort, na.rm = T),
       mean_cpue = mean(.data$cpue, na.rm = T),
-      mean_cpua = mean(.data$cpua, na.rm = T)
+      mean_cpua = mean(.data$cpua, na.rm = T),
+      mean_rpue = mean(.data$rpue, na.rm = T),
+      mean_rpua = mean(.data$rpua, na.rm = T)
     ) |>
     dplyr::ungroup() %>%
     tidyr::complete(
@@ -137,7 +142,9 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
         mean_trip_catch = NA,
         mean_effort = NA,
         mean_cpue = NA,
-        mean_cpua = NA
+        mean_cpua = NA,
+        mean_rpue = NA,
+        mean_rpua = NA
       )
     )
 

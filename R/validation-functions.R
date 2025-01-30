@@ -262,7 +262,7 @@ get_total_catch_bounds <- function(data = NULL, k = NULL) {
 #'
 #' @keywords validation
 #' @export
-validate_catch <- function(data = NULL, k = NULL, flag_value = 4) {
+validate_catch <- function(data = NULL, k = NULL, flag_value = NULL) {
   # Calculate bounds
   bounds <- get_catch_bounds(data, k)
 
@@ -297,7 +297,7 @@ validate_catch <- function(data = NULL, k = NULL, flag_value = 4) {
 #'
 #' @keywords validation
 #' @export
-validate_total_catch <- function(data = NULL, k = NULL, flag_value = 4) {
+validate_total_catch <- function(data = NULL, k = NULL, flag_value = NULL) {
   # Calculate bounds
   bounds <- get_total_catch_bounds(data, k)
 
@@ -313,4 +313,120 @@ validate_total_catch <- function(data = NULL, k = NULL, flag_value = 4) {
     ) %>%
     dplyr::ungroup() %>%
     dplyr::select("submission_id", "total_catch_kg", "alert_catch")
+}
+
+#' Validate Catch per Fisher
+#'
+#' This function validates the relationship between total catch and number of fishers.
+#' It flags cases where a single fisher reports a catch exceeding the specified maximum.
+#' When flagged, the total catch value is set to NA.
+#'
+#' @param data A data frame containing the columns:
+#'   \itemize{
+#'     \item submission_id: Unique identifier for the submission
+#'     \item no_of_fishers: Number of fishers
+#'     \item total_catch_kg: Total catch in kilograms
+#'   }
+#' @param max_kg Numeric value specifying the maximum catch (in kg) allowed for a single fisher
+#' @param flag_value A numeric value to use as the flag for catches exceeding the maximum per fisher
+#'
+#' @return A data frame with columns:
+#'   \itemize{
+#'     \item submission_id: The original submission identifier
+#'     \item total_catch_kg: The original catch if valid, otherwise NA
+#'     \item alert_catch: Flag value if catch per fisher exceeds maximum, otherwise NA
+#'   }
+#'
+#' @importFrom dplyr select distinct mutate ungroup
+#'
+#' @keywords validation
+#' @examples
+#' \dontrun{
+#' validate_fishers_catch(data, max_kg = 100, flag_value = 5)
+#' }
+#' @export
+validate_fishers_catch <- function(data = NULL, max_kg = NULL, flag_value = NULL) {
+  data %>%
+    dplyr::select("submission_id", "no_of_fishers", "total_catch_kg") %>%
+    dplyr::distinct() %>%
+    dplyr::mutate(
+      alert_fishers_catch = dplyr::case_when(
+        .data$no_of_fishers == 1 & .data$total_catch_kg >= max_kg ~ flag_value,
+        TRUE ~ NA_real_
+      ),  # Added missing closing parenthesis here
+      total_catch_kg = ifelse(is.na(.data$alert_fishers_catch), .data$total_catch_kg, NA_real_)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select("submission_id", "total_catch_kg", "alert_fishers_catch")
+}
+
+#' Impute Missing Fish Prices Using Median Values
+#'
+#' @description
+#' This function imputes missing fish prices in two steps:
+#' 1. For fish with size (small/large): uses median price from other landing sites
+#' 2. For fish with NA size: uses median between small and large sizes
+#'
+#' @param price_table A tibble containing fish price data with columns:
+#'   \itemize{
+#'     \item date: Date of the record
+#'     \item landing_site: Name of the landing site
+#'     \item fish_category: Type of fish
+#'     \item size: Size category of fish (large, small, or NA)
+#'     \item median_ksh_kg: Original price in Kenyan Shillings per kg
+#'   }
+#'
+#' @return A tibble with the same structure as input, but with:
+#'   \itemize{
+#'     \item All possible combinations of date, landing_site, fish_category and their valid sizes
+#'     \item Original median_ksh_kg column removed
+#'     \item New median_ksh_kg_imputed column containing original and imputed prices
+#'   }
+#'
+#' @examples
+#' \dontrun{
+#' imputed_data <- impute_price(price_table = fish_prices)
+#' }
+#'
+#' @importFrom dplyr distinct group_by mutate ungroup select
+#' @importFrom tidyr complete nesting
+#' @importFrom stats median
+#'
+#' @export
+impute_price <- function(price_table = NULL) {
+  valid_combinations <- price_table %>%
+    dplyr::distinct(.data$fish_category, .data$size)
+
+  # First imputation for all sizes
+  imputed_prices <- price_table %>%
+    tidyr::complete(
+      tidyr::nesting(fish_category, size),
+      .data$date,
+      .data$landing_site
+    ) %>%
+    # First impute by size group (small and large)
+    dplyr::group_by(.data$date, .data$fish_category, .data$size) %>%
+    dplyr::mutate(
+      median_ksh_kg_imputed = dplyr::case_when(
+        !is.na(.data$median_ksh_kg) ~ .data$median_ksh_kg,
+        TRUE ~ stats::median(.data$median_ksh_kg, na.rm = TRUE)
+      )
+    ) %>%
+    dplyr::ungroup()
+  
+  # Then calculate median between small and large for NA sizes
+  imputed_prices <- imputed_prices %>%
+    dplyr::group_by(.data$date, .data$fish_category, .data$landing_site) %>%
+    dplyr::mutate(
+      median_ksh_kg_imputed = dplyr::case_when(
+        !is.na(.data$median_ksh_kg_imputed) ~ .data$median_ksh_kg_imputed,
+        is.na(.data$size) ~ stats::median(.data$median_ksh_kg_imputed[size %in% c("small", "large")], na.rm = TRUE),
+        TRUE ~ .data$median_ksh_kg_imputed
+      )
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-"median_ksh_kg") %>%
+    dplyr::distinct()
+  
+  return(imputed_prices)
 }

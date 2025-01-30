@@ -4,7 +4,7 @@
 \alias{validate_total_catch}
 \title{Validate Total Catch Data}
 \usage{
-validate_total_catch(data = NULL, k = NULL, flag_value = 4)
+validate_total_catch(data = NULL, k = NULL, flag_value = NULL)
 }
 \arguments{
 \item{data}{A data frame containing columns: \code{submission_id}, \code{landing_site}, \code{gear},

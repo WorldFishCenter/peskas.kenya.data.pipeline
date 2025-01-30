@@ -37,6 +37,18 @@ validate_landings <- function() {
     ) |>
     dplyr::as_tibble()
 
+  price_tables <-
+    mdb_collection_pull(
+      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$price_table,
+      db_name = conf$storage$mongodb$database$pipeline$name,
+      connection_string = conf$storage$mongodb$connection_string
+    ) |>
+    dplyr::as_tibble() |>
+    # price per kg cannot be zero
+    dplyr::filter(!.data$median_ksh_kg == 0) |>
+    impute_price()
+
+
   # Spot weird observations
   gear_requires_boats <- c("gillnet", "handline", "traps", "monofilament", "reefseine", "ringnet", "setnet")
 
@@ -78,16 +90,18 @@ validate_landings <- function() {
       fishers_alert = validate_nfishers(data = merged_landings, k = conf$validation$k_nfishers, flag_value = 7),
       nboats_alert = validate_nboats(data = merged_landings, k = conf$validation$k_nboats, flag_value = 8),
       catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 9),
-      total_catch_alert = validate_total_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 10)
+      total_catch_alert = validate_total_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 10),
+      fishers_catch_alert = validate_fishers_catch(data = merged_landings, max_kg = conf$validation$max_kg, flag_value = 11)
     )
 
   validated_vars <-
-    validation_output %>%
-    purrr::discard(names(validation_output) == "total_catch_alert") %>%
+    validation_output[c("dates_alert", "fishers_alert", "nboats_alert", "catch_alert")] %>%
     purrr::map(~ dplyr::select(.x, !dplyr::contains("alert"))) %>%
     purrr::reduce(dplyr::left_join, by = c("submission_id", "catch_id")) |>
     dplyr::left_join(validation_output$total_catch_alert, by = c("submission_id")) |>
-    dplyr::select(-"alert_catch")
+    dplyr::left_join(validation_output$fishers_catch_alert, by = c("submission_id")) |>
+    dplyr::mutate(total_catch_kg = dplyr::coalesce(.data$total_catch_kg.x, .data$total_catch_kg.y)) |>
+    dplyr::select(-c("alert_catch", "alert_fishers_catch", "total_catch_kg.x", "total_catch_kg.y"))
 
   # replace merged landings with validted variables and keep dataframe columns order
   validated_data <-
@@ -98,10 +112,11 @@ validate_landings <- function() {
 
   # alerts data
   alert_flags <-
-    validation_output %>%
-    purrr::discard(names(validation_output) == "total_catch_alert") %>%
+    validation_output[c("dates_alert", "fishers_alert", "nboats_alert", "catch_alert")] %>%
     purrr::map(~ dplyr::select(.x, "submission_id", "catch_id", dplyr::contains("alert"))) %>%
     purrr::reduce(dplyr::full_join, by = c("submission_id", "catch_id")) %>%
+    dplyr::left_join(validation_output$total_catch_alert, by = c("submission_id")) |>
+    dplyr::left_join(validation_output$fishers_catch_alert, by = c("submission_id")) |>
     tidyr::unite(col = "alert_number", dplyr::contains("alert"), sep = "-", na.rm = TRUE) |>
     dplyr::select("submission_id", "alert_number") |>
     dplyr::distinct() |>
@@ -113,7 +128,17 @@ validate_landings <- function() {
     validated_data |>
     dplyr::left_join(alert_flags, by = c("version", "submission_id")) |>
     dplyr::filter(.data$alert_number == "") |>
-    dplyr::select(-"alert_number")
+    dplyr::select(-"alert_number") |>
+    # Add catch prices
+    dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = "year")) |>
+    dplyr::left_join(price_tables, by = c("date", "landing_site", "fish_category", "size")) |>
+    dplyr::mutate(catch_price = .data$median_ksh_kg_imputed * .data$catch_kg) |>
+    dplyr::group_by(.data$submission_id) |>
+    dplyr::mutate(
+      total_catch_price = sum(.data$catch_price)
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::select(-c("date", "median_ksh_kg_imputed"))
 
   # Define the data and their corresponding collection names
   upload_data <- list(

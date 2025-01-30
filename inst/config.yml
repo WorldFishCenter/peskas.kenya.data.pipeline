@@ -53,6 +53,7 @@ default:
     k_nboats: 5
     k_nfishers: 3
     k_catch: 2.5
+    max_kg: 300
 
 production:
   storage:

@@ -241,6 +241,13 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
   # preprocess raw landings
   processed_legacy_landings <-
     raw_legacy_dat %>%
+    # fix dates and times
+    dplyr::mutate(
+      Date = dplyr::case_when(
+        .data$Date < "1990-01-01" ~ lubridate::as_datetime(lubridate::ymd(paste(.data$Year, .data$Month, .data$Day, sep = "-"))),
+        TRUE ~ .data$Date
+      )
+    ) %>%
     dplyr::select(-c("Months", "Year", "Day", "Month", "Management", "New_mngt", "Mngt")) %>%
     janitor::clean_names() %>%
     dplyr::rename(
@@ -466,4 +473,3 @@ clean_catch_names <- function(data = NULL) {
       TRUE ~ catch_name
     ))
 }
-

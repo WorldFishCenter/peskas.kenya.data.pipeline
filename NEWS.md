@@ -1,3 +1,36 @@
+# peskas.kenya.data.pipeline 1.0.0
+
+## New features
+- **Catch Validation Enhancements**:
+  - Added `validate_fishers_catch()` to flag cases where a single fisher reports an excessively high catch.
+  - Introduced `impute_price()` to fill missing fish prices using median values across landing sites and sizes.
+  - Integrated price validation in `validate_landings()` to ensure missing or zero prices are flagged.
+  
+- **Revenue Metrics in Summaries**:
+  - `export_summaries()` now calculates revenue-based effort metrics:
+    - `rpue` (Revenue Per Unit Effort) as aggregated price per fisher
+    - `rpua` (Revenue Per Unit Area) as aggregated price per square km
+
+- **Extended Workflow Automation**:
+  - Updated GitHub Actions workflow (`data-pipeline.yaml`) to include a job for processing and merging price data.
+  - Added price-related MongoDB collections (`raw_price`, `preprocessed_price`, `price_table`) to `config.yml`.
+
+## Enhancements
+- **Improved Validation and Data Processing**:
+  - `validate_total_catch()` and `validate_catch()` now allow customizable `flag_value` parameters.
+  - Enhanced `merge_prices()` with fixes for site name inconsistencies (e.g., "Rigati" → "Rigata").
+  - `preprocess_legacy_landings()` now ensures valid dates by correcting invalid timestamps.
+
+- **Refined Data Summarization**:
+  - `export_summaries()` now includes revenue metrics while maintaining prior CPUE and CPUA calculations.
+  - Updated `.qmd` reports to reflect new price fields in the summary tables.
+
+## Fixes
+- **Bug Fixes and Consistency Improvements**:
+  - Fixed potential issues in `merge_prices()` that could lead to duplicate price records.
+  - Ensured `impute_price()` correctly applies median imputation across all relevant data points.
+  - Updated `.Rd` documentation for all modified functions to reflect new parameters and changes.
+
 # peskas.kenya.data.pipeline 0.9.0
 
 ## New features

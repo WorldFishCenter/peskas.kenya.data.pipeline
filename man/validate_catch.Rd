@@ -4,7 +4,7 @@
 \alias{validate_catch}
 \title{Validate Individual Catch Data}
 \usage{
-validate_catch(data = NULL, k = NULL, flag_value = 4)
+validate_catch(data = NULL, k = NULL, flag_value = NULL)
 }
 \arguments{
 \item{data}{A data frame containing columns: \code{catch_id}, \code{gear}, \code{fish_category}, \code{catch_kg}.}
