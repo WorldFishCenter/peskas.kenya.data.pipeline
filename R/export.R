@@ -72,68 +72,16 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::filter(!.data$landing_site %in% setdiff(valid_data$landing_site, bmu_size$BMU))
 
   monthly_stats <-
-    valid_data |>
-    dplyr::filter(!is.na(.data$landing_date)) %>%
-    dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = "month")) %>%
-    dplyr::group_by(.data$submission_id) %>%
-    dplyr::summarise(
-      n_catches = dplyr::n(),
-      dplyr::across(dplyr::everything(), ~ dplyr::first(.x))
-    ) %>%
-    dplyr::group_by(.data$landing_site, .data$date) %>%
-    dplyr::summarise(
-      tot_submissions = dplyr::n(),
-      tot_fishers = sum(.data$no_of_fishers, na.rm = TRUE),
-      tot_catches = sum(.data$n_catches, na.rm = TRUE),
-      tot_kg = sum(.data$total_catch_kg, na.rm = TRUE)
-    ) %>%
-    dplyr::ungroup() %>%
-    dplyr::group_by(.data$landing_site) %>%
-    dplyr::arrange(.data$landing_site, dplyr::desc(.data$date)) %>%
+    get_fishery_metrics(validated_data = valid_data, bmus_size_data = bmu_size) |>
+    dplyr::group_by(.data$BMU) %>%
+    dplyr::arrange(.data$BMU, dplyr::desc(.data$date)) %>%
     dplyr::slice_head(n = 6) %>%
     dplyr::ungroup()
 
 
   # Caluclate fishers day and summarise by month the main metrics
   monthly_summaries <-
-    valid_data |>
-    dplyr::rename(BMU = "landing_site") |>
-    dplyr::select(-c("version", "catch_id", "fishing_ground", "lat", "lon", "fish_category", "size", "catch_kg", "catch_price")) |>
-    dplyr::filter(!is.na(.data$landing_date)) %>%
-    dplyr::distinct() |>
-    dplyr::left_join(bmu_size, by = "BMU") |>
-    dplyr::group_by(.data$landing_date, .data$BMU) |>
-    dplyr::summarise(
-      total_fishers = sum(.data$no_of_fishers, na.rm = T),
-      aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
-      aggregated_catch_price = sum(.data$total_catch_price, na.rm = T),
-      size_km = dplyr::first(.data$size_km),
-      mean_trip_catch = stats::median(.data$total_catch_kg, na.rm = T)
-    ) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(
-      effort = .data$total_fishers / .data$size_km,
-      cpue = .data$aggregated_catch_kg / .data$total_fishers,
-      cpua = .data$aggregated_catch_kg / .data$size_km,
-      rpue = .data$aggregated_catch_price / .data$total_fishers,
-      rpua = .data$aggregated_catch_price / .data$size_km
-    ) |>
-    dplyr::mutate(
-      date = lubridate::floor_date(.data$landing_date, unit = "month"),
-      BMU = stringr::str_to_title(.data$BMU)
-    ) |>
-    dplyr::select("BMU", "date", "mean_trip_catch", "effort", "aggregated_catch_kg", "cpue", "cpua", "rpue", "rpua") %>%
-    dplyr::group_by(.data$BMU, .data$date) |>
-    dplyr::summarise(
-      aggregated_catch_kg = sum(.data$aggregated_catch_kg, na.rm = T),
-      mean_trip_catch = mean(.data$mean_trip_catch, na.rm = T),
-      mean_effort = mean(.data$effort, na.rm = T),
-      mean_cpue = mean(.data$cpue, na.rm = T),
-      mean_cpua = mean(.data$cpua, na.rm = T),
-      mean_rpue = mean(.data$rpue, na.rm = T),
-      mean_rpua = mean(.data$rpua, na.rm = T)
-    ) |>
-    dplyr::ungroup() %>%
+    get_fishery_metrics(validated_data = valid_data, bmus_size_data = bmu_size) |>
     tidyr::complete(
       .data$BMU,
       date = seq(min(.data$date), max(.data$date), by = "month"),
@@ -196,33 +144,36 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     valid_data |>
     dplyr::filter(!is.na(.data$gear) & !is.na(.data$landing_date)) %>%
     dplyr::rename(BMU = "landing_site") |>
-    dplyr::select(-c("version", "catch_id", "fishing_ground", "lat", "lon", "fish_category", "size", "catch_kg")) |>
+    dplyr::select(-c("version", "catch_id", "fishing_ground", "lat", "lon", "fish_category", "size", "catch_kg", "catch_price")) |>
     dplyr::distinct() |>
     dplyr::left_join(bmu_size, by = "BMU") |>
     dplyr::group_by(.data$BMU, .data$gear) |>
     dplyr::summarise(
       total_fishers = sum(.data$no_of_fishers),
       aggregated_catch_kg = sum(.data$total_catch_kg),
+      aggregated_catch_price = sum(.data$total_catch_price),
       total_trips = dplyr::n_distinct(.data$submission_id),
       size_km = dplyr::first(.data$size_km),
       unique_days = dplyr::n_distinct(.data$landing_date),
       .groups = "drop"
     ) |>
     dplyr::mutate(
-      mean_trip_catch = .data$aggregated_catch_kg / .data$total_trips,
-      mean_effort = .data$total_fishers / (.data$size_km * .data$unique_days), # Fishers per km² per day
-      mean_cpue = .data$aggregated_catch_kg / (.data$total_fishers * .data$unique_days), # kg per fisher per day
-      mean_cpua = .data$aggregated_catch_kg / (.data$size_km * .data$unique_days) # kg per km² per day
+      mean_effort = .data$total_fishers / .data$size_km,
+      mean_cpue = .data$aggregated_catch_kg / .data$total_fishers,
+      mean_cpua = .data$aggregated_catch_kg / .data$size_km,
+      mean_rpue = .data$aggregated_catch_price / .data$total_fishers,
+      mean_rpua = .data$aggregated_catch_price / .data$size_km
     ) |>
-    dplyr::select("BMU", "gear", "mean_trip_catch", "mean_effort", "mean_cpue", "mean_cpua") |>
+    dplyr::select("BMU", "gear", "mean_effort", "mean_cpue", "mean_cpua", "mean_rpue", "mean_rpua") |>
     tidyr::complete(
       .data$BMU,
       .data$gear,
       fill = list(
-        mean_trip_catch = NA,
         mean_effort = NA,
         mean_cpue = NA,
-        mean_cpua = NA
+        mean_cpua = NA,
+        mean_rpue = NA,
+        mean_rpua = NA
       )
     ) |>
     dplyr::mutate(
@@ -264,4 +215,90 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       )
     }
   )
+}
+
+
+#' Calculate Fishery Performance Metrics
+#'
+#' @description
+#' Calculates key fishery performance metrics from validated catch data,
+#' including effort, CPUE (Catch Per Unit Effort), CPUA (Catch Per Unit Area),
+#' RPUE (Revenue Per Unit Effort), and RPUA (Revenue Per Unit Area).
+#'
+#' @param validated_data A data frame containing validated fishery data with columns:
+#'   \itemize{
+#'     \item landing_site: Name of the landing site (will be renamed to BMU)
+#'     \item landing_date: Date of landing
+#'     \item no_of_fishers: Number of fishers
+#'     \item total_catch_kg: Total catch in kilograms
+#'     \item total_catch_price: Total catch value in currency
+#'   }
+#' @param bmus_size_data A data frame containing BMU size information with columns:
+#'   \itemize{
+#'     \item BMU: Name of the Beach Management Unit (lowercase)
+#'     \item size_km: Size of the BMU in square kilometers
+#'   }
+#'
+#' @return A data frame with monthly aggregated metrics by BMU:
+#'   \itemize{
+#'     \item BMU: Name of the Beach Management Unit (title case)
+#'     \item date: First day of the month
+#'     \item mean_effort: Average fishers per square kilometer
+#'     \item mean_cpue: Average catch (kg) per fisher
+#'     \item mean_cpua: Average catch (kg) per square kilometer
+#'     \item mean_rpue: Average revenue per fisher
+#'     \item mean_rpua: Average revenue per square kilometer
+#'   }
+#'
+#' @details
+#' Metrics are calculated as follows:
+#' - Effort = Total fishers / BMU size (km²)
+#' - CPUE = Total catch (kg) / Total fishers
+#' - CPUA = Total catch (kg) / BMU size (km²)
+#' - RPUE = Total revenue / Total fishers
+#' - RPUA = Total revenue / BMU size (km²)
+#'
+#' @importFrom dplyr rename select filter distinct left_join group_by summarise ungroup mutate
+#' @importFrom stats median
+#' @importFrom lubridate floor_date
+#' @importFrom stringr str_to_title
+#'
+#' @keywords helper
+get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
+  validated_data |>
+    dplyr::rename(BMU = "landing_site") |>
+    dplyr::select(-c("version", "catch_id", "fishing_ground", "lat", "lon", "fish_category", "size", "catch_kg", "catch_price")) |>
+    dplyr::filter(!is.na(.data$landing_date)) %>%
+    dplyr::distinct() |>
+    dplyr::left_join(bmus_size_data, by = "BMU") |>
+    dplyr::group_by(.data$landing_date, .data$BMU) |>
+    dplyr::summarise(
+      total_fishers = sum(.data$no_of_fishers, na.rm = T),
+      aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
+      aggregated_catch_price = sum(.data$total_catch_price, na.rm = T),
+      size_km = dplyr::first(.data$size_km),
+      mean_trip_catch = stats::median(.data$total_catch_kg, na.rm = T)
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(
+      effort = .data$total_fishers / .data$size_km,
+      cpue = .data$aggregated_catch_kg / .data$total_fishers,
+      cpua = .data$aggregated_catch_kg / .data$size_km,
+      rpue = .data$aggregated_catch_price / .data$total_fishers,
+      rpua = .data$aggregated_catch_price / .data$size_km
+    ) |>
+    dplyr::mutate(
+      date = lubridate::floor_date(.data$landing_date, unit = "month"),
+      BMU = stringr::str_to_title(.data$BMU)
+    ) |>
+    dplyr::select("BMU", "date", "effort", "cpue", "cpua", "rpue", "rpua") %>%
+    dplyr::group_by(.data$BMU, .data$date) |>
+    dplyr::summarise(
+      mean_effort = mean(.data$effort, na.rm = T),
+      mean_cpue = mean(.data$cpue, na.rm = T),
+      mean_cpua = mean(.data$cpua, na.rm = T),
+      mean_rpue = mean(.data$rpue, na.rm = T),
+      mean_rpua = mean(.data$rpua, na.rm = T)
+    ) |>
+    dplyr::ungroup()
 }

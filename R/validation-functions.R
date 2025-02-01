@@ -353,7 +353,7 @@ validate_fishers_catch <- function(data = NULL, max_kg = NULL, flag_value = NULL
       alert_fishers_catch = dplyr::case_when(
         .data$no_of_fishers == 1 & .data$total_catch_kg >= max_kg ~ flag_value,
         TRUE ~ NA_real_
-      ),  # Added missing closing parenthesis here
+      ),
       total_catch_kg = ifelse(is.na(.data$alert_fishers_catch), .data$total_catch_kg, NA_real_)
     ) %>%
     dplyr::ungroup() %>%
@@ -392,8 +392,8 @@ validate_fishers_catch <- function(data = NULL, max_kg = NULL, flag_value = NULL
 #' @importFrom tidyr complete nesting
 #' @importFrom stats median
 #'
-#' @keywords helper 
-#' 
+#' @keywords helper
+#'
 #' @export
 impute_price <- function(price_table = NULL) {
   valid_combinations <- price_table %>%
@@ -415,7 +415,7 @@ impute_price <- function(price_table = NULL) {
       )
     ) %>%
     dplyr::ungroup()
-  
+
   # Then calculate median between small and large for NA sizes
   imputed_prices <- imputed_prices %>%
     dplyr::group_by(.data$date, .data$fish_category, .data$landing_site) %>%
@@ -429,6 +429,6 @@ impute_price <- function(price_table = NULL) {
     dplyr::ungroup() %>%
     dplyr::select(-"median_ksh_kg") %>%
     dplyr::distinct()
-  
+
   return(imputed_prices)
 }
