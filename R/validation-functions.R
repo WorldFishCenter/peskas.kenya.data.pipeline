@@ -402,7 +402,7 @@ impute_price <- function(price_table = NULL) {
   # First imputation for all sizes
   imputed_prices <- price_table %>%
     tidyr::complete(
-      tidyr::nesting(.data$fish_category, .data$size),
+      tidyr::nesting(fish_category, size),
       .data$date,
       .data$landing_site
     ) %>%
