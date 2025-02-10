@@ -99,6 +99,7 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
         .data$gear == "ringnet" ~ "monofilament",
         .data$gear == "beachseine_1" ~ "beachseine",
         .data$gear == "ringnet_1" ~ "ringnet",
+        .data$gear == "mshipi_wa_kurambaza" ~ "trollingline",
         TRUE ~ .data$gear
       ),
       # Standardize landing sites

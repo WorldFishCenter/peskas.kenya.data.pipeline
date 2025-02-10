@@ -48,9 +48,9 @@ validate_landings <- function() {
     dplyr::filter(!.data$median_ksh_kg == 0) |>
     impute_price()
 
-
   # Spot weird observations
-  gear_requires_boats <- c("gillnet", "handline", "traps", "monofilament", "reefseine", "ringnet", "setnet")
+  gear_requires_boats <- c("reefseine", "beachseine", "ringnet", "long_line", "trollingline")
+  
 
   logical_check <-
     merged_landings |>
