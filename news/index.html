@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,49 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2.0.0" id="peskaskenyadatapipeline-200">peskas.kenya.data.pipeline 2.0.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-200"></a></h2>
+<div class="section level3">
+<h3 id="new-features-2-0-0">New features<a class="anchor" aria-label="anchor" href="#new-features-2-0-0"></a></h3>
+<ul><li>
+<strong>Alternative Validation Method</strong>:
+<ul><li>Added new validation functions using Interquartile Range (IQR) method:
+<ul><li>
+<code><a href="../reference/alert_outlier_iqr.html">alert_outlier_iqr()</a></code> for IQR-based outlier detection</li>
+<li>
+<code><a href="../reference/check_outliers_iqr.html">check_outliers_iqr()</a></code> for basic outlier checking</li>
+<li>
+<code><a href="../reference/validate_nfishers_iqr.html">validate_nfishers_iqr()</a></code> and <code><a href="../reference/validate_nboats_iqr.html">validate_nboats_iqr()</a></code> for validating fisher and boat counts</li>
+<li>
+<code><a href="../reference/validate_catch_iqr.html">validate_catch_iqr()</a></code> and <code><a href="../reference/validate_total_catch_iqr.html">validate_total_catch_iqr()</a></code> for catch validation</li>
+<li>
+<code><a href="../reference/get_catch_bounds_iqr.html">get_catch_bounds_iqr()</a></code> and <code><a href="../reference/get_total_catch_bounds_iqr.html">get_total_catch_bounds_iqr()</a></code> for calculating bounds</li>
+</ul></li>
+<li>Modified <code><a href="../reference/validate_landings.html">validate_landings()</a></code> to use IQR validation by default</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-2-0-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-2-0-0"></a></h3>
+<ul><li>
+<strong>Improved Error Handling</strong>:
+<ul><li>Added comprehensive input validation in all IQR functions</li>
+<li>Added consistent NULL/empty data checks</li>
+<li>Improved NA value handling using dplyr::if_else</li>
+<li>Added warnings for cases where bounds cannot be calculated</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-2-0-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-2-0-0"></a></h3>
+<ul><li>Added full documentation for all new IQR functions with examples</li>
+<li>Updated NAMESPACE to export new IQR functions</li>
+<li>Added proper Roxygen documentation for all new parameters</li>
+</ul></div>
+<div class="section level3">
+<h3 id="other-changes-2-0-0">Other Changes<a class="anchor" aria-label="anchor" href="#other-changes-2-0-0"></a></h3>
+<ul><li>Switched default validation method from MAD to IQR in main pipeline</li>
+<li>Maintained backward compatibility with existing MAD functions</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.0.0" id="peskaskenyadatapipeline-100">peskas.kenya.data.pipeline 1.0.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-100"></a></h2>
 <div class="section level3">
