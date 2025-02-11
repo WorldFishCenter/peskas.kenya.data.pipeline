@@ -1,0 +1,941 @@
+diff --git a/.DS_Store b/.DS_Store
+index 748583d..c9fb7fa 100644
+Binary files a/.DS_Store and b/.DS_Store differ
+diff --git a/.github/.DS_Store b/.github/.DS_Store
+new file mode 100644
+index 0000000..eef2cab
+Binary files /dev/null and b/.github/.DS_Store differ
+diff --git a/NAMESPACE b/NAMESPACE
+index 07d2dfc..c0dd6ac 100644
+--- a/NAMESPACE
++++ b/NAMESPACE
+@@ -6,17 +6,21 @@ export(":=")
+ export(.data)
+ export(add_version)
+ export(alert_outlier)
++export(alert_outlier_iqr)
+ export(as_label)
+ export(as_name)
++export(check_outliers_iqr)
+ export(clean_catch_names)
+ export(enquo)
+ export(enquos)
+ export(export_summaries)
+ export(expr)
+ export(get_catch_bounds)
++export(get_catch_bounds_iqr)
+ export(get_kobo_data)
+ export(get_metadata)
+ export(get_total_catch_bounds)
++export(get_total_catch_bounds_iqr)
+ export(impute_price)
+ export(ingest_landings)
+ export(ingest_landings_price)
+@@ -32,12 +36,16 @@ export(summarise_catch_price)
+ export(sym)
+ export(syms)
+ export(validate_catch)
++export(validate_catch_iqr)
+ export(validate_dates)
+ export(validate_fishers_catch)
+ export(validate_landings)
+ export(validate_nboats)
++export(validate_nboats_iqr)
+ export(validate_nfishers)
++export(validate_nfishers_iqr)
+ export(validate_total_catch)
++export(validate_total_catch_iqr)
+ importFrom(dplyr,bind_rows)
+ importFrom(dplyr,case_when)
+ importFrom(dplyr,distinct)
+diff --git a/R/validation-functions.R b/R/validation-functions.R
+index a01f27c..0558ca6 100644
+--- a/R/validation-functions.R
++++ b/R/validation-functions.R
+@@ -432,3 +432,372 @@ impute_price <- function(price_table = NULL) {
+ 
+   return(imputed_prices)
+ }
++
++#' Generate an alert vector based on IQR method
++#'
++#' @param x numeric vector where outliers will be checked
++#' @param no_alert_value value to put in the output when there is no alert
++#' @param alert_if_larger alert for when x is above the upper bound
++#' @param alert_if_smaller alert for when x is below the lower bound
++#' @param multiplier multiplier for IQR range (default is 1.5)
++#' @return a vector of the same length as x with alert values
++#' @export
++alert_outlier_iqr <- function(
++  x,
++  no_alert_value = NA_real_,
++  alert_if_larger = no_alert_value,
++  alert_if_smaller = no_alert_value,
++  multiplier = 1.5) {
++
++# Helper function to check if everything is NA or zero
++all_na_or_zero <- function(x) {
++  isTRUE(all(is.na(x) | x == 0))
++}
++
++# If everything is NA or zero there is nothing to compute
++if (all_na_or_zero(x)) {
++  return(NA_real_)  # Changed to match alert_outlier behavior
++}
++
++q <- stats::quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
++iqr <- q[2] - q[1]
++
++# If IQR is zero, we can't compute meaningful bounds
++if (iqr <= 0) {
++  return(NA_real_)
++}
++
++lb <- q[1] - (multiplier * iqr)
++ub <- q[2] + (multiplier * iqr)
++
++dplyr::case_when(
++  x < lb ~ alert_if_smaller,
++  x > ub ~ alert_if_larger,
++  TRUE ~ no_alert_value
++)
++}
++
++#' Get fish groups Catch Bounds using IQR method
++#'
++#' @param data A data frame containing columns: gear, fish_category, catch_kg
++#' @param multiplier multiplier for IQR range (default is 1.5)
++#' @return A data frame with columns: gear, fish_category, upper.up
++#' @export
++get_catch_bounds_iqr <- function(data = NULL, multiplier = 1.5) {
++# Check for NULL or empty data
++if (is.null(data) || nrow(data) == 0) {
++  stop("Input data is NULL or empty")
++}
++
++# Check for required columns
++required_cols <- c("gear", "fish_category", "catch_kg")
++if (!all(required_cols %in% names(data))) {
++  missing_cols <- setdiff(required_cols, names(data))
++  stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
++}
++
++bounds_df <- data %>%
++  # Select only needed columns
++  dplyr::select(dplyr::all_of(required_cols)) %>%
++  # Ensure unique combinations
++  dplyr::distinct() %>%
++  # Remove any invalid fish categories (matching MAD version)
++  dplyr::filter(!is.na(.data$fish_category)) %>%
++  dplyr::filter(!.data$fish_category == "0") %>%
++  # Group by gear and fish category
++  dplyr::group_by(.data$gear, .data$fish_category) %>%
++  # Calculate quartiles and n for each group
++  dplyr::summarise(
++    q1 = stats::quantile(.data$catch_kg, 0.25, na.rm = TRUE),
++    q3 = stats::quantile(.data$catch_kg, 0.75, na.rm = TRUE),
++    n = dplyr::n(),
++    .groups = "drop"
++  ) %>%
++  # Filter groups with enough observations
++  dplyr::filter(.data$n > 1) %>%  # Need at least 2 points for IQR
++  # Calculate IQR and upper bound
++  dplyr::mutate(
++    iqr = .data$q3 - .data$q1,
++    upper.up = .data$q3 + multiplier * .data$iqr
++  ) %>%
++  # Keep only needed columns
++  dplyr::select("gear", "fish_category", "upper.up", "n")
++
++# Check if any bounds were calculated
++if (nrow(bounds_df) == 0) {
++  warning("No bounds could be calculated - check your data")
++}
++
++return(bounds_df)
++}
++
++#' Get Total Catch Bounds using IQR method
++#'
++#' @param data A data frame containing required columns
++#' @param multiplier multiplier for IQR range (default is 1.5)
++#' @return A data frame with upper bounds for each landing site and gear combination
++#' @export
++get_total_catch_bounds_iqr <- function(data = NULL, multiplier = 1.5) {
++# Check for NULL or empty data
++if (is.null(data) || nrow(data) == 0) {
++  stop("Input data is NULL or empty")
++}
++
++# Check for required columns
++required_cols <- c("landing_site", "gear", "total_catch_kg")
++if (!all(required_cols %in% names(data))) {
++  missing_cols <- setdiff(required_cols, names(data))
++  stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
++}
++
++bounds_df <- data %>%
++  # Select and filter
++  dplyr::select(dplyr::all_of(required_cols)) %>%
++  dplyr::filter(!is.na(.data$total_catch_kg)) %>%
++  dplyr::distinct() %>%  # Added to match validate_total_catch behavior
++  # Group and calculate
++  dplyr::group_by(.data$landing_site, .data$gear) %>%
++  dplyr::summarise(
++    q1 = stats::quantile(.data$total_catch_kg, 0.25, na.rm = TRUE),
++    q3 = stats::quantile(.data$total_catch_kg, 0.75, na.rm = TRUE),
++    n = dplyr::n(),
++    .groups = "drop"
++  ) %>%
++  # Filter groups with enough observations
++  dplyr::filter(.data$n > 1) %>%
++  # Calculate bounds
++  dplyr::mutate(
++    iqr = .data$q3 - .data$q1,
++    upper.up = .data$q3 + multiplier * .data$iqr
++  ) %>%
++  dplyr::select("landing_site", "gear", "upper.up", "n")
++
++if (nrow(bounds_df) == 0) {
++  warning("No bounds could be calculated - check your data")
++}
++
++return(bounds_df)
++}
++
++#' Validate Individual Catch Data using IQR method
++#'
++#' @param data A data frame containing required columns
++#' @param multiplier multiplier for IQR range (default is 1.5)
++#' @param flag_value A numeric value to use as the flag for catches exceeding bounds
++#' @return A data frame with validated catch data and alert flags
++#' @export
++validate_catch_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
++# Check for NULL or empty data
++if (is.null(data) || nrow(data) == 0) {
++  stop("Input data is NULL or empty")
++}
++
++# Check for required columns
++required_cols <- c("submission_id", "catch_id", "gear", "fish_category", "catch_kg")
++if (!all(required_cols %in% names(data))) {
++  missing_cols <- setdiff(required_cols, names(data))
++  stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
++}
++
++# Calculate bounds
++bounds <- get_catch_bounds_iqr(data, multiplier)
++
++# Validate using bounds (removed rowwise as it's not needed)
++data %>%
++  dplyr::select(dplyr::all_of(required_cols)) %>%
++  dplyr::left_join(bounds, by = c("gear", "fish_category")) %>%
++  dplyr::mutate(
++    alert_catch = dplyr::case_when(
++      is.na(.data$upper.up) ~ NA_real_,
++      .data$catch_kg >= .data$upper.up ~ flag_value,
++      TRUE ~ NA_real_
++    ),
++    catch_kg = dplyr::if_else(
++      is.na(.data$alert_catch),
++      .data$catch_kg,
++      NA_real_,
++      NA_real_
++    )
++  ) %>%
++  dplyr::select("submission_id", "catch_id", "catch_kg", "alert_catch")
++}
++
++#' Validate Total Catch Data using IQR method
++#'
++#' @param data A data frame containing required columns
++#' @param multiplier multiplier for IQR range (default is 1.5)
++#' @param flag_value A numeric value to use as the flag for catches exceeding bounds
++#' @return A data frame with validated total catch data and alert flags
++#' @export
++validate_total_catch_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
++# Check for NULL or empty data
++if (is.null(data) || nrow(data) == 0) {
++  stop("Input data is NULL or empty")
++}
++
++# Check for required columns
++required_cols <- c("submission_id", "landing_site", "gear", "total_catch_kg")
++if (!all(required_cols %in% names(data))) {
++  missing_cols <- setdiff(required_cols, names(data))
++  stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
++}
++
++# Get unique combinations and calculate bounds
++data_unique <- data %>%
++  dplyr::select(dplyr::all_of(required_cols)) %>%
++  dplyr::distinct()
++
++bounds <- get_total_catch_bounds_iqr(data_unique, multiplier)
++
++# Validate using bounds (removed rowwise as it's not needed)
++data_unique %>%
++  dplyr::left_join(bounds, by = c("landing_site", "gear")) %>%
++  dplyr::mutate(
++    alert_catch = dplyr::case_when(
++      is.na(.data$upper.up) ~ NA_real_,
++      .data$total_catch_kg >= .data$upper.up ~ flag_value,
++      TRUE ~ NA_real_
++    ),
++    total_catch_kg = dplyr::if_else(
++      is.na(.data$alert_catch),
++      .data$total_catch_kg,
++      NA_real_,
++      NA_real_
++    )
++  ) %>%
++  dplyr::select("submission_id", "total_catch_kg", "alert_catch")
++}
++
++#' Check for outliers using IQR method
++#'
++#' @param x numeric vector where outliers will be checked
++#' @param multiplier multiplier for IQR range (default is 1.5)
++#' @return a logical vector indicating which values are within bounds (TRUE) or outliers (FALSE)
++#' @examples
++#' \dontrun{
++#' x <- c(1, 2, 3, 100)
++#' check_outliers_iqr(x, multiplier = 1.5)
++#' }
++#' @export
++check_outliers_iqr <- function(x, multiplier = 1.5) {
++  # Check for NULL
++  if (is.null(x)) {
++    stop("Input vector is NULL")
++  }
++  
++  # Check if numeric
++  if (!is.numeric(x)) {
++    stop("Input must be numeric")
++  }
++  
++  # If everything is NA or zero return NA
++  if (all(is.na(x) | x == 0)) {
++    return(rep(NA, length(x)))
++  }
++
++  # Calculate quartiles and IQR
++  q <- stats::quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
++  iqr <- q[2] - q[1]
++  
++  # If IQR is zero, we can't compute meaningful bounds
++  if (iqr <= 0) {
++    return(rep(NA, length(x)))
++  }
++
++  # Calculate bounds
++  lb <- q[1] - (multiplier * iqr)
++  ub <- q[2] + (multiplier * iqr)
++
++  # Return logical vector
++  x >= lb & x <= ub
++}
++
++#' Validate Number of Fishers using IQR method
++#'
++#' @param data A data frame containing the no_of_fishers column
++#' @param multiplier multiplier for IQR range (default is 1.5)
++#' @param flag_value A numeric value to use as the flag for values outside bounds
++#' @return A data frame with validated no_of_fishers and alert flags
++#' @examples
++#' \dontrun{
++#' validate_nfishers_iqr(data, multiplier = 1.5, flag_value = 7)
++#' }
++#' @export
++validate_nfishers_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
++  # Check for NULL or empty data
++  if (is.null(data) || nrow(data) == 0) {
++    stop("Input data is NULL or empty")
++  }
++  
++  # Check for required columns
++  required_cols <- c("submission_id", "catch_id", "no_of_fishers")
++  if (!all(required_cols %in% names(data))) {
++    missing_cols <- setdiff(required_cols, names(data))
++    stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
++  }
++
++  data %>%
++    dplyr::transmute(
++      .data$submission_id,
++      .data$catch_id,
++      .data$no_of_fishers,
++      alert_n_fishers = alert_outlier_iqr(
++        x = .data$no_of_fishers,
++        alert_if_larger = flag_value,
++        multiplier = multiplier
++      )
++    ) %>%
++    dplyr::mutate(
++      no_of_fishers = dplyr::if_else(
++        is.na(.data$alert_n_fishers),
++        .data$no_of_fishers,
++        NA_real_,
++        NA_real_
++      )
++    )
++}
++
++#' Validate Number of Boats using IQR method
++#'
++#' @param data A data frame containing the n_boats column
++#' @param multiplier multiplier for IQR range (default is 1.5)
++#' @param flag_value A numeric value to use as the flag for values outside bounds
++#' @return A data frame with validated n_boats and alert flags
++#' @examples
++#' \dontrun{
++#' validate_nboats_iqr(data, multiplier = 1.5, flag_value = 8)
++#' }
++#' @export
++validate_nboats_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
++  # Check for NULL or empty data
++  if (is.null(data) || nrow(data) == 0) {
++    stop("Input data is NULL or empty")
++  }
++  
++  # Check for required columns
++  required_cols <- c("submission_id", "catch_id", "n_boats")
++  if (!all(required_cols %in% names(data))) {
++    missing_cols <- setdiff(required_cols, names(data))
++    stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
++  }
++
++  data %>%
++    dplyr::transmute(
++      .data$submission_id,
++      .data$catch_id,
++      .data$n_boats,
++      alert_n_boats = alert_outlier_iqr(
++        x = .data$n_boats,
++        alert_if_larger = flag_value,
++        multiplier = multiplier
++      )
++    ) %>%
++    dplyr::mutate(
++      n_boats = dplyr::if_else(
++        is.na(.data$alert_n_boats),
++        .data$n_boats,
++        NA_real_,
++        NA_real_
++      )
++    )
++}
+diff --git a/R/validation.R b/R/validation.R
+index c171ecf..171c88c 100644
+--- a/R/validation.R
++++ b/R/validation.R
+@@ -50,7 +50,7 @@ validate_landings <- function() {
+ 
+   # Spot weird observations
+   gear_requires_boats <- c("reefseine", "beachseine", "ringnet", "long_line", "trollingline")
+-  
++
+ 
+   logical_check <-
+     merged_landings |>
+@@ -84,15 +84,23 @@ validate_landings <- function() {
+     merged_landings |>
+     dplyr::filter(!.data$submission_id %in% anomalous_submissions)
+ 
+-  validation_output <-
+-    list(
+-      dates_alert = validate_dates(data = merged_landings, flag_value = 6),
+-      fishers_alert = validate_nfishers(data = merged_landings, k = conf$validation$k_nfishers, flag_value = 7),
+-      nboats_alert = validate_nboats(data = merged_landings, k = conf$validation$k_nboats, flag_value = 8),
+-      catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 9),
+-      total_catch_alert = validate_total_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 10),
+-      fishers_catch_alert = validate_fishers_catch(data = merged_landings, max_kg = conf$validation$max_kg, flag_value = 11)
+-    )
++  # validation_output <-
++  #  list(
++  #    dates_alert = validate_dates(data = merged_landings, flag_value = 6),
++  #    fishers_alert = validate_nfishers(data = merged_landings, k = conf$validation$k_nfishers, flag_value = 7),
++  #    nboats_alert = validate_nboats(data = merged_landings, k = conf$validation$k_nboats, flag_value = 8),
++  #    catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 9),
++  #    total_catch_alert = validate_total_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 10),
++  #    fishers_catch_alert = validate_fishers_catch(data = merged_landings, max_kg = conf$validation$max_kg, flag_value = 11)
++  #  )
++  validation_output <- list(
++    dates_alert = validate_dates(data = merged_landings, flag_value = 6),
++    fishers_alert = validate_nfishers_iqr(data = merged_landings, flag_value = 7),
++    nboats_alert = validate_nboats_iqr(data = merged_landings, flag_value = 8),
++    catch_alert = validate_catch_iqr(data = merged_landings, flag_value = 9),
++    total_catch_alert = validate_total_catch_iqr(data = merged_landings, flag_value = 10),
++    fishers_catch_alert = validate_fishers_catch(data = merged_landings, max_kg = conf$validation$max_kg, flag_value = 11)
++  )
+ 
+   validated_vars <-
+     validation_output[c("dates_alert", "fishers_alert", "nboats_alert", "catch_alert")] %>%
+diff --git a/inst/.DS_Store b/inst/.DS_Store
+index 48d41e8..12cbef5 100644
+Binary files a/inst/.DS_Store and b/inst/.DS_Store differ
+diff --git a/inst/reports/.DS_Store b/inst/reports/.DS_Store
+new file mode 100644
+index 0000000..91dbfef
+Binary files /dev/null and b/inst/reports/.DS_Store differ
+diff --git a/inst/reports/data_report.qmd b/inst/reports/data_report.qmd
+index 0ffa5de..eef90fc 100644
+--- a/inst/reports/data_report.qmd
++++ b/inst/reports/data_report.qmd
+@@ -509,10 +509,6 @@ The metrics are calculated at two main scales:
+ 
+ 2. **Monthly Aggregation**: The sample-level metrics are further aggregated by BMU and month. This involves averaging daily measures over each month, yielding monthly mean values for trip catch, effort, CPUE, and CPUA.
+ 
+-- **Effort**: Expressed as fishers per km² per day.
+-- **CPUE**: Reported as kg per fisher per day.
+-- **CPUA**: Calculated as kg per km² per day.
+-
+ ::: {.panel-tabset .nav-pills}
+ ## CPUE
+ 
+@@ -525,7 +521,8 @@ $$
+ $$
+ \text{Mean CPUE}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{CPUE}_i
+ $$
+-*where \(i\) denotes a specific day for a given BMU.*
++
++*where i denotes a specific day for a given BMU.*
+ 
+ ```{r cpue_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
+ bmus_selected <-
+@@ -562,7 +559,6 @@ int_plot_cpue <-
+         format(date, "%B %Y"),
+         mean_cpue
+       )
+-      # alpha = sqrt(n)
+     ),
+     size = 0.5,
+     alpha = 0.5,
+@@ -603,7 +599,7 @@ $$
+ \text{Mean CPUA}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{CPUA}_i
+ $$
+ 
+-*where \(i\) denotes a specific day for a given BMU.*
++*where i denotes a specific day for a given BMU.*
+ 
+ ```{r cpua_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
+ int_plot_cpua <-
+@@ -662,7 +658,7 @@ ggiraph::girafe(
+ 
+ ## Effort
+ 
+-Fishing effort density is calculated daily for each BMU by dividing the number of fishers by the area of the BMU in square kilometers. These daily effort values are then averaged across all days within each month for the corresponding BMU.
++Fishing effort density is calculated daily for each BMU by dividing the number of fishers by the area of the BMU in square kilometers. These daily effort values are then averaged across all days within each month for the corresponding BMU:
+ 
+ $$
+ \text{Effort}_i = \frac{\text{no\_of\_fishers}_i}{\text{size\_km}}
+@@ -672,9 +668,9 @@ $$
+ \text{Mean Effort}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{Effort}_i
+ $$
+ 
+-*where \(i\) denotes a specific day for a given BMU.*
++*where i denotes a specific day for a given BMU.*
+ 
+-```{r effort_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
++```{r effort_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
+ int_plot_effort <-
+   export_data %>%
+   dplyr::filter(BMU %in% bmus_selected) %>%
+@@ -728,4 +724,161 @@ ggiraph::girafe(
+   )
+ )
+ ```
++
++## RPUE
++
++Revenue Per Unit Effort (RPUE) is calculated daily for each BMU by dividing the total revenue by the number of fishers, then averaged monthly:
++
++$$
++\text{RPUE}_i = \frac{\text{total\_price\_kes}_i}{\text{no\_of\_fishers}_i}
++$$
++
++$$
++\text{Mean RPUE}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{RPUE}_i
++$$
++
++*where i denotes a specific day for a given BMU.*
++
++```{r rpue_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
++int_plot_rpue <-
++  export_data %>%
++  dplyr::filter(BMU %in% bmus_selected) %>%
++  ggplot(aes(x = date, y = mean_rpue)) +
++  theme_minimal() +
++  facet_wrap(~BMU, scales = "free_y", ncol = 3) +
++  ggiraph::geom_line_interactive(
++    aes(
++      group = 1,
++      tooltip = sprintf(
++        "Date: %s\nRPUE: %.2f",
++        format(date, "%B %Y"),
++        mean_rpue
++      )
++    ),
++    size = 0.5,
++    alpha = 0.25,
++    color = "#628395"
++  ) +
++  ggiraph::geom_point_interactive(
++    aes(
++      tooltip = sprintf(
++        "Date: %s\nRPUE: %.2f",
++        format(date, "%B %Y"),
++        mean_rpue
++      )
++    ),
++    size = 0.5,
++    alpha = 0.5,
++    color = "#628395"
++  ) +
++  scale_alpha_continuous(
++    range = c(0.2, 0.8),
++    guide = "none"
++  ) +
++  stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
++  labs(x = "", y = "Mean RPUE (KES/fisher/day)") +
++  theme(
++    panel.grid = element_blank()
++  )
++
++ggiraph::girafe(
++  ggobj = int_plot_rpue,
++  options = list(
++    ggiraph::opts_tooltip(
++      opacity = 0.8,
++      use_fill = TRUE,
++      use_stroke = FALSE,
++      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
++    )
++  )
++)
++```
++
++## RPUA
++
++Revenue Per Unit Area (RPUA) represents the daily revenue generated per square kilometer of BMU area, averaged monthly:
++
++$$
++\text{RPUA}_i = \frac{\text{total\_price\_kes}_i}{\text{size\_km}}
++$$
++
++$$
++\text{Mean RPUA}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{RPUA}_i
++$$
++
++*where i denotes a specific day for a given BMU.*
++
++```{r rpua_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
++int_plot_rpua <-
++  export_data %>%
++  dplyr::filter(BMU %in% bmus_selected) %>%
++  ggplot(aes(x = date, y = mean_rpua)) +
++  theme_minimal() +
++  facet_wrap(~BMU, scales = "free_y", ncol = 3) +
++  ggiraph::geom_line_interactive(
++    aes(
++      group = 1,
++      tooltip = sprintf(
++        "Date: %s\nRPUA: %.2f",
++        format(date, "%B %Y"),
++        mean_rpua
++      )
++    ),
++    size = 0.5,
++    alpha = 0.25,
++    color = "#628395"
++  ) +
++  ggiraph::geom_point_interactive(
++    aes(
++      tooltip = sprintf(
++        "Date: %s\nRPUA: %.2f",
++        format(date, "%B %Y"),
++        mean_rpua
++      )
++    ),
++    size = 0.5,
++    alpha = 0.5,
++    color = "#628395"
++  ) +
++  scale_alpha_continuous(
++    range = c(0.2, 0.8),
++    guide = "none"
++  ) +
++  stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
++  labs(x = "", y = "Mean RPUA (KES/km²/day)") +
++  theme(
++    panel.grid = element_blank()
++  )
++
++ggiraph::girafe(
++  ggobj = int_plot_rpua,
++  options = list(
++    ggiraph::opts_tooltip(
++      opacity = 0.8,
++      use_fill = TRUE,
++      use_stroke = FALSE,
++      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
++    )
++  )
++)
++```
+ :::
++
++The combined metrics provide a comprehensive view of the fishery's performance:
++
++1. **Catch Metrics**:
++   - CPUE (kg/fisher/day): Measures fishing efficiency and resource abundance
++   - CPUA (kg/km²/day): Indicates spatial productivity of fishing grounds
++
++2. **Effort Metrics**:
++   - Effort (fishers/km²/day): Quantifies fishing pressure on the resource
++
++3. **Revenue Metrics**:
++   - RPUE (KES/fisher/day): Measures economic efficiency per fisher
++   - RPUA (KES/km²/day): Indicates economic productivity per area
++
++These standardized indicators enable:
++- Comparison of fishing performance across different BMUs
++- Assessment of temporal trends in resource use and economic returns
++- Evaluation of spatial variations in fishing pressure and productivity
++- Integration of ecological and economic dimensions of the fishery
+diff --git a/man/alert_outlier_iqr.Rd b/man/alert_outlier_iqr.Rd
+new file mode 100644
+index 0000000..7628c45
+--- /dev/null
++++ b/man/alert_outlier_iqr.Rd
+@@ -0,0 +1,31 @@
++% Generated by roxygen2: do not edit by hand
++% Please edit documentation in R/validation-functions.R
++\name{alert_outlier_iqr}
++\alias{alert_outlier_iqr}
++\title{Generate an alert vector based on IQR method}
++\usage{
++alert_outlier_iqr(
++  x,
++  no_alert_value = NA_real_,
++  alert_if_larger = no_alert_value,
++  alert_if_smaller = no_alert_value,
++  multiplier = 1.5
++)
++}
++\arguments{
++\item{x}{numeric vector where outliers will be checked}
++
++\item{no_alert_value}{value to put in the output when there is no alert}
++
++\item{alert_if_larger}{alert for when x is above the upper bound}
++
++\item{alert_if_smaller}{alert for when x is below the lower bound}
++
++\item{multiplier}{multiplier for IQR range (default is 1.5)}
++}
++\value{
++a vector of the same length as x with alert values
++}
++\description{
++Generate an alert vector based on IQR method
++}
+diff --git a/man/check_outliers_iqr.Rd b/man/check_outliers_iqr.Rd
+new file mode 100644
+index 0000000..ad59e0d
+--- /dev/null
++++ b/man/check_outliers_iqr.Rd
+@@ -0,0 +1,25 @@
++% Generated by roxygen2: do not edit by hand
++% Please edit documentation in R/validation-functions.R
++\name{check_outliers_iqr}
++\alias{check_outliers_iqr}
++\title{Check for outliers using IQR method}
++\usage{
++check_outliers_iqr(x, multiplier = 1.5)
++}
++\arguments{
++\item{x}{numeric vector where outliers will be checked}
++
++\item{multiplier}{multiplier for IQR range (default is 1.5)}
++}
++\value{
++a logical vector indicating which values are within bounds (TRUE) or outliers (FALSE)
++}
++\description{
++Check for outliers using IQR method
++}
++\examples{
++\dontrun{
++x <- c(1, 2, 3, 100)
++check_outliers_iqr(x, multiplier = 1.5)
++}
++}
+diff --git a/man/get_catch_bounds_iqr.Rd b/man/get_catch_bounds_iqr.Rd
+new file mode 100644
+index 0000000..139e028
+--- /dev/null
++++ b/man/get_catch_bounds_iqr.Rd
+@@ -0,0 +1,19 @@
++% Generated by roxygen2: do not edit by hand
++% Please edit documentation in R/validation-functions.R
++\name{get_catch_bounds_iqr}
++\alias{get_catch_bounds_iqr}
++\title{Get fish groups Catch Bounds using IQR method}
++\usage{
++get_catch_bounds_iqr(data = NULL, multiplier = 1.5)
++}
++\arguments{
++\item{data}{A data frame containing columns: gear, fish_category, catch_kg}
++
++\item{multiplier}{multiplier for IQR range (default is 1.5)}
++}
++\value{
++A data frame with columns: gear, fish_category, upper.up
++}
++\description{
++Get fish groups Catch Bounds using IQR method
++}
+diff --git a/man/get_total_catch_bounds_iqr.Rd b/man/get_total_catch_bounds_iqr.Rd
+new file mode 100644
+index 0000000..7f25712
+--- /dev/null
++++ b/man/get_total_catch_bounds_iqr.Rd
+@@ -0,0 +1,19 @@
++% Generated by roxygen2: do not edit by hand
++% Please edit documentation in R/validation-functions.R
++\name{get_total_catch_bounds_iqr}
++\alias{get_total_catch_bounds_iqr}
++\title{Get Total Catch Bounds using IQR method}
++\usage{
++get_total_catch_bounds_iqr(data = NULL, multiplier = 1.5)
++}
++\arguments{
++\item{data}{A data frame containing required columns}
++
++\item{multiplier}{multiplier for IQR range (default is 1.5)}
++}
++\value{
++A data frame with upper bounds for each landing site and gear combination
++}
++\description{
++Get Total Catch Bounds using IQR method
++}
+diff --git a/man/validate_catch_iqr.Rd b/man/validate_catch_iqr.Rd
+new file mode 100644
+index 0000000..be01fce
+--- /dev/null
++++ b/man/validate_catch_iqr.Rd
+@@ -0,0 +1,21 @@
++% Generated by roxygen2: do not edit by hand
++% Please edit documentation in R/validation-functions.R
++\name{validate_catch_iqr}
++\alias{validate_catch_iqr}
++\title{Validate Individual Catch Data using IQR method}
++\usage{
++validate_catch_iqr(data = NULL, multiplier = 1.5, flag_value = NULL)
++}
++\arguments{
++\item{data}{A data frame containing required columns}
++
++\item{multiplier}{multiplier for IQR range (default is 1.5)}
++
++\item{flag_value}{A numeric value to use as the flag for catches exceeding bounds}
++}
++\value{
++A data frame with validated catch data and alert flags
++}
++\description{
++Validate Individual Catch Data using IQR method
++}
+diff --git a/man/validate_nboats_iqr.Rd b/man/validate_nboats_iqr.Rd
+new file mode 100644
+index 0000000..8447155
+--- /dev/null
++++ b/man/validate_nboats_iqr.Rd
+@@ -0,0 +1,26 @@
++% Generated by roxygen2: do not edit by hand
++% Please edit documentation in R/validation-functions.R
++\name{validate_nboats_iqr}
++\alias{validate_nboats_iqr}
++\title{Validate Number of Boats using IQR method}
++\usage{
++validate_nboats_iqr(data = NULL, multiplier = 1.5, flag_value = NULL)
++}
++\arguments{
++\item{data}{A data frame containing the n_boats column}
++
++\item{multiplier}{multiplier for IQR range (default is 1.5)}
++
++\item{flag_value}{A numeric value to use as the flag for values outside bounds}
++}
++\value{
++A data frame with validated n_boats and alert flags
++}
++\description{
++Validate Number of Boats using IQR method
++}
++\examples{
++\dontrun{
++validate_nboats_iqr(data, multiplier = 1.5, flag_value = 8)
++}
++}
+diff --git a/man/validate_nfishers_iqr.Rd b/man/validate_nfishers_iqr.Rd
+new file mode 100644
+index 0000000..03a33f9
+--- /dev/null
++++ b/man/validate_nfishers_iqr.Rd
+@@ -0,0 +1,26 @@
++% Generated by roxygen2: do not edit by hand
++% Please edit documentation in R/validation-functions.R
++\name{validate_nfishers_iqr}
++\alias{validate_nfishers_iqr}
++\title{Validate Number of Fishers using IQR method}
++\usage{
++validate_nfishers_iqr(data = NULL, multiplier = 1.5, flag_value = NULL)
++}
++\arguments{
++\item{data}{A data frame containing the no_of_fishers column}
++
++\item{multiplier}{multiplier for IQR range (default is 1.5)}
++
++\item{flag_value}{A numeric value to use as the flag for values outside bounds}
++}
++\value{
++A data frame with validated no_of_fishers and alert flags
++}
++\description{
++Validate Number of Fishers using IQR method
++}
++\examples{
++\dontrun{
++validate_nfishers_iqr(data, multiplier = 1.5, flag_value = 7)
++}
++}
+diff --git a/man/validate_total_catch_iqr.Rd b/man/validate_total_catch_iqr.Rd
+new file mode 100644
+index 0000000..2f4a507
+--- /dev/null
++++ b/man/validate_total_catch_iqr.Rd
+@@ -0,0 +1,21 @@
++% Generated by roxygen2: do not edit by hand
++% Please edit documentation in R/validation-functions.R
++\name{validate_total_catch_iqr}
++\alias{validate_total_catch_iqr}
++\title{Validate Total Catch Data using IQR method}
++\usage{
++validate_total_catch_iqr(data = NULL, multiplier = 1.5, flag_value = NULL)
++}
++\arguments{
++\item{data}{A data frame containing required columns}
++
++\item{multiplier}{multiplier for IQR range (default is 1.5)}
++
++\item{flag_value}{A numeric value to use as the flag for catches exceeding bounds}
++}
++\value{
++A data frame with validated total catch data and alert flags
++}
++\description{
++Validate Total Catch Data using IQR method
++}

@@ -50,7 +50,7 @@ validate_landings <- function() {
 
   # Spot weird observations
   gear_requires_boats <- c("reefseine", "beachseine", "ringnet", "long_line", "trollingline")
-  
+
 
   logical_check <-
     merged_landings |>
@@ -84,15 +84,23 @@ validate_landings <- function() {
     merged_landings |>
     dplyr::filter(!.data$submission_id %in% anomalous_submissions)
 
-  validation_output <-
-    list(
-      dates_alert = validate_dates(data = merged_landings, flag_value = 6),
-      fishers_alert = validate_nfishers(data = merged_landings, k = conf$validation$k_nfishers, flag_value = 7),
-      nboats_alert = validate_nboats(data = merged_landings, k = conf$validation$k_nboats, flag_value = 8),
-      catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 9),
-      total_catch_alert = validate_total_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 10),
-      fishers_catch_alert = validate_fishers_catch(data = merged_landings, max_kg = conf$validation$max_kg, flag_value = 11)
-    )
+  # validation_output <-
+  #  list(
+  #    dates_alert = validate_dates(data = merged_landings, flag_value = 6),
+  #    fishers_alert = validate_nfishers(data = merged_landings, k = conf$validation$k_nfishers, flag_value = 7),
+  #    nboats_alert = validate_nboats(data = merged_landings, k = conf$validation$k_nboats, flag_value = 8),
+  #    catch_alert = validate_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 9),
+  #    total_catch_alert = validate_total_catch(data = merged_landings, k = conf$validation$k_catch, flag_value = 10),
+  #    fishers_catch_alert = validate_fishers_catch(data = merged_landings, max_kg = conf$validation$max_kg, flag_value = 11)
+  #  )
+  validation_output <- list(
+    dates_alert = validate_dates(data = merged_landings, flag_value = 6),
+    fishers_alert = validate_nfishers_iqr(data = merged_landings, flag_value = 7),
+    nboats_alert = validate_nboats_iqr(data = merged_landings, flag_value = 8),
+    catch_alert = validate_catch_iqr(data = merged_landings, flag_value = 9),
+    total_catch_alert = validate_total_catch_iqr(data = merged_landings, flag_value = 10),
+    fishers_catch_alert = validate_fishers_catch(data = merged_landings, max_kg = conf$validation$max_kg, flag_value = 11)
+  )
 
   validated_vars <-
     validation_output[c("dates_alert", "fishers_alert", "nboats_alert", "catch_alert")] %>%

@@ -509,10 +509,6 @@ The metrics are calculated at two main scales:
 
 2. **Monthly Aggregation**: The sample-level metrics are further aggregated by BMU and month. This involves averaging daily measures over each month, yielding monthly mean values for trip catch, effort, CPUE, and CPUA.
 
-- **Effort**: Expressed as fishers per km² per day.
-- **CPUE**: Reported as kg per fisher per day.
-- **CPUA**: Calculated as kg per km² per day.
-
 ::: {.panel-tabset .nav-pills}
 ## CPUE
 
@@ -525,7 +521,8 @@ $$
 $$
 \text{Mean CPUE}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{CPUE}_i
 $$
-*where \(i\) denotes a specific day for a given BMU.*
+
+*where i denotes a specific day for a given BMU.*
 
 ```{r cpue_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
 bmus_selected <-
@@ -562,7 +559,6 @@ int_plot_cpue <-
         format(date, "%B %Y"),
         mean_cpue
       )
-      # alpha = sqrt(n)
     ),
     size = 0.5,
     alpha = 0.5,
@@ -603,7 +599,7 @@ $$
 \text{Mean CPUA}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{CPUA}_i
 $$
 
-*where \(i\) denotes a specific day for a given BMU.*
+*where i denotes a specific day for a given BMU.*
 
 ```{r cpua_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
 int_plot_cpua <-
@@ -662,7 +658,7 @@ ggiraph::girafe(
 
 ## Effort
 
-Fishing effort density is calculated daily for each BMU by dividing the number of fishers by the area of the BMU in square kilometers. These daily effort values are then averaged across all days within each month for the corresponding BMU.
+Fishing effort density is calculated daily for each BMU by dividing the number of fishers by the area of the BMU in square kilometers. These daily effort values are then averaged across all days within each month for the corresponding BMU:
 
 $$
 \text{Effort}_i = \frac{\text{no\_of\_fishers}_i}{\text{size\_km}}
@@ -672,9 +668,9 @@ $$
 \text{Mean Effort}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{Effort}_i
 $$
 
-*where \(i\) denotes a specific day for a given BMU.*
+*where i denotes a specific day for a given BMU.*
 
-```{r effort_plot, warning=FALSE, message=FALSE, fig.height=8,dependson="load_initial"}
+```{r effort_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
 int_plot_effort <-
   export_data %>%
   dplyr::filter(BMU %in% bmus_selected) %>%
@@ -728,4 +724,161 @@ ggiraph::girafe(
   )
 )
 ```
+
+## RPUE
+
+Revenue Per Unit Effort (RPUE) is calculated daily for each BMU by dividing the total revenue by the number of fishers, then averaged monthly:
+
+$$
+\text{RPUE}_i = \frac{\text{total\_price\_kes}_i}{\text{no\_of\_fishers}_i}
+$$
+
+$$
+\text{Mean RPUE}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{RPUE}_i
+$$
+
+*where i denotes a specific day for a given BMU.*
+
+```{r rpue_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
+int_plot_rpue <-
+  export_data %>%
+  dplyr::filter(BMU %in% bmus_selected) %>%
+  ggplot(aes(x = date, y = mean_rpue)) +
+  theme_minimal() +
+  facet_wrap(~BMU, scales = "free_y", ncol = 3) +
+  ggiraph::geom_line_interactive(
+    aes(
+      group = 1,
+      tooltip = sprintf(
+        "Date: %s\nRPUE: %.2f",
+        format(date, "%B %Y"),
+        mean_rpue
+      )
+    ),
+    size = 0.5,
+    alpha = 0.25,
+    color = "#628395"
+  ) +
+  ggiraph::geom_point_interactive(
+    aes(
+      tooltip = sprintf(
+        "Date: %s\nRPUE: %.2f",
+        format(date, "%B %Y"),
+        mean_rpue
+      )
+    ),
+    size = 0.5,
+    alpha = 0.5,
+    color = "#628395"
+  ) +
+  scale_alpha_continuous(
+    range = c(0.2, 0.8),
+    guide = "none"
+  ) +
+  stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
+  labs(x = "", y = "Mean RPUE (KES/fisher/day)") +
+  theme(
+    panel.grid = element_blank()
+  )
+
+ggiraph::girafe(
+  ggobj = int_plot_rpue,
+  options = list(
+    ggiraph::opts_tooltip(
+      opacity = 0.8,
+      use_fill = TRUE,
+      use_stroke = FALSE,
+      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
+    )
+  )
+)
+```
+
+## RPUA
+
+Revenue Per Unit Area (RPUA) represents the daily revenue generated per square kilometer of BMU area, averaged monthly:
+
+$$
+\text{RPUA}_i = \frac{\text{total\_price\_kes}_i}{\text{size\_km}}
+$$
+
+$$
+\text{Mean RPUA}_\text{month} = \frac{1}{n}\sum_{i=1}^n \text{RPUA}_i
+$$
+
+*where i denotes a specific day for a given BMU.*
+
+```{r rpua_plot, warning=FALSE, message=FALSE, fig.height=6, dependson="load_initial"}
+int_plot_rpua <-
+  export_data %>%
+  dplyr::filter(BMU %in% bmus_selected) %>%
+  ggplot(aes(x = date, y = mean_rpua)) +
+  theme_minimal() +
+  facet_wrap(~BMU, scales = "free_y", ncol = 3) +
+  ggiraph::geom_line_interactive(
+    aes(
+      group = 1,
+      tooltip = sprintf(
+        "Date: %s\nRPUA: %.2f",
+        format(date, "%B %Y"),
+        mean_rpua
+      )
+    ),
+    size = 0.5,
+    alpha = 0.25,
+    color = "#628395"
+  ) +
+  ggiraph::geom_point_interactive(
+    aes(
+      tooltip = sprintf(
+        "Date: %s\nRPUA: %.2f",
+        format(date, "%B %Y"),
+        mean_rpua
+      )
+    ),
+    size = 0.5,
+    alpha = 0.5,
+    color = "#628395"
+  ) +
+  scale_alpha_continuous(
+    range = c(0.2, 0.8),
+    guide = "none"
+  ) +
+  stat_smooth(method = "loess", col = "firebrick", alpha = 0.25, size = 0.5) +
+  labs(x = "", y = "Mean RPUA (KES/km²/day)") +
+  theme(
+    panel.grid = element_blank()
+  )
+
+ggiraph::girafe(
+  ggobj = int_plot_rpua,
+  options = list(
+    ggiraph::opts_tooltip(
+      opacity = 0.8,
+      use_fill = TRUE,
+      use_stroke = FALSE,
+      css = "padding:5pt;font-family: Open Sans;font-size:1rem;color:white"
+    )
+  )
+)
+```
 :::
+
+The combined metrics provide a comprehensive view of the fishery's performance:
+
+1. **Catch Metrics**:
+   - CPUE (kg/fisher/day): Measures fishing efficiency and resource abundance
+   - CPUA (kg/km²/day): Indicates spatial productivity of fishing grounds
+
+2. **Effort Metrics**:
+   - Effort (fishers/km²/day): Quantifies fishing pressure on the resource
+
+3. **Revenue Metrics**:
+   - RPUE (KES/fisher/day): Measures economic efficiency per fisher
+   - RPUA (KES/km²/day): Indicates economic productivity per area
+
+These standardized indicators enable:
+- Comparison of fishing performance across different BMUs
+- Assessment of temporal trends in resource use and economic returns
+- Evaluation of spatial variations in fishing pressure and productivity
+- Integration of ecological and economic dimensions of the fishery

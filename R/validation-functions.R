@@ -432,3 +432,372 @@ impute_price <- function(price_table = NULL) {
 
   return(imputed_prices)
 }
+
+#' Generate an alert vector based on IQR method
+#'
+#' @param x numeric vector where outliers will be checked
+#' @param no_alert_value value to put in the output when there is no alert
+#' @param alert_if_larger alert for when x is above the upper bound
+#' @param alert_if_smaller alert for when x is below the lower bound
+#' @param multiplier multiplier for IQR range (default is 1.5)
+#' @return a vector of the same length as x with alert values
+#' @export
+alert_outlier_iqr <- function(
+  x,
+  no_alert_value = NA_real_,
+  alert_if_larger = no_alert_value,
+  alert_if_smaller = no_alert_value,
+  multiplier = 1.5) {
+
+# Helper function to check if everything is NA or zero
+all_na_or_zero <- function(x) {
+  isTRUE(all(is.na(x) | x == 0))
+}
+
+# If everything is NA or zero there is nothing to compute
+if (all_na_or_zero(x)) {
+  return(NA_real_)  # Changed to match alert_outlier behavior
+}
+
+q <- stats::quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
+iqr <- q[2] - q[1]
+
+# If IQR is zero, we can't compute meaningful bounds
+if (iqr <= 0) {
+  return(NA_real_)
+}
+
+lb <- q[1] - (multiplier * iqr)
+ub <- q[2] + (multiplier * iqr)
+
+dplyr::case_when(
+  x < lb ~ alert_if_smaller,
+  x > ub ~ alert_if_larger,
+  TRUE ~ no_alert_value
+)
+}
+
+#' Get fish groups Catch Bounds using IQR method
+#'
+#' @param data A data frame containing columns: gear, fish_category, catch_kg
+#' @param multiplier multiplier for IQR range (default is 1.5)
+#' @return A data frame with columns: gear, fish_category, upper.up
+#' @export
+get_catch_bounds_iqr <- function(data = NULL, multiplier = 1.5) {
+# Check for NULL or empty data
+if (is.null(data) || nrow(data) == 0) {
+  stop("Input data is NULL or empty")
+}
+
+# Check for required columns
+required_cols <- c("gear", "fish_category", "catch_kg")
+if (!all(required_cols %in% names(data))) {
+  missing_cols <- setdiff(required_cols, names(data))
+  stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
+}
+
+bounds_df <- data %>%
+  # Select only needed columns
+  dplyr::select(dplyr::all_of(required_cols)) %>%
+  # Ensure unique combinations
+  dplyr::distinct() %>%
+  # Remove any invalid fish categories (matching MAD version)
+  dplyr::filter(!is.na(.data$fish_category)) %>%
+  dplyr::filter(!.data$fish_category == "0") %>%
+  # Group by gear and fish category
+  dplyr::group_by(.data$gear, .data$fish_category) %>%
+  # Calculate quartiles and n for each group
+  dplyr::summarise(
+    q1 = stats::quantile(.data$catch_kg, 0.25, na.rm = TRUE),
+    q3 = stats::quantile(.data$catch_kg, 0.75, na.rm = TRUE),
+    n = dplyr::n(),
+    .groups = "drop"
+  ) %>%
+  # Filter groups with enough observations
+  dplyr::filter(.data$n > 1) %>%  # Need at least 2 points for IQR
+  # Calculate IQR and upper bound
+  dplyr::mutate(
+    iqr = .data$q3 - .data$q1,
+    upper.up = .data$q3 + multiplier * .data$iqr
+  ) %>%
+  # Keep only needed columns
+  dplyr::select("gear", "fish_category", "upper.up", "n")
+
+# Check if any bounds were calculated
+if (nrow(bounds_df) == 0) {
+  warning("No bounds could be calculated - check your data")
+}
+
+return(bounds_df)
+}
+
+#' Get Total Catch Bounds using IQR method
+#'
+#' @param data A data frame containing required columns
+#' @param multiplier multiplier for IQR range (default is 1.5)
+#' @return A data frame with upper bounds for each landing site and gear combination
+#' @export
+get_total_catch_bounds_iqr <- function(data = NULL, multiplier = 1.5) {
+# Check for NULL or empty data
+if (is.null(data) || nrow(data) == 0) {
+  stop("Input data is NULL or empty")
+}
+
+# Check for required columns
+required_cols <- c("landing_site", "gear", "total_catch_kg")
+if (!all(required_cols %in% names(data))) {
+  missing_cols <- setdiff(required_cols, names(data))
+  stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
+}
+
+bounds_df <- data %>%
+  # Select and filter
+  dplyr::select(dplyr::all_of(required_cols)) %>%
+  dplyr::filter(!is.na(.data$total_catch_kg)) %>%
+  dplyr::distinct() %>%  # Added to match validate_total_catch behavior
+  # Group and calculate
+  dplyr::group_by(.data$landing_site, .data$gear) %>%
+  dplyr::summarise(
+    q1 = stats::quantile(.data$total_catch_kg, 0.25, na.rm = TRUE),
+    q3 = stats::quantile(.data$total_catch_kg, 0.75, na.rm = TRUE),
+    n = dplyr::n(),
+    .groups = "drop"
+  ) %>%
+  # Filter groups with enough observations
+  dplyr::filter(.data$n > 1) %>%
+  # Calculate bounds
+  dplyr::mutate(
+    iqr = .data$q3 - .data$q1,
+    upper.up = .data$q3 + multiplier * .data$iqr
+  ) %>%
+  dplyr::select("landing_site", "gear", "upper.up", "n")
+
+if (nrow(bounds_df) == 0) {
+  warning("No bounds could be calculated - check your data")
+}
+
+return(bounds_df)
+}
+
+#' Validate Individual Catch Data using IQR method
+#'
+#' @param data A data frame containing required columns
+#' @param multiplier multiplier for IQR range (default is 1.5)
+#' @param flag_value A numeric value to use as the flag for catches exceeding bounds
+#' @return A data frame with validated catch data and alert flags
+#' @export
+validate_catch_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
+# Check for NULL or empty data
+if (is.null(data) || nrow(data) == 0) {
+  stop("Input data is NULL or empty")
+}
+
+# Check for required columns
+required_cols <- c("submission_id", "catch_id", "gear", "fish_category", "catch_kg")
+if (!all(required_cols %in% names(data))) {
+  missing_cols <- setdiff(required_cols, names(data))
+  stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
+}
+
+# Calculate bounds
+bounds <- get_catch_bounds_iqr(data, multiplier)
+
+# Validate using bounds (removed rowwise as it's not needed)
+data %>%
+  dplyr::select(dplyr::all_of(required_cols)) %>%
+  dplyr::left_join(bounds, by = c("gear", "fish_category")) %>%
+  dplyr::mutate(
+    alert_catch = dplyr::case_when(
+      is.na(.data$upper.up) ~ NA_real_,
+      .data$catch_kg >= .data$upper.up ~ flag_value,
+      TRUE ~ NA_real_
+    ),
+    catch_kg = dplyr::if_else(
+      is.na(.data$alert_catch),
+      .data$catch_kg,
+      NA_real_,
+      NA_real_
+    )
+  ) %>%
+  dplyr::select("submission_id", "catch_id", "catch_kg", "alert_catch")
+}
+
+#' Validate Total Catch Data using IQR method
+#'
+#' @param data A data frame containing required columns
+#' @param multiplier multiplier for IQR range (default is 1.5)
+#' @param flag_value A numeric value to use as the flag for catches exceeding bounds
+#' @return A data frame with validated total catch data and alert flags
+#' @export
+validate_total_catch_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
+# Check for NULL or empty data
+if (is.null(data) || nrow(data) == 0) {
+  stop("Input data is NULL or empty")
+}
+
+# Check for required columns
+required_cols <- c("submission_id", "landing_site", "gear", "total_catch_kg")
+if (!all(required_cols %in% names(data))) {
+  missing_cols <- setdiff(required_cols, names(data))
+  stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
+}
+
+# Get unique combinations and calculate bounds
+data_unique <- data %>%
+  dplyr::select(dplyr::all_of(required_cols)) %>%
+  dplyr::distinct()
+
+bounds <- get_total_catch_bounds_iqr(data_unique, multiplier)
+
+# Validate using bounds (removed rowwise as it's not needed)
+data_unique %>%
+  dplyr::left_join(bounds, by = c("landing_site", "gear")) %>%
+  dplyr::mutate(
+    alert_catch = dplyr::case_when(
+      is.na(.data$upper.up) ~ NA_real_,
+      .data$total_catch_kg >= .data$upper.up ~ flag_value,
+      TRUE ~ NA_real_
+    ),
+    total_catch_kg = dplyr::if_else(
+      is.na(.data$alert_catch),
+      .data$total_catch_kg,
+      NA_real_,
+      NA_real_
+    )
+  ) %>%
+  dplyr::select("submission_id", "total_catch_kg", "alert_catch")
+}
+
+#' Check for outliers using IQR method
+#'
+#' @param x numeric vector where outliers will be checked
+#' @param multiplier multiplier for IQR range (default is 1.5)
+#' @return a logical vector indicating which values are within bounds (TRUE) or outliers (FALSE)
+#' @examples
+#' \dontrun{
+#' x <- c(1, 2, 3, 100)
+#' check_outliers_iqr(x, multiplier = 1.5)
+#' }
+#' @export
+check_outliers_iqr <- function(x, multiplier = 1.5) {
+  # Check for NULL
+  if (is.null(x)) {
+    stop("Input vector is NULL")
+  }
+  
+  # Check if numeric
+  if (!is.numeric(x)) {
+    stop("Input must be numeric")
+  }
+  
+  # If everything is NA or zero return NA
+  if (all(is.na(x) | x == 0)) {
+    return(rep(NA, length(x)))
+  }
+
+  # Calculate quartiles and IQR
+  q <- stats::quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
+  iqr <- q[2] - q[1]
+  
+  # If IQR is zero, we can't compute meaningful bounds
+  if (iqr <= 0) {
+    return(rep(NA, length(x)))
+  }
+
+  # Calculate bounds
+  lb <- q[1] - (multiplier * iqr)
+  ub <- q[2] + (multiplier * iqr)
+
+  # Return logical vector
+  x >= lb & x <= ub
+}
+
+#' Validate Number of Fishers using IQR method
+#'
+#' @param data A data frame containing the no_of_fishers column
+#' @param multiplier multiplier for IQR range (default is 1.5)
+#' @param flag_value A numeric value to use as the flag for values outside bounds
+#' @return A data frame with validated no_of_fishers and alert flags
+#' @examples
+#' \dontrun{
+#' validate_nfishers_iqr(data, multiplier = 1.5, flag_value = 7)
+#' }
+#' @export
+validate_nfishers_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
+  # Check for NULL or empty data
+  if (is.null(data) || nrow(data) == 0) {
+    stop("Input data is NULL or empty")
+  }
+  
+  # Check for required columns
+  required_cols <- c("submission_id", "catch_id", "no_of_fishers")
+  if (!all(required_cols %in% names(data))) {
+    missing_cols <- setdiff(required_cols, names(data))
+    stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
+  }
+
+  data %>%
+    dplyr::transmute(
+      .data$submission_id,
+      .data$catch_id,
+      .data$no_of_fishers,
+      alert_n_fishers = alert_outlier_iqr(
+        x = .data$no_of_fishers,
+        alert_if_larger = flag_value,
+        multiplier = multiplier
+      )
+    ) %>%
+    dplyr::mutate(
+      no_of_fishers = dplyr::if_else(
+        is.na(.data$alert_n_fishers),
+        .data$no_of_fishers,
+        NA_real_,
+        NA_real_
+      )
+    )
+}
+
+#' Validate Number of Boats using IQR method
+#'
+#' @param data A data frame containing the n_boats column
+#' @param multiplier multiplier for IQR range (default is 1.5)
+#' @param flag_value A numeric value to use as the flag for values outside bounds
+#' @return A data frame with validated n_boats and alert flags
+#' @examples
+#' \dontrun{
+#' validate_nboats_iqr(data, multiplier = 1.5, flag_value = 8)
+#' }
+#' @export
+validate_nboats_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
+  # Check for NULL or empty data
+  if (is.null(data) || nrow(data) == 0) {
+    stop("Input data is NULL or empty")
+  }
+  
+  # Check for required columns
+  required_cols <- c("submission_id", "catch_id", "n_boats")
+  if (!all(required_cols %in% names(data))) {
+    missing_cols <- setdiff(required_cols, names(data))
+    stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
+  }
+
+  data %>%
+    dplyr::transmute(
+      .data$submission_id,
+      .data$catch_id,
+      .data$n_boats,
+      alert_n_boats = alert_outlier_iqr(
+        x = .data$n_boats,
+        alert_if_larger = flag_value,
+        multiplier = multiplier
+      )
+    ) %>%
+    dplyr::mutate(
+      n_boats = dplyr::if_else(
+        is.na(.data$alert_n_boats),
+        .data$n_boats,
+        NA_real_,
+        NA_real_
+      )
+    )
+}
