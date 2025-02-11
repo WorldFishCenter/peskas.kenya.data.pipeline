@@ -23,3 +23,4 @@ x <- c(1, 2, 3, 100)
 check_outliers_iqr(x, multiplier = 1.5)
 }
 }
+\keyword{validation}

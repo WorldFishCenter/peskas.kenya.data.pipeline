@@ -17,3 +17,4 @@ A data frame with columns: gear, fish_category, upper.up
 \description{
 Get fish groups Catch Bounds using IQR method
 }
+\keyword{validation}

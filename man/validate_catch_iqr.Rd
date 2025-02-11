@@ -19,3 +19,4 @@ A data frame with validated catch data and alert flags
 \description{
 Validate Individual Catch Data using IQR method
 }
+\keyword{validation}

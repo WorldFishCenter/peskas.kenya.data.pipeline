@@ -441,6 +441,8 @@ impute_price <- function(price_table = NULL) {
 #' @param alert_if_smaller alert for when x is below the lower bound
 #' @param multiplier multiplier for IQR range (default is 1.5)
 #' @return a vector of the same length as x with alert values
+#'
+#' @keywords validation
 #' @export
 alert_outlier_iqr <- function(
   x,
@@ -482,6 +484,8 @@ dplyr::case_when(
 #' @param data A data frame containing columns: gear, fish_category, catch_kg
 #' @param multiplier multiplier for IQR range (default is 1.5)
 #' @return A data frame with columns: gear, fish_category, upper.up
+#'
+#' @keywords validation
 #' @export
 get_catch_bounds_iqr <- function(data = NULL, multiplier = 1.5) {
 # Check for NULL or empty data
@@ -536,6 +540,8 @@ return(bounds_df)
 #' @param data A data frame containing required columns
 #' @param multiplier multiplier for IQR range (default is 1.5)
 #' @return A data frame with upper bounds for each landing site and gear combination
+#'
+#' @keywords validation
 #' @export
 get_total_catch_bounds_iqr <- function(data = NULL, multiplier = 1.5) {
 # Check for NULL or empty data
@@ -585,6 +591,8 @@ return(bounds_df)
 #' @param multiplier multiplier for IQR range (default is 1.5)
 #' @param flag_value A numeric value to use as the flag for catches exceeding bounds
 #' @return A data frame with validated catch data and alert flags
+#'
+#' @keywords validation
 #' @export
 validate_catch_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
 # Check for NULL or empty data
@@ -628,6 +636,8 @@ data %>%
 #' @param multiplier multiplier for IQR range (default is 1.5)
 #' @param flag_value A numeric value to use as the flag for catches exceeding bounds
 #' @return A data frame with validated total catch data and alert flags
+#'
+#' @keywords validation
 #' @export
 validate_total_catch_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
 # Check for NULL or empty data
@@ -673,6 +683,8 @@ data_unique %>%
 #' @param x numeric vector where outliers will be checked
 #' @param multiplier multiplier for IQR range (default is 1.5)
 #' @return a logical vector indicating which values are within bounds (TRUE) or outliers (FALSE)
+#'
+#' @keywords validation
 #' @examples
 #' \dontrun{
 #' x <- c(1, 2, 3, 100)
@@ -684,12 +696,12 @@ check_outliers_iqr <- function(x, multiplier = 1.5) {
   if (is.null(x)) {
     stop("Input vector is NULL")
   }
-  
+
   # Check if numeric
   if (!is.numeric(x)) {
     stop("Input must be numeric")
   }
-  
+
   # If everything is NA or zero return NA
   if (all(is.na(x) | x == 0)) {
     return(rep(NA, length(x)))
@@ -698,7 +710,7 @@ check_outliers_iqr <- function(x, multiplier = 1.5) {
   # Calculate quartiles and IQR
   q <- stats::quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
   iqr <- q[2] - q[1]
-  
+
   # If IQR is zero, we can't compute meaningful bounds
   if (iqr <= 0) {
     return(rep(NA, length(x)))
@@ -718,6 +730,8 @@ check_outliers_iqr <- function(x, multiplier = 1.5) {
 #' @param multiplier multiplier for IQR range (default is 1.5)
 #' @param flag_value A numeric value to use as the flag for values outside bounds
 #' @return A data frame with validated no_of_fishers and alert flags
+#'
+#' @keywords validation
 #' @examples
 #' \dontrun{
 #' validate_nfishers_iqr(data, multiplier = 1.5, flag_value = 7)
@@ -728,7 +742,7 @@ validate_nfishers_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NU
   if (is.null(data) || nrow(data) == 0) {
     stop("Input data is NULL or empty")
   }
-  
+
   # Check for required columns
   required_cols <- c("submission_id", "catch_id", "no_of_fishers")
   if (!all(required_cols %in% names(data))) {
@@ -763,6 +777,8 @@ validate_nfishers_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NU
 #' @param multiplier multiplier for IQR range (default is 1.5)
 #' @param flag_value A numeric value to use as the flag for values outside bounds
 #' @return A data frame with validated n_boats and alert flags
+#'
+#' @keywords validation
 #' @examples
 #' \dontrun{
 #' validate_nboats_iqr(data, multiplier = 1.5, flag_value = 8)
@@ -773,7 +789,7 @@ validate_nboats_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL
   if (is.null(data) || nrow(data) == 0) {
     stop("Input data is NULL or empty")
   }
-  
+
   # Check for required columns
   required_cols <- c("submission_id", "catch_id", "n_boats")
   if (!all(required_cols %in% names(data))) {

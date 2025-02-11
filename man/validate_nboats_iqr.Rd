@@ -24,3 +24,4 @@ Validate Number of Boats using IQR method
 validate_nboats_iqr(data, multiplier = 1.5, flag_value = 8)
 }
 }
+\keyword{validation}

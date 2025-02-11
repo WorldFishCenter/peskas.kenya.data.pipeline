@@ -1,3 +1,32 @@
+# peskas.kenya.data.pipeline 2.0.0
+
+## New features
+- **Alternative Validation Method**:
+  - Added new validation functions using Interquartile Range (IQR) method:
+    - `alert_outlier_iqr()` for IQR-based outlier detection
+    - `check_outliers_iqr()` for basic outlier checking
+    - `validate_nfishers_iqr()` and `validate_nboats_iqr()` for validating fisher and boat counts
+    - `validate_catch_iqr()` and `validate_total_catch_iqr()` for catch validation
+    - `get_catch_bounds_iqr()` and `get_total_catch_bounds_iqr()` for calculating bounds
+  - Modified `validate_landings()` to use IQR validation by default
+
+## Enhancements
+- **Improved Error Handling**:
+  - Added comprehensive input validation in all IQR functions
+  - Added consistent NULL/empty data checks
+  - Improved NA value handling using dplyr::if_else
+  - Added warnings for cases where bounds cannot be calculated
+
+## Documentation
+- Added full documentation for all new IQR functions with examples
+- Updated NAMESPACE to export new IQR functions
+- Added proper Roxygen documentation for all new parameters
+
+## Other Changes
+- Switched default validation method from MAD to IQR in main pipeline
+- Maintained backward compatibility with existing MAD functions
+
+
 # peskas.kenya.data.pipeline 1.0.0
 
 ## New features

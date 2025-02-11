@@ -24,3 +24,4 @@ Validate Number of Fishers using IQR method
 validate_nfishers_iqr(data, multiplier = 1.5, flag_value = 7)
 }
 }
+\keyword{validation}

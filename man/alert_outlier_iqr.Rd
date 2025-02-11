@@ -29,3 +29,4 @@ a vector of the same length as x with alert values
 \description{
 Generate an alert vector based on IQR method
 }
+\keyword{validation}
