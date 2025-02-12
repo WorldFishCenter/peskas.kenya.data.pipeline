@@ -21,6 +21,7 @@ auth/*
 *.xlsx
 *.csv
 *.tsv
+*.patch
 /.quarto/
 docs
 

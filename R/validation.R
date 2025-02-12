@@ -47,7 +47,8 @@ validate_landings <- function() {
     # price per kg cannot be zero
     dplyr::filter(!.data$median_ksh_kg == 0) |>
     impute_price() |>
-    dplyr::mutate(year = lubridate::year(.data$date))
+    dplyr::mutate(year = lubridate::year(.data$date)) |>
+    dplyr::select(-"date")
 
   # Spot weird observations
   gear_requires_boats <- c("reefseine", "beachseine", "ringnet", "long_line", "trollingline")
@@ -147,7 +148,7 @@ validate_landings <- function() {
       total_catch_price = sum(.data$catch_price)
     ) |>
     dplyr::ungroup() |>
-    dplyr::select(-c("date", "median_ksh_kg_imputed"))
+    dplyr::select(-c("year", "median_ksh_kg_imputed"))
 
   # Define the data and their corresponding collection names
   upload_data <- list(
