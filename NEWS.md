@@ -28,6 +28,26 @@
 - Switched default validation method from MAD to IQR in main pipeline
 - Maintained backward compatibility with existing MAD functions
 
+## New features
+- **Migration to Google Cloud Storage**:
+  - Replaced MongoDB storage with Google Cloud Storage (GCS) using Parquet files
+  - Added new cloud storage functions for GCS operations:
+    - Authentication and connection management
+    - Upload and download capabilities
+    - Versioned file handling
+  - Integrated Apache Arrow for efficient Parquet file processing
+  - Updated configuration to support GCS file prefixes and paths
+
+## Enhancements
+- **Storage Operations**:
+  - Refactored storage operations to use cloud-native approaches
+  - Improved data access performance with Parquet file format
+  - Added support for versioned file management
+
+## Dependencies
+- Added cloud storage related libraries
+- Added Arrow for Parquet file handling
+
 
 # peskas.kenya.data.pipeline 1.0.0
 
