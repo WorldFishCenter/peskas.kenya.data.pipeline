@@ -121,7 +121,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
 
   upload_parquet_to_cloud(
     data = price_table,
-    prefix = conf$ingestion$koboform$price$price_table,
+    prefix = conf$surveys$price$price_table$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
