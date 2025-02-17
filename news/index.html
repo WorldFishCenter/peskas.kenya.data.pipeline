@@ -75,6 +75,34 @@
 <ul><li>Switched default validation method from MAD to IQR in main pipeline</li>
 <li>Maintained backward compatibility with existing MAD functions</li>
 </ul></div>
+<div class="section level3">
+<h3 id="new-features-2-0-0-1">New features<a class="anchor" aria-label="anchor" href="#new-features-2-0-0-1"></a></h3>
+<ul><li>
+<strong>Migration to Google Cloud Storage</strong>:
+<ul><li>Replaced MongoDB storage with Google Cloud Storage (GCS) using Parquet files</li>
+<li>Added new cloud storage functions for GCS operations:
+<ul><li>Authentication and connection management</li>
+<li>Upload and download capabilities</li>
+<li>Versioned file handling</li>
+</ul></li>
+<li>Integrated Apache Arrow for efficient Parquet file processing</li>
+<li>Updated configuration to support GCS file prefixes and paths</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-2-0-0-1">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-2-0-0-1"></a></h3>
+<ul><li>
+<strong>Storage Operations</strong>:
+<ul><li>Refactored storage operations to use cloud-native approaches</li>
+<li>Improved data access performance with Parquet file format</li>
+<li>Added support for versioned file management</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="dependencies-2-0-0">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies-2-0-0"></a></h3>
+<ul><li>Added cloud storage related libraries</li>
+<li>Added Arrow for Parquet file handling</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.0.0" id="peskaskenyadatapipeline-100">peskas.kenya.data.pipeline 1.0.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-100"></a></h2>
