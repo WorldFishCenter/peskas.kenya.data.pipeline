@@ -1,6 +1,6 @@
 Package: peskas.kenya.data.pipeline
 Title: Kenya Small-Scale Fisheries Data Pipeline
-Version: 2.0.0
+Version: 2.1.0
 Authors@R: c(
     person("Lorenzo", "Longobardi", , "l.longobardi@cgiar.org", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-3126-7341")),
@@ -12,10 +12,13 @@ Description: This package implements the data and modelling pipelines
 License: GPL (>= 3)
 URL: https://worldfishcenter.github.io/peskas.kenya.data.pipeline/
 Imports: 
+    arrow,
     config,
     digest,
     dplyr,
     git2r,
+    googleAuthR,
+    googleCloudStorageR,
     googlesheets4,
     httr2,
     janitor,

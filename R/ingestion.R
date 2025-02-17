@@ -66,12 +66,11 @@ ingest_landings <- function(url = NULL,
     dplyr::bind_rows() %>%
     dplyr::rename(submission_id = "_id")
 
-  logger::log_info("Uploading raw data to mongodb")
-  mdb_collection_push(
+  upload_parquet_to_cloud(
     data = raw_survey,
-    connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$raw,
-    db_name = conf$storage$mongodb$database$pipeline$name
+    prefix = conf$surveys$catch$ongoing$raw$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
   )
 }
 
@@ -144,12 +143,11 @@ ingest_landings_price <- function(
     dplyr::bind_rows() %>%
     dplyr::rename(submission_id = "_id")
 
-  logger::log_info("Uploading raw data to mongodb")
-  mdb_collection_push(
+  upload_parquet_to_cloud(
     data = raw_survey,
-    connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$raw_price,
-    db_name = conf$storage$mongodb$database$pipeline$name
+    prefix = conf$surveys$price$raw$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
   )
 }
 

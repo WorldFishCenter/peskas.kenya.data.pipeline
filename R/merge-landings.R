@@ -29,21 +29,18 @@
 merge_landings <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  legacy <-
-    mdb_collection_pull(
-      collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$preprocessed,
-      db_name = conf$storage$mongodb$database$pipeline$name,
-      connection_string = conf$storage$mongodb$connection_string
-    ) |>
-    dplyr::as_tibble()
+  legacy <- download_parquet_from_cloud(
+    prefix = conf$surveys$catch$legacy$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
 
   ongoing <-
-    mdb_collection_pull(
-      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$preprocessed,
-      db_name = conf$storage$mongodb$database$pipeline$name,
-      connection_string = conf$storage$mongodb$connection_string
-    ) |>
-    dplyr::as_tibble()
+    download_parquet_from_cloud(
+      prefix = conf$surveys$catch$ongoing$preprocessed$file_prefix,
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options
+    )
 
   merged_landings <-
     dplyr::bind_rows(legacy, ongoing, .id = "version") %>%
@@ -55,11 +52,11 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
 
   logger::log_info("Uploading merged landings data to mongodb")
   # upload preprocessed landings
-  mdb_collection_push(
+  upload_parquet_to_cloud(
     data = merged_landings,
-    connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$merged_landings,
-    db_name = conf$storage$mongodb$database$pipeline$name
+    prefix = conf$surveys$catch$ongoing$merged$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
   )
 }
 
@@ -91,28 +88,26 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
 
   logger::log_info("Downloading legacy price data from mongodb")
 
-  legacy <-
-    mdb_collection_pull(
-      collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$preprocessed,
-      db_name = conf$storage$mongodb$database$pipeline$name,
-      connection_string = conf$storage$mongodb$connection_string
-    ) |>
-    dplyr::as_tibble() |>
+  legacy <- download_parquet_from_cloud(
+    prefix = conf$ingestion$koboform$catch$legacy$preprocessed,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  ) |>
     dplyr::mutate(size = NA_character_) |>
     dplyr::select("landing_date", "landing_site", "fish_category", "size", "ksh_kg") |>
     summarise_catch_price(unit = "year")
 
+
   logger::log_info("Downloading ongoing price data from mongodb")
 
-  ongoing_price <-
-    mdb_collection_pull(
-      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$preprocessed_price,
-      db_name = conf$storage$mongodb$database$pipeline$name,
-      connection_string = conf$storage$mongodb$connection_string
-    ) |>
-    dplyr::as_tibble() |>
+  ongoing_price <- download_parquet_from_cloud(
+    prefix = conf$ingestion$koboform$price$preprocessed,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  ) |>
     dplyr::select("landing_date", "landing_site", "fish_category", "size", "ksh_kg") |>
     summarise_catch_price(unit = "year")
+
 
   price_table <-
     dplyr::bind_rows(legacy, ongoing_price) |>
@@ -123,12 +118,11 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
       TRUE ~ .data$landing_site
     ))
 
-  logger::log_info("Uploading price table to mongodb")
-  mdb_collection_push(
+  upload_parquet_to_cloud(
     data = price_table,
-    connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$price_table,
-    db_name = conf$storage$mongodb$database$pipeline$name
+    prefix = conf$ingestion$koboform$price$price_table,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
   )
 }
 

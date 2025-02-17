@@ -30,7 +30,8 @@ RUN install2.r --error --skipinstalled \
     stringr \
     tibble \
     tidyr \
-    univOutl
+    univOutl \
+    arrow
 
 # Install suggests
 RUN install2.r --error --skipinstalled \

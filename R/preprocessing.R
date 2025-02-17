@@ -28,14 +28,11 @@
 preprocess_landings <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  # get raw landings from mongodb
-  raw_dat <- mdb_collection_pull(
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$raw,
-    db_name = conf$storage$mongodb$database$pipeline$name,
-    connection_string = conf$storage$mongodb$connection_string
-  ) |>
-    dplyr::as_tibble()
-
+  raw_dat <- download_parquet_from_cloud(
+    prefix = conf$surveys$catch$ongoing$raw$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
   # Rename columns and select relevant fields
   renamed_raw <-
     raw_dat |>
@@ -187,13 +184,11 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::select("submission_id", "catch_id", dplyr::everything()) |>
     dplyr::rename(total_catch_kg = "tot_catch_fixed")
 
-  logger::log_info("Uploading preprocessed data to mongodb")
-  # upload preprocessed landings
-  mdb_collection_push(
+  upload_parquet_to_cloud(
     data = preprocessed_landings,
-    connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$preprocessed,
-    db_name = conf$storage$mongodb$database$pipeline$name
+    prefix = conf$surveys$catch$ongoing$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
   )
 }
 
@@ -231,15 +226,12 @@ preprocess_landings <- function(log_threshold = logger::DEBUG) {
 preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  # get raw landings from mongodb
-  raw_legacy_dat <- mdb_collection_pull(
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$raw,
-    db_name = conf$storage$mongodb$database$pipeline$name,
-    connection_string = conf$storage$mongodb$connection_string
-  ) |>
-    dplyr::as_tibble()
+  raw_legacy_dat <- download_parquet_from_cloud(
+    prefix = conf$surveys$catch$legacy$raw$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
 
-  # preprocess raw landings
   processed_legacy_landings <-
     raw_legacy_dat %>%
     # fix dates and times
@@ -324,13 +316,11 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(total_catch_kg = sum(.data$catch_kg, na.rm = T)) |>
     dplyr::ungroup()
 
-  logger::log_info("Uploading preprocessed legacy data to mongodb")
-  # upload preprocessed landings
-  mdb_collection_push(
+  upload_parquet_to_cloud(
     data = processed_legacy_landings,
-    connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$legacy$preprocessed,
-    db_name = conf$storage$mongodb$database$pipeline$name
+    prefix = conf$surveys$catch$legacy$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
   )
 }
 
@@ -364,14 +354,11 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
 preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  # get raw landings from mongodb
-  raw_dat <- mdb_collection_pull(
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$raw_price,
-    db_name = conf$storage$mongodb$database$pipeline$name,
-    connection_string = conf$storage$mongodb$connection_string
-  ) |>
-    dplyr::as_tibble()
-
+  raw_dat <- download_parquet_from_cloud(
+    prefix = conf$surveys$price$raw$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
   # Rename columns and select relevant fields
   renamed_raw <-
     raw_dat |>
@@ -434,13 +421,12 @@ preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::distinct()
   # manage mismatch between caluclated total catch and total catch from form
   # Combine processed data
-  logger::log_info("Uploading preprocessed data to mongodb")
-  # upload preprocessed landings
-  mdb_collection_push(
+
+  upload_parquet_to_cloud(
     data = preprocessed_landings_price,
-    connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$preprocessed_price,
-    db_name = conf$storage$mongodb$database$pipeline$name
+    prefix = conf$surveys$price$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
   )
 }
 

@@ -5,6 +5,34 @@ default:
       asset_id_price: !expr Sys.getenv('KOBO_ASSET_ID_PRICE')
       username: !expr Sys.getenv('KOBO_USERNAME')
       password: !expr Sys.getenv('KOBO_PASSWORD')
+  
+  surveys:
+    catch:
+      ongoing:
+        raw:
+          file_prefix: wcs-surveys-raw
+        preprocessed:
+          file_prefix: wcs-surveys-preprocessed
+        merged:
+          file_prefix: wcs-surveys-merged
+        validated:
+          file_prefix: wcs-surveys-validated
+      legacy:
+        raw:
+          file_prefix: wcs-legacy-surveys-raw
+        preprocessed:
+          file_prefix: wcs-legacy-surveys-preprocessed
+        validated:
+          file_prefix: wcs-legacy-surveys-validated
+    price:
+      raw:
+        file_prefix: wcs-price-surveys-raw
+      preprocessed:
+        file_prefix: wcs-price-surveys-preprocessed
+      price_table:
+        file_prefix: wcs-price_table
+    flags:
+      file_prefix: wcs-alert-flags
   storage:
     mongodb:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
@@ -37,18 +65,21 @@ default:
               fish_distribution: fish_distribution
               map_distribution: map_distribution
               gear_summaries: gear_summaries
+    
     google:
       key: gcs
       options:
         project: peskas
         bucket: kenya-dev
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+  
   metadata:
     google_sheets:
       name: metadata-tables
       sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
       tables:
         - BMUs
+  
   validation:
     k_nboats: 5
     k_nfishers: 3
@@ -59,6 +90,9 @@ production:
   storage:
     mongodb:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
+    google:
+      options:
+        bucket: kenya-prod
 
 local:
   inherits: development

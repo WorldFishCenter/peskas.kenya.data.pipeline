@@ -30,18 +30,18 @@ validate_landings <- function() {
   conf <- read_config()
 
   merged_landings <-
-    mdb_collection_pull(
-      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$merged_landings,
-      db_name = conf$storage$mongodb$database$pipeline$name,
-      connection_string = conf$storage$mongodb$connection_string
-    ) |>
-    dplyr::as_tibble()
+    download_parquet_from_cloud(
+      prefix = conf$surveys$catch$ongoing$merged$file_prefix,
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options
+    )
+
 
   price_tables <-
-    mdb_collection_pull(
-      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$price_table,
-      db_name = conf$storage$mongodb$database$pipeline$name,
-      connection_string = conf$storage$mongodb$connection_string
+    download_parquet_from_cloud(
+      prefix = conf$surveys$price$price_table$file_prefix,
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options
     ) |>
     dplyr::as_tibble() |>
     # price per kg cannot be zero
@@ -152,8 +152,8 @@ validate_landings <- function() {
 
   # Define the data and their corresponding collection names
   upload_data <- list(
-    list(data = clean_data, collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$validated),
-    list(data = alert_flags, collection_name = conf$storage$mongodb$database$pipeline$collection_name$validation_flags)
+    list(data = clean_data, prefix = conf$surveys$catch$ongoing$validated$file_prefix),
+    list(data = alert_flags, prefix = conf$surveys$flags$file_prefix)
   )
   # Log messages for each upload
   log_messages <- c(
@@ -165,11 +165,11 @@ validate_landings <- function() {
     upload_data, log_messages,
     ~ {
       logger::log_info(.y) # Log the current message
-      mdb_collection_push(
+      upload_parquet_to_cloud(
         data = .x$data,
-        connection_string = conf$storage$mongodb$connection_string,
-        collection_name = .x$collection_name,
-        db_name = conf$storage$mongodb$database$pipeline$name
+        provider = conf$storage$google$key,
+        prefix = .x$prefix,
+        options = conf$storage$google$options
       )
     }
   )

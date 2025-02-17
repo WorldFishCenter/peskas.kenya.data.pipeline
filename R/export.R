@@ -54,12 +54,11 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
   valid_data <-
-    mdb_collection_pull(
-      connection_string = conf$storage$mongodb$connection_string,
-      collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$validated,
-      db_name = conf$storage$mongod$database$pipeline$name
-    ) |>
-    dplyr::as_tibble()
+    download_parquet_from_cloud(
+      prefix = conf$surveys$catch$ongoing$validated$file_prefix,
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options
+    )
 
   bmu_size <-
     get_metadata()$BMUs |>
