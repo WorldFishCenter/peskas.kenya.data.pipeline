@@ -7,15 +7,20 @@
 validate_landings()
 }
 \value{
-This function does not return a value. Instead, it processes the data and uploads the validated results to a MongoDB collection in the pipeline databse.
+No return value. Function processes the data and uploads the validated results
+as Parquet files to Google Cloud Storage.
 }
 \description{
-This function imports and validates preprocessed fisheries data from a MongoDB collection. It conducts a series of validation checks to ensure data integrity, including checks on dates, fisher counts, boat numbers, and catch weights. The function then compiles the validated data and corresponding alert flags, which are subsequently uploaded back to MongoDB.
+This function imports and validates preprocessed fisheries data from Google Cloud Storage.
+It conducts a series of validation checks to ensure data integrity, including checks
+on dates, fisher counts, boat numbers, and catch weights. The function then compiles
+the validated data and corresponding alert flags, which are subsequently uploaded
+back to Google Cloud Storage.
 }
 \details{
 The function performs the following main operations:
 \enumerate{
-\item Pulls preprocessed landings data from the preprocessed MongoDB collection.
+\item Downloads preprocessed landings data from Google Cloud Storage.
 \item Validates the data for consistency and accuracy, focusing on:
 \itemize{
 \item Date validation
@@ -25,18 +30,13 @@ The function performs the following main operations:
 }
 \item Generates a validated dataset that integrates the results of the validation checks.
 \item Creates alert flags to identify and track any data issues discovered during validation.
-\item Merges the validated data with additional metadata, such as survey details and landing site information.
-\item Uploads the validated dataset to the validated MongoDB collection.
+\item Merges the validated data with additional metadata.
+\item Uploads the validated dataset and alert flags as Parquet files to Google Cloud Storage.
 }
 }
 \note{
-This function requires a configuration file to be present and readable by the 'read_config' function, which should provide MongoDB connection details and parameters for validation.
-}
-\examples{
-\dontrun{
-validate_landings()
-}
-
+This function requires a configuration file with Google Cloud Storage credentials
+and parameters for validation.
 }
 \keyword{validation}
 \keyword{workflow}

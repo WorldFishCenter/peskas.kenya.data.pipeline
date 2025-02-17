@@ -1,24 +1,25 @@
 #' Merge Legacy and Ongoing Landings Data
 #'
 #' This function merges preprocessed legacy landings data with ongoing landings data
-#' from separate MongoDB collections. It combines the datasets, performs minimal
-#' transformations, and uploads the merged result to a new MongoDB collection.
+#' from Google Cloud Storage. It combines the datasets, performs minimal
+#' transformations, and uploads the merged result as a Parquet file.
 #'
 #' @param log_threshold Logging threshold level (default: logger::DEBUG)
 #'
-#' @return This function does not return a value. Instead, it processes the data and uploads
-#'   the result to a MongoDB collection in the pipeline database.
+#' @return No return value. Function processes the data and uploads the result as a
+#' Parquet file to Google Cloud Storage.
 #'
 #' @details
 #' The function performs the following main operations:
-#' 1. Pulls preprocessed legacy data from the legacy preprocessed MongoDB collection.
-#' 2. Pulls preprocessed ongoing data from the ongoing preprocessed MongoDB collection.
-#' 3. Combines the two datasets using `dplyr::bind_rows()`, adding a 'version' column to distinguish the sources.
+#' 1. Downloads preprocessed legacy data from Google Cloud Storage.
+#' 2. Downloads preprocessed ongoing data from Google Cloud Storage.
+#' 3. Combines the two datasets using `dplyr::bind_rows()`, adding a 'version' column
+#'    to distinguish the sources.
 #' 4. Selects and orders relevant columns for the final merged dataset.
-#' 5. Uploads the merged data to a new MongoDB collection for merged landings data.
+#' 5. Uploads the merged data as a Parquet file to Google Cloud Storage.
 #'
-#' @note This function requires a configuration file to be present and readable by the
-#'   'read_config' function, which should provide MongoDB connection details.
+#' @note This function requires a configuration file with Google Cloud Storage
+#' credentials and file prefix settings.
 #'
 #' @keywords workflow data-merging
 #' @examples
@@ -50,7 +51,7 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
       "size", "catch_kg", "total_catch_kg"
     )
 
-  logger::log_info("Uploading merged landings data to mongodb")
+  logger::log_info("Uploading merged landings data to google cloud storage")
   # upload preprocessed landings
   upload_parquet_to_cloud(
     data = merged_landings,

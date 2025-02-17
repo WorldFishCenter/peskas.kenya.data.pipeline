@@ -10,27 +10,28 @@ merge_landings(log_threshold = logger::DEBUG)
 \item{log_threshold}{Logging threshold level (default: logger::DEBUG)}
 }
 \value{
-This function does not return a value. Instead, it processes the data and uploads
-the result to a MongoDB collection in the pipeline database.
+No return value. Function processes the data and uploads the result as a
+Parquet file to Google Cloud Storage.
 }
 \description{
 This function merges preprocessed legacy landings data with ongoing landings data
-from separate MongoDB collections. It combines the datasets, performs minimal
-transformations, and uploads the merged result to a new MongoDB collection.
+from Google Cloud Storage. It combines the datasets, performs minimal
+transformations, and uploads the merged result as a Parquet file.
 }
 \details{
 The function performs the following main operations:
 \enumerate{
-\item Pulls preprocessed legacy data from the legacy preprocessed MongoDB collection.
-\item Pulls preprocessed ongoing data from the ongoing preprocessed MongoDB collection.
-\item Combines the two datasets using \code{dplyr::bind_rows()}, adding a 'version' column to distinguish the sources.
+\item Downloads preprocessed legacy data from Google Cloud Storage.
+\item Downloads preprocessed ongoing data from Google Cloud Storage.
+\item Combines the two datasets using \code{dplyr::bind_rows()}, adding a 'version' column
+to distinguish the sources.
 \item Selects and orders relevant columns for the final merged dataset.
-\item Uploads the merged data to a new MongoDB collection for merged landings data.
+\item Uploads the merged data as a Parquet file to Google Cloud Storage.
 }
 }
 \note{
-This function requires a configuration file to be present and readable by the
-'read_config' function, which should provide MongoDB connection details.
+This function requires a configuration file with Google Cloud Storage
+credentials and file prefix settings.
 }
 \examples{
 \dontrun{

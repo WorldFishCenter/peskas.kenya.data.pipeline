@@ -10,24 +10,24 @@ preprocess_landings(log_threshold = logger::DEBUG)
 \item{log_threshold}{Logging threshold level (default: logger::DEBUG)}
 }
 \value{
-A tibble containing the preprocessed landings data
+No return value. Function processes the data and uploads the result as a Parquet file to Google Cloud Storage.
 }
 \description{
-This function preprocesses raw landings data from a MongoDB collection.
+This function preprocesses raw landings data from Google Cloud Storage.
 It performs various data cleaning and transformation operations, including
 column renaming, data pivoting, and standardization of catch names.
 }
 \details{
 The function performs the following main operations:
 \enumerate{
-\item Pulls raw data from the MongoDB collection
+\item Downloads raw data from Google Cloud Storage
 \item Renames columns and selects relevant fields
 \item Generates unique survey IDs
 \item Cleans and standardizes text fields
 \item Pivots catch data from wide to long format
 \item Standardizes catch names and separates size information
 \item Converts data types and handles cases with no catch data
-\item Uploads the processed data to the preprocessed MongoDB collection.
+\item Uploads the processed data as a Parquet file to Google Cloud Storage
 }
 }
 \examples{

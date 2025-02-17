@@ -1,9 +1,9 @@
 #' Download and Process WCS Catch Surveys from Kobotoolbox
 #'
 #' This function retrieves survey data from Kobotoolbox for a specific project,
-#' processes it, and uploads the raw data to a MongoDB database. It uses the
-#' `get_kobo_data` function, which is a wrapper for `kobotools_kpi_data` from
-#' the KoboconnectR package.
+#' processes it, and uploads the raw data as a Parquet file to Google Cloud Storage.
+#' It uses the `get_kobo_data` function, which is a wrapper for `kobotools_kpi_data`
+#' from the KoboconnectR package.
 #'
 #' @param url The URL of Kobotoolbox (default is NULL, uses value from configuration).
 #' @param project_id The asset ID of the project to download data from (default is NULL, uses value from configuration).
@@ -11,7 +11,7 @@
 #' @param psswd Password for Kobotoolbox account (default is NULL, uses value from configuration).
 #' @param encoding Encoding to be used for data retrieval (default is NULL, uses "UTF-8").
 #'
-#' @return No return value. Function downloads data, processes it, and uploads to MongoDB.
+#' @return No return value. Function downloads data, processes it, and uploads to Google Cloud Storage.
 #'
 #' @details
 #' The function performs the following steps:
@@ -19,7 +19,7 @@
 #' 2. Downloads survey data from Kobotoolbox using `get_kobo_data`.
 #' 3. Checks for uniqueness of submissions.
 #' 4. Converts data to tabular format.
-#' 5. Uploads raw data to MongoDB.
+#' 5. Uploads raw data as a Parquet file to Google Cloud Storage.
 #'
 #' Note that while parameters are provided for customization, the function
 #' currently uses hardcoded values and configuration settings for some parameters.
@@ -77,7 +77,7 @@ ingest_landings <- function(url = NULL,
 #' Download and Process WCS Price Surveys from Kobotoolbox
 #'
 #' This function retrieves survey data from Kobotoolbox for a specific project,
-#' processes it, and uploads the raw data to a MongoDB database. It uses the
+#' processes it, and uploads the raw data to a Google Cloud Storage. It uses the
 #' `get_kobo_data` function, which is a wrapper for `kobotools_kpi_data` from
 #' the KoboconnectR package.
 #'
@@ -87,7 +87,7 @@ ingest_landings <- function(url = NULL,
 #' @param psswd Password for Kobotoolbox account (default is NULL, uses value from configuration).
 #' @param encoding Encoding to be used for data retrieval (default is NULL, uses "UTF-8").
 #'
-#' @return No return value. Function downloads data, processes it, and uploads to MongoDB.
+#' @return No return value. Function downloads data, processes it, and uploads to Google Cloud Storage
 #'
 #' @details
 #' The function performs the following steps:
@@ -95,7 +95,7 @@ ingest_landings <- function(url = NULL,
 #' 2. Downloads survey data from Kobotoolbox using `get_kobo_data`.
 #' 3. Checks for uniqueness of submissions.
 #' 4. Converts data to tabular format.
-#' 5. Uploads raw data to MongoDB.
+#' 5. Uploads raw data to Google Cloud Storage
 #'
 #' Note that while parameters are provided for customization, the function
 #' currently uses hardcoded values and configuration settings for some parameters.

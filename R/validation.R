@@ -1,12 +1,17 @@
 #' Validate Fisheries Data
 #'
-#' This function imports and validates preprocessed fisheries data from a MongoDB collection. It conducts a series of validation checks to ensure data integrity, including checks on dates, fisher counts, boat numbers, and catch weights. The function then compiles the validated data and corresponding alert flags, which are subsequently uploaded back to MongoDB.
+#' This function imports and validates preprocessed fisheries data from Google Cloud Storage.
+#' It conducts a series of validation checks to ensure data integrity, including checks
+#' on dates, fisher counts, boat numbers, and catch weights. The function then compiles
+#' the validated data and corresponding alert flags, which are subsequently uploaded
+#' back to Google Cloud Storage.
 #'
-#' @return This function does not return a value. Instead, it processes the data and uploads the validated results to a MongoDB collection in the pipeline databse.
+#' @return No return value. Function processes the data and uploads the validated results
+#' as Parquet files to Google Cloud Storage.
 #'
 #' @details
 #' The function performs the following main operations:
-#' 1. Pulls preprocessed landings data from the preprocessed MongoDB collection.
+#' 1. Downloads preprocessed landings data from Google Cloud Storage.
 #' 2. Validates the data for consistency and accuracy, focusing on:
 #'    - Date validation
 #'    - Number of fishers
@@ -14,15 +19,11 @@
 #'    - Catch weight
 #' 3. Generates a validated dataset that integrates the results of the validation checks.
 #' 4. Creates alert flags to identify and track any data issues discovered during validation.
-#' 5. Merges the validated data with additional metadata, such as survey details and landing site information.
-#' 6. Uploads the validated dataset to the validated MongoDB collection.
+#' 5. Merges the validated data with additional metadata.
+#' 6. Uploads the validated dataset and alert flags as Parquet files to Google Cloud Storage.
 #'
-#' @note This function requires a configuration file to be present and readable by the 'read_config' function, which should provide MongoDB connection details and parameters for validation.
-#'
-#' @examples
-#' \dontrun{
-#' validate_landings()
-#' }
+#' @note This function requires a configuration file with Google Cloud Storage credentials
+#' and parameters for validation.
 #'
 #' @keywords workflow validation
 #' @export
@@ -157,8 +158,8 @@ validate_landings <- function() {
   )
   # Log messages for each upload
   log_messages <- c(
-    "Uploading validated data to mongodb",
-    "Uploading validation flags data to mongodb"
+    "Uploading validated data to google cloud storage",
+    "Uploading validation flags data to google cloud storage"
   )
   # Walk through both the data and the log messages
   purrr::walk2(
