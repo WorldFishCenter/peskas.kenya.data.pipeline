@@ -90,7 +90,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
   logger::log_info("Downloading legacy price data from mongodb")
 
   legacy <- download_parquet_from_cloud(
-    prefix = conf$ingestion$koboform$catch$legacy$preprocessed,
+    prefix = conf$surveys$catch$legacy$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   ) |>
@@ -102,7 +102,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
   logger::log_info("Downloading ongoing price data from mongodb")
 
   ongoing_price <- download_parquet_from_cloud(
-    prefix = conf$ingestion$koboform$price$preprocessed,
+    prefix = conf$surveys$price$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   ) |>
