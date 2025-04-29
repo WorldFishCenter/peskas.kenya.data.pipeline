@@ -58,7 +58,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       prefix = conf$surveys$catch$ongoing$validated$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
-    )
+    ) |>
+    dplyr::filter(.data$landing_date >= "2023-01-01")
 
   bmu_size <-
     get_metadata()$BMUs |>
@@ -68,19 +69,26 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     )
 
   valid_data %<>%
-    dplyr::filter(!.data$landing_site %in% setdiff(valid_data$landing_site, bmu_size$BMU))
+    dplyr::filter(
+      !.data$landing_site %in% setdiff(valid_data$landing_site, bmu_size$BMU)
+    )
 
   monthly_stats <-
-    get_fishery_metrics(validated_data = valid_data, bmus_size_data = bmu_size) |>
+    get_fishery_metrics(
+      validated_data = valid_data,
+      bmus_size_data = bmu_size
+    ) |>
     dplyr::group_by(.data$BMU) %>%
     dplyr::arrange(.data$BMU, dplyr::desc(.data$date)) %>%
     dplyr::slice_head(n = 6) %>%
     dplyr::ungroup()
 
-
   # Caluclate fishers day and summarise by month the main metrics
   monthly_summaries <-
-    get_fishery_metrics(validated_data = valid_data, bmus_size_data = bmu_size) |>
+    get_fishery_metrics(
+      validated_data = valid_data,
+      bmus_size_data = bmu_size
+    ) |>
     tidyr::complete(
       .data$BMU,
       date = seq(min(.data$date), max(.data$date), by = "month"),
@@ -110,22 +118,34 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       .groups = "drop"
     ) %>%
     dplyr::ungroup() %>%
-    tidyr::complete(.data$landing_site, .data$gear, fill = list(gear_n = 0, gear_perc = 0)) %>%
+    tidyr::complete(
+      .data$landing_site,
+      .data$gear,
+      fill = list(gear_n = 0, gear_perc = 0)
+    ) %>%
     dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
-
 
   fish_distribution <-
     valid_data %>%
-    dplyr::group_by(.data$landing_site) %>% # First group by landing_site only
+    dplyr::group_by(.data$landing_site, .data$landing_date) %>% # First group by landing_site only
     dplyr::mutate(total_catch = sum(.data$catch_kg, na.rm = TRUE)) %>% # Get total catch per landing site
-    dplyr::group_by(.data$landing_site, .data$fish_category) %>%
+    dplyr::group_by(
+      .data$landing_site,
+      .data$landing_date,
+      .data$fish_category
+    ) %>%
     dplyr::summarise(
       catch_kg = sum(.data$catch_kg, na.rm = TRUE),
       catch_percent = .data$catch_kg / dplyr::first(.data$total_catch) * 100,
       .groups = "drop"
     ) %>%
     dplyr::ungroup() %>%
-    tidyr::complete(.data$landing_site, .data$fish_category, fill = list(catch_kg = 0, catch_percent = 0)) %>%
+    tidyr::complete(
+      .data$landing_site,
+      .data$landing_date,
+      .data$fish_category,
+      fill = list(catch_kg = 0, catch_percent = 0)
+    ) %>%
     dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
 
   map_distribution <-
@@ -138,12 +158,23 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::filter(!is.na(.data$lat) & !is.na(.data$landing_site)) %>%
     dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
 
-
   gear_summaries <-
     valid_data |>
     dplyr::filter(!is.na(.data$gear) & !is.na(.data$landing_date)) %>%
     dplyr::rename(BMU = "landing_site") |>
-    dplyr::select(-c("version", "catch_id", "fishing_ground", "lat", "lon", "fish_category", "size", "catch_kg", "catch_price")) |>
+    dplyr::select(
+      -c(
+        "version",
+        "catch_id",
+        "fishing_ground",
+        "lat",
+        "lon",
+        "fish_category",
+        "size",
+        "catch_kg",
+        "catch_price"
+      )
+    ) |>
     dplyr::distinct() |>
     dplyr::left_join(bmu_size, by = "BMU") |>
     dplyr::group_by(.data$BMU, .data$gear) |>
@@ -163,7 +194,15 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       mean_rpue = .data$aggregated_catch_price / .data$total_fishers,
       mean_rpua = .data$aggregated_catch_price / .data$size_km
     ) |>
-    dplyr::select("BMU", "gear", "mean_effort", "mean_cpue", "mean_cpua", "mean_rpue", "mean_rpua") |>
+    dplyr::select(
+      "BMU",
+      "gear",
+      "mean_effort",
+      "mean_cpue",
+      "mean_cpua",
+      "mean_rpue",
+      "mean_rpua"
+    ) |>
     tidyr::complete(
       .data$BMU,
       .data$gear,
@@ -179,12 +218,10 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       BMU = stringr::str_to_title(.data$BMU)
     )
 
-
   # Dataframes to upload
   dataframes_to_upload <- list(
     monthly_stats = monthly_stats,
     monthly_summaries = monthly_summaries,
-    gear_distribution = gear_distribution,
     fish_distribution = fish_distribution,
     map_distribution = map_distribution,
     gear_summaries = gear_summaries
@@ -194,7 +231,6 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
   collection_names <- list(
     monthly_stats = conf$storage$mongod$database$dashboard$collection_name$ongoing$monthly_stats,
     monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$ongoing$catch_monthly,
-    gear_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$gear_distribution,
     fish_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$fish_distribution,
     map_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$map_distribution,
     gear_summaries = conf$storage$mongod$database$dashboard$collection_name$ongoing$gear_summaries
@@ -266,7 +302,19 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
   validated_data |>
     dplyr::rename(BMU = "landing_site") |>
-    dplyr::select(-c("version", "catch_id", "fishing_ground", "lat", "lon", "fish_category", "size", "catch_kg", "catch_price")) |>
+    dplyr::select(
+      -c(
+        "version",
+        "catch_id",
+        "fishing_ground",
+        "lat",
+        "lon",
+        "fish_category",
+        "size",
+        "catch_kg",
+        "catch_price"
+      )
+    ) |>
     dplyr::filter(!is.na(.data$landing_date)) %>%
     dplyr::distinct() |>
     dplyr::left_join(bmus_size_data, by = "BMU") |>
