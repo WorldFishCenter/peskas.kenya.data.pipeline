@@ -137,7 +137,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       .data$landing_site,
       .data$date,
       .data$fish_category,
-      fill = list(total_catch_kg = 0)
+      fill = list(total_catch_kg = NA_real_)
     ) %>%
     dplyr::mutate(
       landing_site = stringr::str_to_title(.data$landing_site),
