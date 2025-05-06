@@ -28,6 +28,7 @@ Imports:
     mongolite,
     purrr,
     rlang,
+    sf,
     stringr,
     tibble,
     tidyr,

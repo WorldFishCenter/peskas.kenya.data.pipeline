@@ -72,7 +72,6 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::filter(
       !.data$landing_site %in% setdiff(valid_data$landing_site, bmu_size$BMU)
     )
-
   monthly_stats <-
     get_fishery_metrics(
       validated_data = valid_data,
@@ -102,6 +101,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
         mean_rpua = NA
       )
     )
+
+  create_geos(monthly_summaries_dat = monthly_summaries)
 
   # Calculate gear usage percent
   gear_distribution <-
@@ -171,24 +172,24 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::left_join(bmu_size, by = "BMU") |>
     # Calculate daily metrics
     dplyr::mutate(
-      daily_effort = daily_fishers / size_km, # fishers/km²/day
-      daily_cpue = daily_catch_kg / daily_fishers, # kg/fisher/day
-      daily_cpua = daily_catch_kg / size_km, # kg/km²/day
-      daily_rpue = daily_catch_price / daily_fishers, # KES/fisher/day
-      daily_rpua = daily_catch_price / size_km # KES/km²/day
+      daily_effort = .data$daily_fishers / .data$size_km, # fishers/km²/day
+      daily_cpue = .data$daily_catch_kg / .data$daily_fishers, # kg/fisher/day
+      daily_cpua = .data$daily_catch_kg / .data$size_km, # kg/km²/day
+      daily_rpue = .data$daily_catch_price / .data$daily_fishers, # KES/fisher/day
+      daily_rpua = .data$daily_catch_price / .data$size_km # KES/km²/day
     ) |>
     # Regroup to calculate average metrics across days
-    dplyr::group_by(BMU, gear) |>
+    dplyr::group_by(.data$BMU, .data$gear) |>
     dplyr::summarise(
       # Count number of days with data for this gear/BMU
       days_with_data = dplyr::n(),
-      total_fishers = sum(daily_fishers),
+      total_fishers = sum(.data$daily_fishers),
       # Calculate mean metrics (averaging the daily values)
-      mean_effort = mean(daily_effort, na.rm = TRUE),
-      mean_cpue = mean(daily_cpue, na.rm = TRUE),
-      mean_cpua = mean(daily_cpua, na.rm = TRUE),
-      mean_rpue = mean(daily_rpue, na.rm = TRUE),
-      mean_rpua = mean(daily_rpua, na.rm = TRUE),
+      mean_effort = mean(.data$daily_effort, na.rm = TRUE),
+      mean_cpue = mean(.data$daily_cpue, na.rm = TRUE),
+      mean_cpua = mean(.data$daily_cpua, na.rm = TRUE),
+      mean_rpue = mean(.data$daily_rpue, na.rm = TRUE),
+      mean_rpua = mean(.data$daily_rpua, na.rm = TRUE),
       .groups = "drop"
     ) |>
     dplyr::select(-c("days_with_data", "total_fishers")) |>
@@ -313,7 +314,7 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
     dplyr::summarise(
       total_fishers = sum(.data$no_of_fishers, na.rm = T),
       aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
-      aggregated_catch_price = sum(.data$total_catch_price, na.rm = T),
+      aggregated_catch_price = sum(.data$total_catch_price),
       size_km = dplyr::first(.data$size_km),
       mean_trip_catch = stats::median(.data$total_catch_kg, na.rm = T)
     ) |>
@@ -339,4 +340,136 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
       mean_rpua = mean(.data$rpua, na.rm = T)
     ) |>
     dplyr::ungroup()
+}
+
+
+#' Generate Geographic Regional Summaries of Fishery Data
+#'
+#' @description
+#' This function creates geospatial representations of fishery metrics by aggregating
+#' BMU (Beach Management Unit) data to regional levels along the Kenyan coast. It assigns
+#' each BMU to its nearest coastal region, calculates regional summaries of fishery
+#' performance metrics, and exports the results as a GeoJSON file for spatial visualization.
+#'
+#' @details
+#' The function performs the following operations:
+#' 1. **BMU Coordinate Extraction**: Retrieves geographic coordinates (latitude/longitude) for all BMUs.
+#' 2. **Spatial Conversion**: Converts BMU coordinates to spatial point objects.
+#' 3. **Regional Assignment**: Uses spatial analysis to assign each BMU to its nearest coastal region.
+#' 4. **Regional Aggregation**: Calculates monthly summary statistics for each region by aggregating BMU data.
+#' 5. **GeoJSON Creation**: Combines regional polygon geometries with summary statistics and exports as GeoJSON.
+#'
+#' **Calculated Regional Metrics** (using median values across BMUs in each region):
+#' - Mean effort (fishers per square kilometer)
+#' - Mean CPUE (Catch Per Unit Effort, kg per fisher)
+#' - Mean CPUA (Catch Per Unit Area, kg per square kilometer)
+#' - Mean RPUE (Revenue Per Unit Effort, currency per fisher)
+#' - Mean RPUA (Revenue Per Unit Area, currency per square kilometer)
+#'
+#' @param monthly_summaries_dat A data frame containing monthly fishery metrics by BMU,
+#'        typically the output from the `get_fishery_metrics()` function, with columns:
+#'        BMU, date, mean_effort, mean_cpue, mean_cpua, mean_rpue, mean_rpua.
+#'
+#' @return This function does not return a value. It writes a GeoJSON file named
+#'         "kenya_monthly_summaries.geojson" to the inst/ directory of the package,
+#'         containing regional polygons with associated monthly fishery metrics.#'
+#' @note
+#' **Dependencies**:
+#' - Requires the `sf` package for spatial operations.
+#' - Requires a GeoJSON file named "KEN_coast_regions.geojson" included in the
+#'   peskas.kenya.data.pipeline package.
+#' - Uses the `get_metadata()` function to retrieve BMU location information.
+#'
+#' @importFrom sf st_as_sf st_read st_boundary st_distance st_write
+#' @importFrom dplyr transmute left_join select group_by summarise mutate
+#' @importFrom stats median
+#' @importFrom stringr str_to_title
+#'
+#' @keywords export
+#' @examples
+#' \dontrun{
+#' # First generate monthly summaries
+#' monthly_data <- get_fishery_metrics(validated_data, bmu_size)
+#'
+#' # Then create regional geospatial summary
+#' create_geos(monthly_summaries_dat = monthly_data)
+#' }
+create_geos <- function(monthly_summaries_dat = NULL) {
+  bmu_coords <-
+    get_metadata()$BMUs |>
+    dplyr::transmute(
+      BMU = stringr::str_to_title(.data$BMU),
+      lat = as.numeric(.data$lat),
+      lon = as.numeric(.data$lon)
+    )
+
+  bmu_points <- sf::st_as_sf(
+    bmu_coords,
+    coords = c("lon", "lat"),
+    crs = 4326,
+    na.fail = FALSE
+  )
+
+  kenya_coast <- sf::st_read(system.file(
+    "KEN_coast_regions.geojson",
+    package = "peskas.kenya.data.pipeline"
+  ))
+
+  # ASSIGN EACH BMU TO THE NEAREST REGION
+  # Calculate boundaries of regions
+  region_boundaries <- sf::st_boundary(kenya_coast)
+
+  # Calculate distances between BMU points and region boundaries
+  distances <- sf::st_distance(bmu_points, region_boundaries)
+
+  # Assign each BMU to the nearest region
+  nearest_region <- as.numeric(apply(distances, 1, which.min))
+
+  # Add the nearest region to the bmu_coords data frame
+  bmu_coords$nearest_region <- kenya_coast$region[nearest_region]
+
+  geos_df <-
+    bmu_coords |>
+    dplyr::select("BMU", region = "nearest_region")
+
+  region_monthly_summaries <-
+    monthly_summaries_dat |>
+    dplyr::left_join(geos_df, by = "BMU") |>
+    dplyr::group_by(.data$region, .data$date) |>
+    dplyr::summarise(
+      mean_effort = stats::median(.data$mean_effort, na.rm = TRUE),
+      mean_cpue = stats::median(.data$mean_cpue, na.rm = TRUE),
+      mean_cpua = stats::median(.data$mean_cpua, na.rm = TRUE),
+      mean_rpue = stats::median(.data$mean_rpue, na.rm = TRUE),
+      mean_rpua = stats::median(.data$mean_rpua, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  geo_region_monthly_summaries <-
+    sf::st_read(system.file(
+      "KEN_coast_regions.geojson",
+      package = "peskas.kenya.data.pipeline"
+    )) |>
+    dplyr::left_join(region_monthly_summaries, by = "region") |>
+    #drop regions where there is no data at all
+    #dplyr::filter(
+    #  !is.na(.data$mean_effort) &
+    #    !is.na(.data$mean_cpue) &
+    #    !is.na(.data$mean_cpua) &
+    #    !is.na(.data$mean_rpue) &
+    #    !is.na(.data$mean_rpua)
+    #) |>
+    dplyr::mutate(
+      date = format(.data$date, "%Y-%m-%dT%H:%M:%SZ"),
+    )
+
+  sf::st_write(
+    geo_region_monthly_summaries,
+    system.file(
+      "kenya_monthly_summaries.geojson",
+      package = "peskas.kenya.data.pipeline"
+    ),
+    driver = "GeoJSON",
+    delete_dsn = TRUE
+  )
 }
