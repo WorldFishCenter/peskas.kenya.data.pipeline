@@ -32,6 +32,37 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.1.0" id="peskaskenyadatapipeline-210">peskas.kenya.data.pipeline 2.1.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-210"></a></h2>
+<div class="section level3">
+<h3 id="new-features-2-1-0">New features<a class="anchor" aria-label="anchor" href="#new-features-2-1-0"></a></h3>
+<ul><li>
+<strong>Geospatial Export Capabilities</strong>:
+<ul><li>Added <code><a href="../reference/create_geos.html">create_geos()</a></code> function to generate GeoJSON files with regional-level fishery metrics</li>
+<li>Implemented spatial analysis to assign BMUs to nearest coastal regions</li>
+<li>Exported time series of aggregated metrics (CPUE, CPUA, effort, RPUE, RPUA) at regional level</li>
+<li>Added regional polygon geometries for spatial visualization</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-2-1-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-2-1-0"></a></h3>
+<ul><li>
+<strong>Temporal Data Processing</strong>:
+<ul><li>Revised fishery metrics calculation for more accurate temporal representation</li>
+<li>Implemented daily-average approach instead of aggregate-then-divide method</li>
+<li>Maintained per-day units (kg/fisher/day, KES/km²/day) consistent with scientific standards</li>
+<li>Fixed CPUE and other daily metrics by calculating at daily level first</li>
+<li>Filtered export data to include only records from 2023 onwards</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-2-1-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-2-1-0"></a></h3>
+<ul><li>
+<strong>Data Quality Improvements</strong>:
+<ul><li>Corrected handling of missing information with NA values instead of zeros</li>
+<li>Fixed dependency logic of the pipeline</li>
+<li>Improved price table prefix path handling</li>
+<li>Updated configuration paths for downloading preprocessed price and legacy catch data</li>
+</ul></li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.0" id="peskaskenyadatapipeline-200">peskas.kenya.data.pipeline 2.0.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-200"></a></h2>
