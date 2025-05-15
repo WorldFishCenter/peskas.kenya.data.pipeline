@@ -1,5 +1,27 @@
 # peskas.kenya.data.pipeline 2.1.0
 
+## New features
+- **Geospatial Export Capabilities**:
+  - Added `create_geos()` function to generate GeoJSON files with regional-level fishery metrics
+  - Implemented spatial analysis to assign BMUs to nearest coastal regions
+  - Exported time series of aggregated metrics (CPUE, CPUA, effort, RPUE, RPUA) at regional level
+  - Added regional polygon geometries for spatial visualization
+
+## Enhancements
+- **Temporal Data Processing**:
+  - Revised fishery metrics calculation for more accurate temporal representation
+  - Implemented daily-average approach instead of aggregate-then-divide method
+  - Maintained per-day units (kg/fisher/day, KES/km²/day) consistent with scientific standards
+  - Fixed CPUE and other daily metrics by calculating at daily level first
+  - Filtered export data to include only records from 2023 onwards
+
+## Fixes
+- **Data Quality Improvements**:
+  - Corrected handling of missing information with NA values instead of zeros
+  - Fixed dependency logic of the pipeline
+  - Improved price table prefix path handling
+  - Updated configuration paths for downloading preprocessed price and legacy catch data
+
 # peskas.kenya.data.pipeline 2.0.0
 
 ## New features
