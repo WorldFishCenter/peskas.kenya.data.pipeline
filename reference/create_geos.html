@@ -13,7 +13,7 @@ performance metrics, and exports the results as a GeoJSON file for spatial visua
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -46,7 +46,7 @@ performance metrics, and exports the results as a GeoJSON file for spatial visua
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">create_geos</span><span class="op">(</span>monthly_summaries_dat <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">create_geos</span><span class="op">(</span>monthly_summaries_dat <span class="op">=</span> <span class="cn">NULL</span>, conf <span class="op">=</span> <span class="va">conf</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -57,6 +57,11 @@ performance metrics, and exports the results as a GeoJSON file for spatial visua
 <dd><p>A data frame containing monthly fishery metrics by BMU,
 typically the output from the <code><a href="get_fishery_metrics.html">get_fishery_metrics()</a></code> function, with columns:
 BMU, date, mean_effort, mean_cpue, mean_cpua, mean_rpue, mean_rpua.</p></dd>
+
+
+<dt id="arg-conf">conf<a class="anchor" aria-label="anchor" href="#arg-conf"></a></dt>
+<dd><p>A configuration object containing the path to the GeoJSON file
+"KEN_coast_regions.geojson" included in the peskas.kenya.data.pipeline package</p></dd>
 
 </dl></div>
     <div class="section level2">
