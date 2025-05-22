@@ -61,8 +61,8 @@ jobs:
       - name: Set env to production
         if: endsWith(github.ref, '/main')
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
-      - name: Call ingest_landings_price()
-        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_landings_price()'
+      - name: Call ingest_landings_price(versions = c("v1", "v2"))
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_landings_price(versions = c("v1", "v2"))'
 
   preprocess-catch-landings:
     name: Preprocess catch surveys
@@ -79,8 +79,10 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call preprocess_legacy_landings()
         run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_legacy_landings()'        
-      - name: Call preprocess_landings()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings()'
+      - name: Call preprocess_landings_v1()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v1()'
+      - name: Call preprocess_landings_v2()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v2()'
 
   preprocess-price-landings:
     name: Preprocess price surveys

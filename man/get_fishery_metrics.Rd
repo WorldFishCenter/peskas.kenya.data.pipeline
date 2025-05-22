@@ -32,12 +32,13 @@ A data frame with monthly aggregated metrics by BMU:
 \item mean_cpua: Average catch (kg) per square kilometer
 \item mean_rpue: Average revenue per fisher
 \item mean_rpua: Average revenue per square kilometer
+\item mean_price_kg: Average price per kg
 }
 }
 \description{
 Calculates key fishery performance metrics from validated catch data,
 including effort, CPUE (Catch Per Unit Effort), CPUA (Catch Per Unit Area),
-RPUE (Revenue Per Unit Effort), and RPUA (Revenue Per Unit Area).
+RPUE (Revenue Per Unit Effort), RPUA (Revenue Per Unit Area) and Price per kg.
 }
 \details{
 Metrics are calculated as follows:
@@ -47,6 +48,7 @@ Metrics are calculated as follows:
 \item CPUA = Total catch (kg) / BMU size (km²)
 \item RPUE = Total revenue / Total fishers
 \item RPUA = Total revenue / BMU size (km²)
+\item Price per kg = Total revenue / Total catch (on single submissions level)
 }
 }
 \keyword{helper}

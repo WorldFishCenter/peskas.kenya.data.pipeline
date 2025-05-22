@@ -10,29 +10,29 @@ preprocess_price_landings(log_threshold = logger::DEBUG)
 \item{log_threshold}{Logging threshold level (default: logger::DEBUG)}
 }
 \value{
-A tibble containing the preprocessed price data
+No return value. Function processes the data and uploads the result as a Parquet file to Google Cloud Storage.
 }
 \description{
-This function preprocesses raw price data from a MongoDB collection.
+This function preprocesses raw price data from Google Cloud Storage.
 It performs various data cleaning and transformation operations, including
 column renaming, data pivoting, and standardization of fish categories and prices.
 }
 \details{
 The function performs the following main operations:
 \enumerate{
-\item Pulls raw price data from the MongoDB collection
+\item Downloads raw price data from Google Cloud Storage
 \item Renames columns and selects relevant fields (submission_id, landing_site, landing_date, and price fields)
 \item Cleans and standardizes text fields
 \item Pivots price data from wide to long format
 \item Standardizes fish category names and separates size information
 \item Converts data types (datetime, character, numeric)
 \item Removes duplicate entries
-\item Uploads the processed data to the preprocessed MongoDB collection
+\item Uploads the processed data as a Parquet file to Google Cloud Storage
 }
 }
 \examples{
 \dontrun{
-preprocessed_data <- preprocess_price_landings()
+preprocess_price_landings()
 }
 }
 \keyword{preprocessing}

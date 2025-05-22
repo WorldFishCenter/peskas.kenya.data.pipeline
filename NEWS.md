@@ -1,3 +1,25 @@
+# peskas.kenya.data.pipeline 3.0.0
+
+## New features
+- **Versioned Survey Processing**:
+  - Added version-specific ingestion functions for catch and price surveys
+  - Implemented `ingest_catch_survey_version()` and `ingest_price_survey_version()` for versioned data handling
+  - Created versioned preprocessing functions (`preprocess_landings_v1()` and `preprocess_landings_v2()`)
+  - Added core preprocessing functions for modular data transformation
+
+## Enhancements
+- **Improved Data Processing Pipeline**:
+  - Refactored ingestion logic to handle multiple survey versions
+  - Enhanced preprocessing workflow with version-specific transformations
+  - Updated configuration structure to support versioned data paths
+  - Improved documentation for all versioned functions
+
+## Documentation
+- Added comprehensive documentation for new versioned functions
+- Updated existing function documentation to reflect versioning changes
+- Added new man pages for version-specific functions
+- Enhanced function descriptions and examples
+
 # peskas.kenya.data.pipeline 2.1.0
 
 ## New features

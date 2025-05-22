@@ -30,32 +30,40 @@
 merge_landings <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  legacy <- download_parquet_from_cloud(
-    prefix = conf$surveys$catch$legacy$preprocessed$file_prefix,
-    provider = conf$storage$google$key,
-    options = conf$storage$google$options
-  )
-
-  ongoing <-
-    download_parquet_from_cloud(
-      prefix = conf$surveys$catch$ongoing$preprocessed$file_prefix,
+  versions <- c("legacy", "v1", "v2")
+  data_list <- versions |>
+    purrr::set_names() |>
+    purrr::map(~ download_parquet_from_cloud(
+      prefix = conf$surveys$catch[[.x]]$preprocessed$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
-    )
+    ))
 
   merged_landings <-
-    dplyr::bind_rows(legacy, ongoing, .id = "version") %>%
+    dplyr::bind_rows(data_list$legacy, data_list$v1, data_list$v2, .id = "version") %>%
     dplyr::select(
-      "version", "submission_id", "catch_id", "landing_date", "landing_site",
-      "fishing_ground", "lat", "lon", "no_of_fishers", "n_boats", "gear", "fish_category",
-      "size", "catch_kg", "total_catch_kg"
+      "version",
+      "submission_id",
+      "catch_id",
+      "landing_date",
+      "landing_site",
+      "fishing_ground",
+      "lat",
+      "lon",
+      "no_of_fishers",
+      "n_boats",
+      "gear",
+      "fish_category",
+      "size",
+      "catch_kg",
+      "total_catch_kg"
     )
 
   logger::log_info("Uploading merged landings data to google cloud storage")
   # upload preprocessed landings
   upload_parquet_to_cloud(
     data = merged_landings,
-    prefix = conf$surveys$catch$ongoing$merged$file_prefix,
+    prefix = conf$surveys$catch$merged$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -95,29 +103,55 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
     options = conf$storage$google$options
   ) |>
     dplyr::mutate(size = NA_character_) |>
-    dplyr::select("landing_date", "landing_site", "fish_category", "size", "ksh_kg") |>
+    dplyr::select(
+      "landing_date",
+      "landing_site",
+      "fish_category",
+      "size",
+      "ksh_kg"
+    ) |>
     summarise_catch_price(unit = "year")
-
 
   logger::log_info("Downloading ongoing price data from mongodb")
 
-  ongoing_price <- download_parquet_from_cloud(
-    prefix = conf$surveys$price$preprocessed$file_prefix,
+  v1_price <- download_parquet_from_cloud(
+    prefix = conf$surveys$price$v1$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   ) |>
-    dplyr::select("landing_date", "landing_site", "fish_category", "size", "ksh_kg") |>
+    dplyr::select(
+      "landing_date",
+      "landing_site",
+      "fish_category",
+      "size",
+      "ksh_kg"
+    ) |>
     summarise_catch_price(unit = "year")
 
+  v2_price <- download_parquet_from_cloud(
+    prefix = conf$surveys$price$v2$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  ) |>
+    dplyr::select(
+      "landing_date",
+      "landing_site",
+      "fish_category",
+      "size",
+      "ksh_kg"
+    ) |>
+    summarise_catch_price(unit = "year")
 
   price_table <-
-    dplyr::bind_rows(legacy, ongoing_price) |>
+    dplyr::bind_rows(legacy, v1_price, v2_price) |>
     dplyr::distinct() |>
-    dplyr::mutate(landing_site = dplyr::case_when(
-      .data$landing_site == "rigati" ~ "rigata",
-      .data$landing_site == "kiwayuu_cha_nje" ~ "kiwayuu_cha_inde",
-      TRUE ~ .data$landing_site
-    ))
+    dplyr::mutate(
+      landing_site = dplyr::case_when(
+        .data$landing_site == "rigati" ~ "rigata",
+        .data$landing_site == "kiwayuu_cha_nje" ~ "kiwayuu_cha_inde",
+        TRUE ~ .data$landing_site
+      )
+    )
 
   upload_parquet_to_cloud(
     data = price_table,
@@ -155,8 +189,15 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
 #' @export
 summarise_catch_price <- function(data = NULL, unit = NULL) {
   data |>
-    dplyr::mutate(date = lubridate::floor_date(.data$landing_date, unit = unit)) |>
-    dplyr::group_by(.data$date, .data$landing_site, .data$fish_category, .data$size) |>
+    dplyr::mutate(
+      date = lubridate::floor_date(.data$landing_date, unit = unit)
+    ) |>
+    dplyr::group_by(
+      .data$date,
+      .data$landing_site,
+      .data$fish_category,
+      .data$size
+    ) |>
     dplyr::summarise(
       median_ksh_kg = stats::median(.data$ksh_kg, na.rm = T)
     ) |>

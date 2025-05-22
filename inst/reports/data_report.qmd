@@ -39,7 +39,7 @@ conf <- peskas.kenya.data.pipeline::read_config()
 valid_data <-
   peskas.kenya.data.pipeline::mdb_collection_pull(
     connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$pipeline$collection_name$ongoing$validated,
+    collection_name = conf$storage$mongodb$database$pipeline$collection_name$v1$validated,
     db_name = conf$storage$mongod$database$pipeline$name
   ) |>
   dplyr::as_tibble()
@@ -47,7 +47,7 @@ valid_data <-
 export_data <-
   peskas.kenya.data.pipeline::mdb_collection_pull(
     connection_string = conf$storage$mongodb$connection_string,
-    collection_name = conf$storage$mongodb$database$dashboard$collection_name$ongoing$catch_monthly,
+    collection_name = conf$storage$mongodb$database$dashboard$collection_name$v1$catch_monthly,
     db_name = conf$storage$mongod$database$dashboard$name
   ) |>
   dplyr::as_tibble()

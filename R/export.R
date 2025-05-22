@@ -55,7 +55,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   valid_data <-
     download_parquet_from_cloud(
-      prefix = conf$surveys$catch$ongoing$validated$file_prefix,
+      prefix = conf$surveys$catch$validated$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
     ) |>
@@ -80,7 +80,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::group_by(.data$BMU) %>%
     dplyr::arrange(.data$BMU, dplyr::desc(.data$date)) %>%
     dplyr::slice_head(n = 6) %>%
-    dplyr::ungroup()
+    dplyr::ungroup() |>
+    dplyr::select(-"mean_price_kg")
 
   # Caluclate fishers day and summarise by month the main metrics
   monthly_summaries <-
@@ -98,11 +99,12 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
         mean_cpue = NA,
         mean_cpua = NA,
         mean_rpue = NA,
-        mean_rpua = NA
+        mean_rpua = NA,
+        mean_price_kg = NA
       )
     )
 
-  create_geos(monthly_summaries_dat = monthly_summaries)
+  create_geos(monthly_summaries_dat = monthly_summaries, conf = conf)
 
   # Calculate gear usage percent
   gear_distribution <-
@@ -157,15 +159,15 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   gear_summaries <-
     valid_data |>
-    dplyr::filter(!is.na(gear) & !is.na(landing_date)) |>
+    dplyr::filter(!is.na(.data$gear) & !is.na(.data$landing_date)) |>
     dplyr::rename(BMU = "landing_site") |>
     # Group by BMU, gear, and landing_date to get daily metrics
-    dplyr::group_by(BMU, gear, landing_date) |>
+    dplyr::group_by(.data$BMU, .data$gear, .data$landing_date) |>
     dplyr::summarise(
-      daily_fishers = sum(no_of_fishers),
-      daily_catch_kg = sum(total_catch_kg),
-      daily_catch_price = sum(total_catch_price),
-      daily_trips = dplyr::n_distinct(submission_id),
+      daily_fishers = sum(.data$no_of_fishers),
+      daily_catch_kg = sum(.data$total_catch_kg),
+      daily_catch_price = sum(.data$total_catch_price),
+      daily_trips = dplyr::n_distinct(.data$submission_id),
       .groups = "keep"
     ) |>
     # Join with BMU size information
@@ -196,8 +198,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::ungroup() |>
     # Complete the combinations and convert to title case
     tidyr::complete(
-      BMU,
-      gear,
+      .data$BMU,
+      .data$gear,
       fill = list(
         mean_effort = NA,
         mean_cpue = NA,
@@ -207,13 +209,13 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       )
     ) |>
     dplyr::mutate(
-      BMU = stringr::str_to_title(BMU)
+      BMU = stringr::str_to_title(.data$BMU)
     )
 
   # Dataframes to upload
   dataframes_to_upload <- list(
     monthly_stats = monthly_stats,
-    monthly_summaries = monthly_summaries,
+    monthly_summaries = monthly_summaries |> dplyr::select(-"mean_price_kg"),
     fish_distribution = fish_distribution,
     map_distribution = map_distribution,
     gear_summaries = gear_summaries
@@ -221,11 +223,11 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   # Collection names
   collection_names <- list(
-    monthly_stats = conf$storage$mongod$database$dashboard$collection_name$ongoing$monthly_stats,
-    monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$ongoing$catch_monthly,
-    fish_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$fish_distribution,
-    map_distribution = conf$storage$mongod$database$dashboard$collection_name$ongoing$map_distribution,
-    gear_summaries = conf$storage$mongod$database$dashboard$collection_name$ongoing$gear_summaries
+    monthly_stats = conf$storage$mongod$database$dashboard$collection_name$v1$monthly_stats,
+    monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$v1$catch_monthly,
+    fish_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$fish_distribution,
+    map_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$map_distribution,
+    gear_summaries = conf$storage$mongod$database$dashboard$collection_name$v1$gear_summaries
   )
 
   # Iterate over the dataframes and upload them
@@ -250,7 +252,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 #' @description
 #' Calculates key fishery performance metrics from validated catch data,
 #' including effort, CPUE (Catch Per Unit Effort), CPUA (Catch Per Unit Area),
-#' RPUE (Revenue Per Unit Effort), and RPUA (Revenue Per Unit Area).
+#' RPUE (Revenue Per Unit Effort), RPUA (Revenue Per Unit Area) and Price per kg.
 #'
 #' @param validated_data A data frame containing validated fishery data with columns:
 #'   \itemize{
@@ -275,6 +277,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 #'     \item mean_cpua: Average catch (kg) per square kilometer
 #'     \item mean_rpue: Average revenue per fisher
 #'     \item mean_rpua: Average revenue per square kilometer
+#'     \item mean_price_kg: Average price per kg
 #'   }
 #'
 #' @details
@@ -284,6 +287,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 #' - CPUA = Total catch (kg) / BMU size (km²)
 #' - RPUE = Total revenue / Total fishers
 #' - RPUA = Total revenue / BMU size (km²)
+#' - Price per kg = Total revenue / Total catch (on single submissions level)
 #'
 #' @importFrom dplyr rename select filter distinct left_join group_by summarise ungroup mutate
 #' @importFrom stats median
@@ -309,6 +313,7 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
     ) |>
     dplyr::filter(!is.na(.data$landing_date)) %>%
     dplyr::distinct() |>
+    dplyr::mutate(price_kg = .data$total_catch_price / .data$total_catch_kg) |>
     dplyr::left_join(bmus_size_data, by = "BMU") |>
     dplyr::group_by(.data$landing_date, .data$BMU) |>
     dplyr::summarise(
@@ -316,6 +321,7 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
       aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
       aggregated_catch_price = sum(.data$total_catch_price),
       size_km = dplyr::first(.data$size_km),
+      median_price_kg = stats::median(.data$price_kg, na.rm = T),
       mean_trip_catch = stats::median(.data$total_catch_kg, na.rm = T)
     ) |>
     dplyr::ungroup() |>
@@ -324,24 +330,25 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
       cpue = .data$aggregated_catch_kg / .data$total_fishers,
       cpua = .data$aggregated_catch_kg / .data$size_km,
       rpue = .data$aggregated_catch_price / .data$total_fishers,
-      rpua = .data$aggregated_catch_price / .data$size_km
+      rpua = .data$aggregated_catch_price / .data$size_km,
+      price_kg = .data$median_price_kg
     ) |>
     dplyr::mutate(
       date = lubridate::floor_date(.data$landing_date, unit = "month"),
       BMU = stringr::str_to_title(.data$BMU)
     ) |>
-    dplyr::select("BMU", "date", "effort", "cpue", "cpua", "rpue", "rpua") %>%
+    dplyr::select("BMU", "date", "effort", "cpue", "cpua", "rpue", "rpua", "price_kg") %>%
     dplyr::group_by(.data$BMU, .data$date) |>
     dplyr::summarise(
       mean_effort = mean(.data$effort, na.rm = T),
       mean_cpue = mean(.data$cpue, na.rm = T),
       mean_cpua = mean(.data$cpua, na.rm = T),
       mean_rpue = mean(.data$rpue, na.rm = T),
-      mean_rpua = mean(.data$rpua, na.rm = T)
+      mean_rpua = mean(.data$rpua, na.rm = T),
+      mean_price_kg = mean(.data$price_kg, na.rm = T)
     ) |>
     dplyr::ungroup()
 }
-
 
 #' Generate Geographic Regional Summaries of Fishery Data
 #'
@@ -370,6 +377,9 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
 #'        typically the output from the `get_fishery_metrics()` function, with columns:
 #'        BMU, date, mean_effort, mean_cpue, mean_cpua, mean_rpue, mean_rpua.
 #'
+#' @param conf A configuration object containing the path to the GeoJSON file
+#'        "KEN_coast_regions.geojson" included in the peskas.kenya.data.pipeline package
+#'
 #' @return This function does not return a value. It writes a GeoJSON file named
 #'         "kenya_monthly_summaries.geojson" to the inst/ directory of the package,
 #'         containing regional polygons with associated monthly fishery metrics.#'
@@ -394,7 +404,7 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
 #' # Then create regional geospatial summary
 #' create_geos(monthly_summaries_dat = monthly_data)
 #' }
-create_geos <- function(monthly_summaries_dat = NULL) {
+create_geos <- function(monthly_summaries_dat = NULL, conf = conf) {
   bmu_coords <-
     get_metadata()$BMUs |>
     dplyr::transmute(
@@ -451,25 +461,34 @@ create_geos <- function(monthly_summaries_dat = NULL) {
       package = "peskas.kenya.data.pipeline"
     )) |>
     dplyr::left_join(region_monthly_summaries, by = "region") |>
-    #drop regions where there is no data at all
-    #dplyr::filter(
+    # drop regions where there is no data at all
+    # dplyr::filter(
     #  !is.na(.data$mean_effort) &
     #    !is.na(.data$mean_cpue) &
     #    !is.na(.data$mean_cpua) &
     #    !is.na(.data$mean_rpue) &
     #    !is.na(.data$mean_rpua)
-    #) |>
+    # ) |>
     dplyr::mutate(
       date = format(.data$date, "%Y-%m-%dT%H:%M:%SZ"),
     )
 
+  filename <- "kenya_monthly_summaries" %>%
+    add_version(extension = "geojson")
+
+
   sf::st_write(
     geo_region_monthly_summaries,
-    system.file(
-      "kenya_monthly_summaries.geojson",
-      package = "peskas.kenya.data.pipeline"
-    ),
+    filename,
     driver = "GeoJSON",
     delete_dsn = TRUE
   )
+
+  upload_cloud_file(
+    file = filename,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options_coasts
+  )
+
+  file.remove(filename)
 }

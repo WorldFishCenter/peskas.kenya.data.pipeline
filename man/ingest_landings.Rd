@@ -4,24 +4,10 @@
 \alias{ingest_landings}
 \title{Download and Process WCS Catch Surveys from Kobotoolbox}
 \usage{
-ingest_landings(
-  url = NULL,
-  project_id = NULL,
-  username = NULL,
-  psswd = NULL,
-  encoding = NULL
-)
+ingest_landings(log_threshold = logger::DEBUG)
 }
 \arguments{
-\item{url}{The URL of Kobotoolbox (default is NULL, uses value from configuration).}
-
-\item{project_id}{The asset ID of the project to download data from (default is NULL, uses value from configuration).}
-
-\item{username}{Username for Kobotoolbox account (default is NULL, uses value from configuration).}
-
-\item{psswd}{Password for Kobotoolbox account (default is NULL, uses value from configuration).}
-
-\item{encoding}{Encoding to be used for data retrieval (default is NULL, uses "UTF-8").}
+\item{log_threshold}{Logging threshold level (default: logger::DEBUG)}
 }
 \value{
 No return value. Function downloads data, processes it, and uploads to Google Cloud Storage.
@@ -47,13 +33,7 @@ currently uses hardcoded values and configuration settings for some parameters.
 }
 \examples{
 \dontrun{
-ingest_landings(
-  url = "eu.kobotoolbox.org",
-  project_id = "my_project_id",
-  username = "admin",
-  psswd = "admin",
-  encoding = "UTF-8"
-)
+ingest_landings()
 }
 }
 \keyword{ingestion}

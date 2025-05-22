@@ -4,12 +4,15 @@
 \alias{create_geos}
 \title{Generate Geographic Regional Summaries of Fishery Data}
 \usage{
-create_geos(monthly_summaries_dat = NULL)
+create_geos(monthly_summaries_dat = NULL, conf = conf)
 }
 \arguments{
 \item{monthly_summaries_dat}{A data frame containing monthly fishery metrics by BMU,
 typically the output from the \code{get_fishery_metrics()} function, with columns:
 BMU, date, mean_effort, mean_cpue, mean_cpua, mean_rpue, mean_rpua.}
+
+\item{conf}{A configuration object containing the path to the GeoJSON file
+"KEN_coast_regions.geojson" included in the peskas.kenya.data.pipeline package}
 }
 \value{
 This function does not return a value. It writes a GeoJSON file named

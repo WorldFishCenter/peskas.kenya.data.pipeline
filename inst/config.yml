@@ -5,30 +5,43 @@ default:
       asset_id_price: !expr Sys.getenv('KOBO_ASSET_ID_PRICE')
       username: !expr Sys.getenv('KOBO_USERNAME')
       password: !expr Sys.getenv('KOBO_PASSWORD')
-  
+    koboform_kf:
+      asset_id_kf: !expr Sys.getenv('KOBO_ASSET_ID_KF')
+      asset_id_price_kf: !expr Sys.getenv('KOBO_ASSET_ID_PRICE_KF')
+      username_kf: !expr Sys.getenv('KOBO_USERNAME_KF')
+      password_kf: !expr Sys.getenv('KOBO_PASSWORD_KF')
   surveys:
     catch:
-      ongoing:
+      v2:
         raw:
-          file_prefix: wcs-surveys-raw
+          file_prefix: wcs-surveys-raw-v2
         preprocessed:
-          file_prefix: wcs-surveys-preprocessed
-        merged:
-          file_prefix: wcs-surveys-merged
-        validated:
-          file_prefix: wcs-surveys-validated
+          file_prefix: wcs-surveys-preprocessed-v2
+      v1:
+        raw:
+          file_prefix: wcs-surveys-raw-v1
+        preprocessed:
+          file_prefix: wcs-surveys-preprocessed-v1
       legacy:
         raw:
           file_prefix: wcs-legacy-surveys-raw
         preprocessed:
           file_prefix: wcs-legacy-surveys-preprocessed
-        validated:
-          file_prefix: wcs-legacy-surveys-validated
+      merged:
+        file_prefix: wcs-surveys-all_landings
+      validated:
+        file_prefix: wcs-surveys-validated
     price:
-      raw:
-        file_prefix: wcs-price-surveys-raw
-      preprocessed:
-        file_prefix: wcs-price-surveys-preprocessed
+      v1:
+        raw:
+          file_prefix: wcs-price-surveys-raw-v1
+        preprocessed:
+          file_prefix: wcs-price-surveys-preprocessed-v1
+      v2:
+        raw:
+          file_prefix: wcs-price-surveys-raw-v2
+        preprocessed:
+          file_prefix: wcs-price-surveys-preprocessed-v2
       price_table:
         file_prefix: wcs-price_table
     flags:
@@ -43,7 +56,7 @@ default:
             legacy:
               raw: legacy-raw
               preprocessed: legacy-preprocessed
-            ongoing:
+            v1:
               raw: raw
               raw_price: raw_price
               preprocessed: preprocessed
@@ -58,7 +71,7 @@ default:
             legacy:
               fishery_metrics: legacy-metrics
               fishery_metrics_monthly: legacy-metrics_monthly
-            ongoing:
+            v1:
               monthly_stats: monthly_stats
               catch_monthly: catch_monthly
               gear_distribution: gear_distribution
@@ -71,6 +84,10 @@ default:
       options:
         project: peskas
         bucket: kenya-dev
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+      options_coasts:
+        project: peskas
+        bucket: peskas-coasts
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   
   metadata:
@@ -93,6 +110,9 @@ production:
     google:
       options:
         bucket: kenya-prod
+      options_coasts: 
+        bucket: peskas-coasts
+
 
 local:
   inherits: development
@@ -102,11 +122,18 @@ local:
       asset_id_price: !expr readLines("auth/kobo-asset-id-price")
       username: !expr readLines("auth/kobo-username")
       password: !expr readLines("auth/kobo-password")
+    koboform_kf:
+      asset_id_kf: !expr readLines("auth/kobo-asset-id-kf")
+      asset_id_price_kf: !expr readLines("auth/kobo-asset-id-price-kf")
+      username_kf: !expr readLines("auth/kobo-username-kf")
+      password_kf: !expr readLines("auth/kobo-password-kf")      
   storage:
     mongodb:
       connection_string: !expr readLines("auth/mongodb-connection-string")
     google:
       options:
+        service_account_key: !expr readLines("auth/gcp-sa-peskas_ingestion-key.json")
+      options_coasts:
         service_account_key: !expr readLines("auth/gcp-sa-peskas_ingestion-key.json")
   metadata:
     google_sheets:

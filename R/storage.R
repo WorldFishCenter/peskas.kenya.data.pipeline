@@ -17,7 +17,7 @@
 #'   options = conf$storage$google$options
 #' )
 #' }
-#' 
+#'
 #' @keywords storage
 #' @export
 download_parquet_from_cloud <- function(prefix, provider, options) {

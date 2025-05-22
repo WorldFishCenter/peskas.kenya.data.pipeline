@@ -5,6 +5,7 @@
 \title{Download and Process WCS Price Surveys from Kobotoolbox}
 \usage{
 ingest_landings_price(
+  versions = c("v1", "v2"),
   url = NULL,
   project_id = NULL,
   username = NULL,
@@ -13,6 +14,8 @@ ingest_landings_price(
 )
 }
 \arguments{
+\item{versions}{Character vector of versions to process (default: c("v1", "v2"))}
+
 \item{url}{The URL of Kobotoolbox (default is NULL, uses value from configuration).}
 
 \item{project_id}{The asset ID of the project to download data from (default is NULL, uses value from configuration).}
@@ -24,13 +27,13 @@ ingest_landings_price(
 \item{encoding}{Encoding to be used for data retrieval (default is NULL, uses "UTF-8").}
 }
 \value{
-No return value. Function downloads data, processes it, and uploads to Google Cloud Storage
+No return value. Function downloads data, processes it, and uploads to Google Cloud Storage.
 }
 \description{
 This function retrieves survey data from Kobotoolbox for a specific project,
-processes it, and uploads the raw data to a Google Cloud Storage. It uses the
-\code{get_kobo_data} function, which is a wrapper for \code{kobotools_kpi_data} from
-the KoboconnectR package.
+processes it, and uploads the raw data as a Parquet file to Google Cloud Storage.
+It uses the \code{get_kobo_data} function, which is a wrapper for \code{kobotools_kpi_data}
+from the KoboconnectR package.
 }
 \details{
 The function performs the following steps:
@@ -39,7 +42,7 @@ The function performs the following steps:
 \item Downloads survey data from Kobotoolbox using \code{get_kobo_data}.
 \item Checks for uniqueness of submissions.
 \item Converts data to tabular format.
-\item Uploads raw data to Google Cloud Storage
+\item Uploads raw data as a Parquet file to Google Cloud Storage.
 }
 
 Note that while parameters are provided for customization, the function
@@ -47,13 +50,14 @@ currently uses hardcoded values and configuration settings for some parameters.
 }
 \examples{
 \dontrun{
-ingest_landings_price(
-  url = "eu.kobotoolbox.org",
-  project_id = "my_project_id",
-  username = "admin",
-  psswd = "admin",
-  encoding = "UTF-8"
-)
+# Process both versions
+ingest_landings_price()
+
+# Process only v1
+ingest_landings_price(versions = "v1")
+
+# Process specific versions
+ingest_landings_price(versions = c("v1", "v2"))
 }
 }
 \keyword{ingestion}
