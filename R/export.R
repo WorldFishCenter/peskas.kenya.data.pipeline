@@ -337,7 +337,16 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
       date = lubridate::floor_date(.data$landing_date, unit = "month"),
       BMU = stringr::str_to_title(.data$BMU)
     ) |>
-    dplyr::select("BMU", "date", "effort", "cpue", "cpua", "rpue", "rpua", "price_kg") %>%
+    dplyr::select(
+      "BMU",
+      "date",
+      "effort",
+      "cpue",
+      "cpua",
+      "rpue",
+      "rpua",
+      "price_kg"
+    ) %>%
     dplyr::group_by(.data$BMU, .data$date) |>
     dplyr::summarise(
       mean_effort = mean(.data$effort, na.rm = T),
@@ -452,43 +461,47 @@ create_geos <- function(monthly_summaries_dat = NULL, conf = conf) {
       mean_cpua = stats::median(.data$mean_cpua, na.rm = TRUE),
       mean_rpue = stats::median(.data$mean_rpue, na.rm = TRUE),
       mean_rpua = stats::median(.data$mean_rpua, na.rm = TRUE),
+      mean_price_kg = stats::median(.data$mean_price_kg, na.rm = TRUE),
       .groups = "drop"
-    )
-
-  geo_region_monthly_summaries <-
-    sf::st_read(system.file(
-      "KEN_coast_regions.geojson",
-      package = "peskas.kenya.data.pipeline"
-    )) |>
-    dplyr::left_join(region_monthly_summaries, by = "region") |>
-    # drop regions where there is no data at all
-    # dplyr::filter(
-    #  !is.na(.data$mean_effort) &
-    #    !is.na(.data$mean_cpue) &
-    #    !is.na(.data$mean_cpua) &
-    #    !is.na(.data$mean_rpue) &
-    #    !is.na(.data$mean_rpua)
-    # ) |>
+    ) |>
     dplyr::mutate(
       date = format(.data$date, "%Y-%m-%dT%H:%M:%SZ"),
-    )
+      country = "kenya",
+      region = tolower(.data$region)
+    ) |>
+    dplyr::relocate("country", .before = "region")
 
-  filename <- "kenya_monthly_summaries" %>%
+  kenya_coast <-
+    kenya_coast |>
+    dplyr::mutate(
+      country = "kenya",
+      region = tolower(.data$region)
+    ) |>
+    dplyr::relocate("country", .before = "region")
+
+  upload_parquet_to_cloud(
+    data = region_monthly_summaries,
+    prefix = "kenya_monthly_summaries_map",
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options_coasts
+  )
+
+  filename_geo <-
+    "KE_regions" %>%
     add_version(extension = "geojson")
 
-
   sf::st_write(
-    geo_region_monthly_summaries,
-    filename,
+    kenya_coast,
+    filename_geo,
     driver = "GeoJSON",
     delete_dsn = TRUE
   )
 
   upload_cloud_file(
-    file = filename,
+    file = filename_geo,
     provider = conf$storage$google$key,
     options = conf$storage$google$options_coasts
   )
 
-  file.remove(filename)
+  file.remove(filename_geo)
 }
