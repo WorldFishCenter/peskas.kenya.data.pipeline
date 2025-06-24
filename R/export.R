@@ -180,8 +180,11 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       daily_rpue = .data$daily_catch_price / .data$daily_fishers, # KES/fisher/day
       daily_rpua = .data$daily_catch_price / .data$size_km # KES/km²/day
     ) |>
+    dplyr::mutate(
+      date = lubridate::floor_date(.data$landing_date, unit = "month")
+    ) %>%
     # Regroup to calculate average metrics across days
-    dplyr::group_by(.data$BMU, .data$gear) |>
+    dplyr::group_by(.data$BMU, .data$date, .data$gear) |>
     dplyr::summarise(
       # Count number of days with data for this gear/BMU
       days_with_data = dplyr::n(),
@@ -199,6 +202,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     # Complete the combinations and convert to title case
     tidyr::complete(
       .data$BMU,
+      date = seq(min(.data$date), max(.data$date), by = "month"),
       .data$gear,
       fill = list(
         mean_effort = NA,
