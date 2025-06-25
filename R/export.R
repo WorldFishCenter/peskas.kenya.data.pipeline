@@ -102,6 +102,13 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
         mean_rpua = NA,
         mean_price_kg = NA
       )
+    ) |>
+    dplyr::mutate(
+      fdays = dplyr::case_when(
+        .data$BMU %in% c("Kibuyuni", "Shimoni", "Vanga", "Mkwiro", "Wasini") ~
+          .data$mean_effort * (210 / 12),
+        TRUE ~ .data$mean_effort * (220 / 12)
+      )
     )
 
   create_geos(monthly_summaries_dat = monthly_summaries, conf = conf)
