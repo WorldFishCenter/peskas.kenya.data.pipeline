@@ -33,14 +33,21 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
   versions <- c("legacy", "v1", "v2")
   data_list <- versions |>
     purrr::set_names() |>
-    purrr::map(~ download_parquet_from_cloud(
-      prefix = conf$surveys$catch[[.x]]$preprocessed$file_prefix,
-      provider = conf$storage$google$key,
-      options = conf$storage$google$options
-    ))
+    purrr::map(
+      ~ download_parquet_from_cloud(
+        prefix = conf$surveys$catch[[.x]]$preprocessed$file_prefix,
+        provider = conf$storage$google$key,
+        options = conf$storage$google$options
+      )
+    )
 
   merged_landings <-
-    dplyr::bind_rows(data_list$legacy, data_list$v1, data_list$v2, .id = "version") %>%
+    dplyr::bind_rows(
+      data_list$legacy,
+      data_list$v1,
+      data_list$v2,
+      .id = "version"
+    ) %>%
     dplyr::select(
       "version",
       "submission_id",
@@ -50,6 +57,8 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
       "fishing_ground",
       "lat",
       "lon",
+      "fisher_id",
+      "trip_cost",
       "no_of_fishers",
       "n_boats",
       "gear",

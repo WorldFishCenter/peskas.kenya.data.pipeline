@@ -1,3 +1,28 @@
+# peskas.kenya.data.pipeline 3.2.0
+
+## New features
+- **Individual Fisher Data Extraction**:
+  - Added `get_individual_data()` to extract fisher IDs and trip costs from raw survey data, enabling more granular analysis of fishing effort and expenses.
+  - Integrated individual fisher and trip cost data into the version 2 preprocessing pipeline (`preprocess_landings_v2()`), with new columns for `fisher_id` and `trip_cost` in preprocessed outputs.
+
+## Enhancements
+- **Expanded Data Merging**:
+  - Updated `merge_landings()` to support merging of legacy, v1, and v2 preprocessed landings, including new fields for individual fisher and trip cost data.
+  - Improved column selection and ordering in merged datasets for consistency and downstream compatibility.
+
+- **Export and Summarization Improvements**:
+  - Enhanced `export_summaries()` to include new individual-level statistics, such as mean trip expenses per fisher, aggregated by BMU and month (for data collected after June 25, 2025).
+  - Improved monthly and distribution summaries to reflect the expanded data model.
+
+## Configuration
+- Updated `config.yml` to support new data paths and fields required for individual fisher and trip cost data in v2 surveys.
+
+## Documentation
+- Added new man page for `get_individual_data()`.
+- Updated documentation for all affected functions to reflect new parameters and outputs.
+
+# peskas.kenya.data.pipeline 3.1.0
+
 # peskas.kenya.data.pipeline 3.0.0
 
 ## New features

@@ -72,6 +72,34 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::filter(
       !.data$landing_site %in% setdiff(valid_data$landing_site, bmu_size$BMU)
     )
+
+  individual_stats <-
+    valid_data |>
+    dplyr::filter(!is.na(.data$fisher_id)) |>
+    # date in which fishers individual info started to be collected
+    dplyr::filter(.data$landing_date >= "2025-06-25") |>
+    dplyr::select(
+      BMU = "landing_site",
+      date = "landing_date",
+      "fisher_id",
+      "trip_cost"
+    ) |>
+    dplyr::distinct() |>
+    dplyr::mutate(
+      date = lubridate::floor_date(.data$date, unit = "month"),
+      BMU = stringr::str_to_title(.data$BMU)
+    ) |>
+    dplyr::group_by(.data$BMU, .data$date, .data$fisher_id) |>
+    dplyr::summarise(
+      mean_expences = mean(.data$trip_cost, na.rm = T),
+      .groups = "drop"
+    )
+  #tidyr::complete(
+  #  .data$BMU,
+  #  date = seq(min(.data$date), max(.data$date), by = "month"),
+  #  .data$fisher_id
+  #)
+
   monthly_stats <-
     get_fishery_metrics(
       validated_data = valid_data,
@@ -225,6 +253,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   # Dataframes to upload
   dataframes_to_upload <- list(
+    individual_stats = individual_stats,
     monthly_stats = monthly_stats,
     monthly_summaries = monthly_summaries |> dplyr::select(-"mean_price_kg"),
     fish_distribution = fish_distribution,
@@ -234,6 +263,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   # Collection names
   collection_names <- list(
+    individual_stats = conf$storage$mongod$database$dashboard$collection_name$v1$individual_stats,
     monthly_stats = conf$storage$mongod$database$dashboard$collection_name$v1$monthly_stats,
     monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$v1$catch_monthly,
     fish_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$fish_distribution,

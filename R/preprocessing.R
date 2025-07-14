@@ -83,10 +83,24 @@ preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
     options = conf$storage$google$options
   )
 
+  individual_data <- get_individual_data(raw_dat)
+
   preprocessed_landings <- preprocess_landings_core(
     raw_dat = raw_dat,
     gear_mapping_func = apply_gear_mapping_v2()
-  )
+  ) |>
+    dplyr::left_join(
+      individual_data,
+      by = c("submission_id")
+    ) |>
+    dplyr::relocate(
+      "fisher_id",
+      .after = "no_of_fishers"
+    ) |>
+    dplyr::relocate(
+      "trip_cost",
+      .after = "fisher_id"
+    )
 
   upload_parquet_to_cloud(
     data = preprocessed_landings,
@@ -211,12 +225,28 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
         tolower
       ),
       fixed_gear = dplyr::case_when(
-        .data$gear %in% c(
-          "gillnet", "net", "beachseine", "sardinenet", "scoopnet",
-          "chachacha", "mosquitonet", "sharknet", "castnet", "squidnet",
-          "trumnet", "prawnseine", "jarife", "setnet", "ringnet",
-          "reefseine", "monofillament", "monofilament"
-        ) ~ "Nets",
+        .data$gear %in%
+          c(
+            "gillnet",
+            "net",
+            "beachseine",
+            "sardinenet",
+            "scoopnet",
+            "chachacha",
+            "mosquitonet",
+            "sharknet",
+            "castnet",
+            "squidnet",
+            "trumnet",
+            "prawnseine",
+            "jarife",
+            "setnet",
+            "ringnet",
+            "reefseine",
+            "monofillament",
+            "monofilament"
+          ) ~
+          "Nets",
         .data$gear %in% c("harpoon", "spear") ~ "Speargun",
         .data$gear %in% c("line") ~ "Handline",
         .data$gear_new == "trap" | .data$gear %in% c("trap") ~ "Traps",
@@ -380,22 +410,25 @@ preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
   )
 
   # Process each version
-  purrr::iwalk(version_configs, ~ {
-    raw_dat <- download_parquet_from_cloud(
-      prefix = .x$raw_prefix,
-      provider = conf$storage$google$key,
-      options = conf$storage$google$options
-    )
+  purrr::iwalk(
+    version_configs,
+    ~ {
+      raw_dat <- download_parquet_from_cloud(
+        prefix = .x$raw_prefix,
+        provider = conf$storage$google$key,
+        options = conf$storage$google$options
+      )
 
-    preprocessed_data <- preprocess_price_core(raw_dat, .y)
+      preprocessed_data <- preprocess_price_core(raw_dat, .y)
 
-    upload_parquet_to_cloud(
-      data = preprocessed_data,
-      prefix = .x$preprocessed_prefix,
-      provider = conf$storage$google$key,
-      options = conf$storage$google$options
-    )
-  })
+      upload_parquet_to_cloud(
+        data = preprocessed_data,
+        prefix = .x$preprocessed_prefix,
+        provider = conf$storage$google$key,
+        options = conf$storage$google$options
+      )
+    }
+  )
 }
 
 #' Clean Catch Names
@@ -621,8 +654,19 @@ apply_gear_mapping_v1 <- function() {
     data %>%
       dplyr::mutate(
         gear = dplyr::case_when(
-          .data$gear %in% c("hook_and_stick", "speargun___hook___stick") ~ "Hook and stick",
-          .data$gear %in% c("net", "ringnet_1", "ringnet", "beachseine", "beachseine_1", "reefseine", "other_nets") ~ "Nets",
+          .data$gear %in% c("hook_and_stick", "speargun___hook___stick") ~
+            "Hook and stick",
+          .data$gear %in%
+            c(
+              "net",
+              "ringnet_1",
+              "ringnet",
+              "beachseine",
+              "beachseine_1",
+              "reefseine",
+              "other_nets"
+            ) ~
+            "Nets",
           .data$gear %in% c("traps") ~ "Traps",
           .data$gear %in% c("handline") ~ "Handline",
           .data$gear %in% c("fence_trap") ~ "Fencetrap",
@@ -640,11 +684,22 @@ apply_gear_mapping_v2 <- function() {
     data %>%
       dplyr::mutate(
         gear = dplyr::case_when(
-          .data$gear %in% c(
-            "setnet", "beachseine", "monofilament", "reefseine", "other_nets",
-            "ringnet", "gillnet", "castnet", "nyavu", "trammel_net_1",
-            "scoopnet_&_castnet", "trammel_net"
-          ) ~ "Nets",
+          .data$gear %in%
+            c(
+              "setnet",
+              "beachseine",
+              "monofilament",
+              "reefseine",
+              "other_nets",
+              "ringnet",
+              "gillnet",
+              "castnet",
+              "nyavu",
+              "trammel_net_1",
+              "scoopnet_&_castnet",
+              "trammel_net"
+            ) ~
+            "Nets",
           .data$gear %in% c("handline") ~ "Handline",
           .data$gear %in% c("traps") ~ "Traps",
           .data$gear %in% c("speargun") ~ "Speargun",
@@ -658,4 +713,32 @@ apply_gear_mapping_v2 <- function() {
         )
       )
   }
+}
+
+
+#' Get fishers ID and trip cost
+#'
+#' This function extracts the fisher ID and trip cost from the raw data.
+#'
+#' @param raw_dat Raw data from cloud storage
+#' @return A data frame with the submission ID, fisher ID, and trip cost
+#' @keywords internal
+
+get_individual_data <- function(raw_dat) {
+  raw_dat |>
+    dplyr::rename_with(~ stringr::str_remove(., "group_xp36r82/")) |>
+    dplyr::select(
+      "submission_id",
+      trip_cost = "Kadiria_gharama_inay_ana_na_pato_la_mvuvi",
+      dplyr::starts_with("Jina_la_mvuvi")
+    ) |>
+    dplyr::mutate(
+      fisher_id = do.call(
+        dplyr::coalesce,
+        dplyr::pick(dplyr::starts_with("Jina_la_mvuvi"))
+      ),
+      submission_id = as.character(.data$submission_id),
+      trip_cost = as.numeric(.data$trip_cost)
+    ) |>
+    dplyr::select("submission_id", "fisher_id", "trip_cost")
 }
