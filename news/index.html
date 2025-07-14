@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,42 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="3.2.0" id="peskaskenyadatapipeline-320">peskas.kenya.data.pipeline 3.2.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-320"></a></h2>
+<div class="section level3">
+<h3 id="new-features-3-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-3-2-0"></a></h3>
+<ul><li>
+<strong>Individual Fisher Data Extraction</strong>:
+<ul><li>Added <code><a href="../reference/get_individual_data.html">get_individual_data()</a></code> to extract fisher IDs and trip costs from raw survey data, enabling more granular analysis of fishing effort and expenses.</li>
+<li>Integrated individual fisher and trip cost data into the version 2 preprocessing pipeline (<code><a href="../reference/preprocess_landings_v2.html">preprocess_landings_v2()</a></code>), with new columns for <code>fisher_id</code> and <code>trip_cost</code> in preprocessed outputs.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-3-2-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-3-2-0"></a></h3>
+<ul><li>
+<strong>Expanded Data Merging</strong>:
+<ul><li>Updated <code><a href="../reference/merge_landings.html">merge_landings()</a></code> to support merging of legacy, v1, and v2 preprocessed landings, including new fields for individual fisher and trip cost data.</li>
+<li>Improved column selection and ordering in merged datasets for consistency and downstream compatibility.</li>
+</ul></li>
+<li>
+<strong>Export and Summarization Improvements</strong>:
+<ul><li>Enhanced <code><a href="../reference/export_summaries.html">export_summaries()</a></code> to include new individual-level statistics, such as mean trip expenses per fisher, aggregated by BMU and month (for data collected after June 25, 2025).</li>
+<li>Improved monthly and distribution summaries to reflect the expanded data model.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="configuration-3-2-0">Configuration<a class="anchor" aria-label="anchor" href="#configuration-3-2-0"></a></h3>
+<ul><li>Updated <code>config.yml</code> to support new data paths and fields required for individual fisher and trip cost data in v2 surveys.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-3-2-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-3-2-0"></a></h3>
+<ul><li>Added new man page for <code><a href="../reference/get_individual_data.html">get_individual_data()</a></code>.</li>
+<li>Updated documentation for all affected functions to reflect new parameters and outputs.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="3.1.0" id="peskaskenyadatapipeline-310">peskas.kenya.data.pipeline 3.1.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-310"></a></h2>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="3.0.0" id="peskaskenyadatapipeline-300">peskas.kenya.data.pipeline 3.0.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-300"></a></h2>
 <div class="section level3">
