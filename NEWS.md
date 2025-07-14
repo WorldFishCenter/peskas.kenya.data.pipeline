@@ -1,4 +1,4 @@
-# peskas.kenya.data.pipeline 3.2.0
+# peskas.kenya.data.pipeline 3.1.0
 
 ## New features
 - **Individual Fisher Data Extraction**:
@@ -20,8 +20,6 @@
 ## Documentation
 - Added new man page for `get_individual_data()`.
 - Updated documentation for all affected functions to reflect new parameters and outputs.
-
-# peskas.kenya.data.pipeline 3.1.0
 
 # peskas.kenya.data.pipeline 3.0.0
 
