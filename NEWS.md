@@ -1,3 +1,9 @@
+# peskas.kenya.data.pipeline 3.2.0
+
+## New features
+- **Individual Fisher Metrics Data Extraction**:
+  - Added `get_individual_metrics()` to calculates key fishery performance metrics at the individual fisher level from validated catch data, including CPUE (Catch Per Unit Effort), RPUE (Revenue Per Unit Effort), price per kg, trip costs, and profit margins for each fisher.
+
 # peskas.kenya.data.pipeline 3.1.0
 
 ## New features
