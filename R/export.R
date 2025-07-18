@@ -166,7 +166,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       fish_category = stringr::str_to_title(.data$fish_category)
     )
 
-  fish_distribution_individuals <-
+  individual_fish_distribution <-
     valid_data %>%
     dplyr::filter(!is.na(.data$landing_date), !is.na(.data$fisher_id)) %>%
     dplyr::mutate(
@@ -257,10 +257,12 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
   # Dataframes to upload
   dataframes_to_upload <- list(
     individual_stats = individual_stats,
+    individual_gear_stats = individual_gear_stats,
+    individual_fish_distribution = individual_fish_distribution,
     monthly_stats = monthly_stats,
     monthly_summaries = monthly_summaries |> dplyr::select(-"mean_price_kg"),
     fish_distribution = fish_distribution,
-    map_distribution = map_distribution,
+    #map_distribution = map_distribution,
     gear_summaries = gear_summaries
   )
 
@@ -272,7 +274,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     monthly_stats = conf$storage$mongod$database$dashboard$collection_name$v1$monthly_stats,
     monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$v1$catch_monthly,
     fish_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$fish_distribution,
-    map_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$map_distribution,
+    #map_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$map_distribution,
     gear_summaries = conf$storage$mongod$database$dashboard$collection_name$v1$gear_summaries
   )
 
