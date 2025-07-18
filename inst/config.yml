@@ -73,6 +73,8 @@ default:
               fishery_metrics_monthly: legacy-metrics_monthly
             v1:
               individual_stats : individual_stats
+              individual_gear_stats : individual_gear_stats
+              individual_fish_distribution : individual_fish_distribution
               monthly_stats: monthly_stats
               catch_monthly: catch_monthly
               gear_distribution: gear_distribution

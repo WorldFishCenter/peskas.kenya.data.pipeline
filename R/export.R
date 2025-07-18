@@ -74,6 +74,9 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     )
 
   individual_stats <- get_individual_metrics(validated_data = valid_data)
+  individual_gear_stats <- get_individual_gear_metrics(
+    validated_data = valid_data
+  )
 
   #tidyr::complete(
   #  .data$BMU,
@@ -163,6 +166,25 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       fish_category = stringr::str_to_title(.data$fish_category)
     )
 
+  fish_distribution_individuals <-
+    valid_data %>%
+    dplyr::filter(!is.na(.data$landing_date), !is.na(.data$fisher_id)) %>%
+    dplyr::mutate(
+      date = lubridate::floor_date(.data$landing_date, unit = "month")
+    ) %>%
+    dplyr::group_by(
+      .data$landing_site,
+      .data$date,
+      .data$fisher_id,
+      .data$fish_category
+    ) %>%
+    dplyr::summarise(total_catch_kg = sum(.data$catch_kg, na.rm = TRUE)) %>% # Get total catch per landing site
+    dplyr::ungroup() %>%
+    dplyr::mutate(
+      landing_site = stringr::str_to_title(.data$landing_site),
+      fish_category = stringr::str_to_title(.data$fish_category)
+    )
+
   map_distribution <-
     valid_data %>%
     dplyr::select("submission_id", "landing_site", "lat", "lon") %>%
@@ -245,6 +267,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
   # Collection names
   collection_names <- list(
     individual_stats = conf$storage$mongod$database$dashboard$collection_name$v1$individual_stats,
+    individual_gear_stats = conf$storage$mongod$database$dashboard$collection_name$v1$individual_gear_stats,
+    individual_fish_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$individual_fish_distribution,
     monthly_stats = conf$storage$mongod$database$dashboard$collection_name$v1$monthly_stats,
     monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$v1$catch_monthly,
     fish_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$fish_distribution,
@@ -481,6 +505,131 @@ get_individual_metrics <- function(validated_data = NULL) {
       "profit"
     ) %>%
     dplyr::group_by(.data$BMU, .data$date, .data$fisher_id) |>
+    dplyr::summarise(
+      mean_cpue = mean(.data$cpue, na.rm = T),
+      mean_rpue = mean(.data$rpue, na.rm = T),
+      mean_price_kg = mean(.data$price_kg, na.rm = T),
+      mean_costs = mean(.data$costs, na.rm = T),
+      mean_profit = mean(.data$profit, na.rm = T)
+    ) |>
+    dplyr::ungroup()
+}
+
+#' Calculate Individual Fisher Performance Metrics by Gear Type
+#'
+#' @description
+#' Calculates key fishery performance metrics at the individual fisher level from
+#' validated catch data, stratified by gear type. This function provides the same
+#' metrics as \code{get_individual_metrics} but includes gear type as an additional
+#' grouping variable, allowing for analysis of gear-specific performance patterns.
+#'
+#' @param validated_data A data frame containing validated fishery data with columns:
+#'   \itemize{
+#'     \item landing_site: Name of the landing site (will be renamed to BMU)
+#'     \item landing_date: Date of landing
+#'     \item fisher_id: Unique identifier for each fisher
+#'     \item gear: Type of fishing gear used
+#'     \item no_of_fishers: Number of fishers
+#'     \item total_catch_kg: Total catch in kilograms
+#'     \item total_catch_price: Total catch value in currency
+#'     \item trip_cost: Cost of fishing trip in currency
+#'   }
+#'
+#' @return A data frame with monthly aggregated metrics by BMU, gear type, and individual fisher:
+#'   \itemize{
+#'     \item BMU: Name of the Beach Management Unit (title case)
+#'     \item date: First day of the month
+#'     \item fisher_id: Unique identifier for each fisher
+#'     \item gear: Type of fishing gear used
+#'     \item mean_cpue: Average catch (kg) per fisher
+#'     \item mean_rpue: Average revenue per fisher
+#'     \item mean_price_kg: Average price per kg
+#'     \item mean_costs: Average trip costs per fisher
+#'     \item mean_profit: Average profit per fisher (revenue minus costs)
+#'   }
+#'
+#' @details
+#' This function extends the individual fisher analysis by incorporating gear type
+#' as an additional stratification variable. Individual fisher metrics are calculated
+#' as follows:
+#' - CPUE = Aggregated catch (kg) / Total fishers
+#' - RPUE = Aggregated revenue / Total fishers
+#' - Price per kg = Total revenue / Total catch (median across trips)
+#' - Costs = Median trip cost
+#' - Profit = RPUE - Costs
+#'
+#' The function filters for records with non-missing landing dates and fisher IDs,
+#' then aggregates data by landing date, BMU, gear type, and fisher ID before
+#' calculating monthly averages. This allows for comparison of performance across
+#' different gear types for the same fisher, as well as gear-specific benchmarking
+#' across fishers. Only fishers with individual identification are included in the
+#' analysis.
+#'
+#' @importFrom dplyr rename select filter distinct group_by summarise ungroup mutate
+#' @importFrom stats median
+#' @importFrom lubridate floor_date
+#' @importFrom stringr str_to_title
+#'
+#' @seealso \code{\link{get_individual_metrics}} for metrics without gear stratification
+#'
+#' @keywords helper
+get_individual_gear_metrics <- function(validated_data = NULL) {
+  validated_data |>
+    dplyr::rename(BMU = "landing_site") |>
+    dplyr::select(
+      -c(
+        "version",
+        "catch_id",
+        "fishing_ground",
+        "lat",
+        "lon",
+        "fish_category",
+        "size",
+        "catch_kg",
+        "catch_price"
+      )
+    ) |>
+    dplyr::filter(!is.na(.data$landing_date), !is.na(.data$fisher_id)) %>%
+    dplyr::distinct() |>
+    dplyr::mutate(price_kg = .data$total_catch_price / .data$total_catch_kg) |>
+    dplyr::group_by(
+      .data$landing_date,
+      .data$BMU,
+      .data$gear,
+      .data$fisher_id
+    ) |>
+    dplyr::summarise(
+      total_fishers = sum(.data$no_of_fishers, na.rm = T),
+      aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
+      aggregated_catch_price = sum(.data$total_catch_price),
+      median_price_kg = stats::median(.data$price_kg, na.rm = T),
+      mean_trip_catch = stats::median(.data$total_catch_kg, na.rm = T),
+      mean_trip_cost = stats::median(.data$trip_cost, na.rm = T)
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(
+      cpue = .data$aggregated_catch_kg / .data$total_fishers,
+      rpue = .data$aggregated_catch_price / .data$total_fishers,
+      price_kg = .data$median_price_kg,
+      costs = .data$mean_trip_cost,
+      profit = .data$rpue - .data$costs
+    ) |>
+    dplyr::mutate(
+      date = lubridate::floor_date(.data$landing_date, unit = "month"),
+      BMU = stringr::str_to_title(.data$BMU)
+    ) |>
+    dplyr::select(
+      "BMU",
+      "date",
+      "fisher_id",
+      "gear",
+      "cpue",
+      "rpue",
+      "price_kg",
+      "costs",
+      "profit"
+    ) %>%
+    dplyr::group_by(.data$BMU, .data$date, .data$gear, .data$fisher_id) |>
     dplyr::summarise(
       mean_cpue = mean(.data$cpue, na.rm = T),
       mean_rpue = mean(.data$rpue, na.rm = T),
