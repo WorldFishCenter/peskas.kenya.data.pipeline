@@ -170,7 +170,9 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     valid_data %>%
     dplyr::filter(!is.na(.data$landing_date), !is.na(.data$fisher_id)) %>%
     dplyr::mutate(
-      date = lubridate::floor_date(.data$landing_date, unit = "month")
+      date = lubridate::floor_date(.data$landing_date, unit = "month"),
+      # Calculate this fisher's share of each catch
+      fisher_share = .data$catch_kg / .data$no_of_fishers
     ) %>%
     dplyr::group_by(
       .data$landing_site,
@@ -178,8 +180,11 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       .data$fisher_id,
       .data$fish_category
     ) %>%
-    dplyr::summarise(total_catch_kg = sum(.data$catch_kg, na.rm = TRUE)) %>% # Get total catch per landing site
-    dplyr::ungroup() %>%
+    dplyr::summarise(
+      mean_catch_kg = mean(.data$fisher_share, na.rm = TRUE), # Average per trip
+      # or total_catch_kg = sum(fisher_share, na.rm = TRUE),  # Total for the month
+      .groups = "drop"
+    ) %>%
     dplyr::mutate(
       landing_site = stringr::str_to_title(.data$landing_site),
       fish_category = stringr::str_to_title(.data$fish_category)
