@@ -150,16 +150,20 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
   fish_distribution <-
     valid_data %>%
     dplyr::mutate(
-      date = lubridate::floor_date(.data$landing_date, unit = "month")
+      date = lubridate::floor_date(.data$landing_date, unit = "month"),
+      fisher_share = .data$catch_kg / .data$no_of_fishers
     ) %>%
     dplyr::group_by(.data$landing_site, .data$date, .data$fish_category) %>% # First group by landing_site only
-    dplyr::summarise(total_catch_kg = sum(.data$catch_kg, na.rm = TRUE)) %>% # Get total catch per landing site
+    dplyr::summarise(
+      total_catch_kg = sum(.data$catch_kg, na.rm = TRUE),
+      mean_catch_kg = mean(.data$fisher_share, na.rm = TRUE)
+    ) %>% # Get total catch per landing site
     dplyr::ungroup() %>%
     tidyr::complete(
       .data$landing_site,
       .data$date,
       .data$fish_category,
-      fill = list(total_catch_kg = NA_real_)
+      fill = list(total_catch_kg = NA_real_, mean_catch_kg = NA_real_)
     ) %>%
     dplyr::mutate(
       landing_site = stringr::str_to_title(.data$landing_site),
