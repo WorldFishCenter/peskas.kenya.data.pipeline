@@ -27,7 +27,7 @@ A data frame with monthly aggregated metrics by BMU and individual fisher:
 \item mean_cpue: Average catch (kg) per fisher
 \item mean_rpue: Average revenue per fisher
 \item mean_price_kg: Average price per kg
-\item mean_costs: Average trip costs per fisher
+\item mean_cost: Average trip costs per fisher
 \item mean_profit: Average profit per fisher (revenue minus costs)
 }
 }

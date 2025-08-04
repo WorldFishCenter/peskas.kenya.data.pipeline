@@ -246,7 +246,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       mean_cpua = mean(.data$daily_cpua, na.rm = TRUE),
       mean_rpue = mean(.data$daily_rpue, na.rm = TRUE),
       mean_rpua = mean(.data$daily_rpua, na.rm = TRUE),
-      mean_costs = mean(.data$daily_cost),
+      mean_cost = mean(.data$daily_cost),
       mean_profit = mean(.data$daily_profit),
       .groups = "drop"
     ) |>
@@ -263,7 +263,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
         mean_cpua = NA,
         mean_rpue = NA,
         mean_rpua = NA,
-        mean_costs = NA,
+        mean_cost = NA,
         mean_profit = NA
       )
     ) |>
@@ -456,7 +456,7 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
 #'     \item mean_cpue: Average catch (kg) per fisher
 #'     \item mean_rpue: Average revenue per fisher
 #'     \item mean_price_kg: Average price per kg
-#'     \item mean_costs: Average trip costs per fisher
+#'     \item mean_cost: Average trip costs per fisher
 #'     \item mean_profit: Average profit per fisher (revenue minus costs)
 #'   }
 #'
@@ -534,7 +534,7 @@ get_individual_metrics <- function(validated_data = NULL) {
       mean_cpue = mean(.data$cpue, na.rm = T),
       mean_rpue = mean(.data$rpue, na.rm = T),
       mean_price_kg = mean(.data$price_kg, na.rm = T),
-      mean_costs = mean(.data$costs, na.rm = T),
+      mean_cost = mean(.data$costs, na.rm = T),
       mean_profit = mean(.data$profit, na.rm = T)
     ) |>
     dplyr::ungroup()
@@ -569,7 +569,7 @@ get_individual_metrics <- function(validated_data = NULL) {
 #'     \item mean_cpue: Average catch (kg) per fisher
 #'     \item mean_rpue: Average revenue per fisher
 #'     \item mean_price_kg: Average price per kg
-#'     \item mean_costs: Average trip costs per fisher
+#'     \item mean_cost: Average trip costs per fisher
 #'     \item mean_profit: Average profit per fisher (revenue minus costs)
 #'   }
 #'
@@ -659,7 +659,7 @@ get_individual_gear_metrics <- function(validated_data = NULL) {
       mean_cpue = mean(.data$cpue, na.rm = T),
       mean_rpue = mean(.data$rpue, na.rm = T),
       mean_price_kg = mean(.data$price_kg, na.rm = T),
-      mean_costs = mean(.data$costs, na.rm = T),
+      mean_cost = mean(.data$costs, na.rm = T),
       mean_profit = mean(.data$profit, na.rm = T)
     ) |>
     dplyr::ungroup()
