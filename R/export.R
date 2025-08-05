@@ -93,7 +93,14 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::arrange(.data$BMU, dplyr::desc(.data$date)) %>%
     dplyr::slice_head(n = 6) %>%
     dplyr::ungroup() |>
-    dplyr::select(-"mean_price_kg")
+    dplyr::select(-"mean_price_kg") |>
+    dplyr::mutate(
+      fdays = dplyr::case_when(
+        .data$BMU %in% c("Kibuyuni", "Shimoni", "Vanga", "Mkwiro", "Wasini") ~
+          .data$mean_effort * (210 / 12),
+        TRUE ~ .data$mean_effort * (220 / 12)
+      )
+    )
 
   # Caluclate fishers day and summarise by month the main metrics
   monthly_summaries <-
