@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,30 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.1.0" id="peskaskenyadatapipeline-410">peskas.kenya.data.pipeline 4.1.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-410"></a></h2>
+<div class="section level3">
+<h3 id="enhancements-4-1-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-4-1-0"></a></h3>
+<ul><li>
+<strong>Improved MongoDB Data Handling</strong>:
+<ul><li>Enhanced <code><a href="../reference/mdb_collection_pull.html">mdb_collection_pull()</a></code> to properly handle MongoDB ObjectId fields by explicitly including <code>_id</code> in queries and maintaining correct column ordering</li>
+<li>Updated column reordering logic to prioritize <code>_id</code> field placement in retrieved datasets</li>
+<li>Improved data consistency and integrity when pulling data from MongoDB collections</li>
+</ul></li>
+<li>
+<strong>Code Style and Formatting</strong>:
+<ul><li>Standardized function parameter formatting across storage functions for improved readability</li>
+<li>Enhanced code consistency in <code><a href="../reference/upload_parquet_to_cloud.html">upload_parquet_to_cloud()</a></code>, <code><a href="../reference/cloud_object_name.html">cloud_object_name()</a></code>, and related functions</li>
+<li>Updated <code><a href="../reference/get_metadata.html">get_metadata()</a></code> function formatting to follow consistent style guidelines</li>
+</ul></li>
+<li>
+<strong>User Management Infrastructure</strong>:
+<ul><li>Added comprehensive user management system for MongoDB dashboard with treatment group support</li>
+<li>Implemented secure password generation and user creation functionality</li>
+<li>Added support for BMU-based user access control and role assignment</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="3.2.1" id="peskaskenyadatapipeline-321">peskas.kenya.data.pipeline 3.2.1<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-321"></a></h2>
 <div class="section level3">
