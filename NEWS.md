@@ -1,3 +1,22 @@
+# peskas.kenya.data.pipeline 4.1.0
+
+## Enhancements
+
+-   **Improved MongoDB Data Handling**:
+    -   Enhanced `mdb_collection_pull()` to properly handle MongoDB ObjectId fields by explicitly including `_id` in queries and maintaining correct column ordering
+    -   Updated column reordering logic to prioritize `_id` field placement in retrieved datasets
+    -   Improved data consistency and integrity when pulling data from MongoDB collections
+
+-   **Code Style and Formatting**:
+    -   Standardized function parameter formatting across storage functions for improved readability
+    -   Enhanced code consistency in `upload_parquet_to_cloud()`, `cloud_object_name()`, and related functions
+    -   Updated `get_metadata()` function formatting to follow consistent style guidelines
+
+-   **User Management Infrastructure**:
+    -   Added comprehensive user management system for MongoDB dashboard with treatment group support
+    -   Implemented secure password generation and user creation functionality
+    -   Added support for BMU-based user access control and role assignment
+
 # peskas.kenya.data.pipeline 3.2.1
 
 ## New features

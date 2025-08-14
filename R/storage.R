@@ -66,8 +66,14 @@ download_parquet_from_cloud <- function(prefix, provider, options) {
 #' )
 #' }
 #' @export
-upload_parquet_to_cloud <- function(data, prefix, provider, options,
-                                    compression = "lz4", compression_level = 12) {
+upload_parquet_to_cloud <- function(
+  data,
+  prefix,
+  provider,
+  options,
+  compression = "lz4",
+  compression_level = 12
+) {
   # Generate filename with version
   preprocessed_filename <- prefix %>%
     add_version(extension = "parquet")
@@ -159,7 +165,8 @@ upload_cloud_file <- function(file, provider, options, name = file) {
   if ("gcs" %in% provider) {
     # Iterate over multiple files (and names)
     google_output <- purrr::map2(
-      file, name,
+      file,
+      name,
       ~ googleCloudStorageR::gcs_upload(
         file = .x,
         bucket = options$bucket,
@@ -204,8 +211,14 @@ upload_cloud_file <- function(file, provider, options, name = file) {
 #' )
 #' #'
 #' }
-cloud_object_name <- function(prefix, version = "latest", extension = "",
-                              provider, exact_match = FALSE, options) {
+cloud_object_name <- function(
+  prefix,
+  version = "latest",
+  extension = "",
+  provider,
+  exact_match = FALSE,
+  options
+) {
   cloud_storage_authenticate(provider, options)
 
   if ("gcs" %in% provider) {
@@ -282,7 +295,8 @@ download_cloud_file <- function(name, provider, options, file = name) {
 
   if ("gcs" %in% provider) {
     purrr::map2(
-      name, file,
+      name,
+      file,
       ~ googleCloudStorageR::gcs_get_object(
         object_name = .x,
         bucket = options$bucket,
@@ -321,15 +335,29 @@ download_cloud_file <- function(name, provider, options, file = name) {
 #' }
 #'
 #' @export
-mdb_collection_pull <- function(connection_string = NULL, collection_name = NULL, db_name = NULL) {
+mdb_collection_pull <- function(
+  connection_string = NULL,
+  collection_name = NULL,
+  db_name = NULL
+) {
   # Connect to the MongoDB collection
-  collection <- mongolite::mongo(collection = collection_name, db = db_name, url = connection_string)
+  collection <- mongolite::mongo(
+    collection = collection_name,
+    db = db_name,
+    url = connection_string
+  )
 
   # Retrieve the metadata document
   metadata <- collection$find(query = '{"type": "metadata"}')
 
-  # Retrieve all data documents
-  data <- collection$find(query = '{"type": {"$ne": "metadata"}}')
+  # Retrieve all data documents - explicitly include _id field
+  data <- collection$find(
+    query = '{"type": {"$ne": "metadata"}}',
+    fields = '{}'
+  )
+
+  # Alternative approach if the above doesn't work:
+  # data <- collection$find(query = '{"type": {"$ne": "metadata"}}', fields = '{"_id": 1}')
 
   if (nrow(metadata) > 0 && "columns" %in% names(metadata)) {
     stored_columns <- metadata$columns[[1]]
@@ -341,13 +369,28 @@ mdb_collection_pull <- function(connection_string = NULL, collection_name = NULL
       }
     }
 
-    # Reorder columns to match stored order, and include any extra columns at the end
-    data <- data[, c(stored_columns, setdiff(names(data), stored_columns))]
+    # Include _id in the column ordering (put it first)
+    if ("_id" %in% names(data)) {
+      stored_columns_with_id <- c("_id", stored_columns)
+      # Reorder columns to include _id first, then stored columns, then any extra columns
+      data <- data[, c(
+        stored_columns_with_id,
+        setdiff(names(data), stored_columns_with_id)
+      )]
+    } else {
+      # Reorder columns to match stored order, and include any extra columns at the end
+      data <- data[, c(stored_columns, setdiff(names(data), stored_columns))]
+    }
+  } else {
+    # If no metadata, at least ensure _id comes first if it exists
+    if ("_id" %in% names(data)) {
+      other_cols <- setdiff(names(data), "_id")
+      data <- data[, c("_id", other_cols)]
+    }
   }
 
   return(data)
 }
-
 #' Upload Data to MongoDB and Overwrite Existing Content
 #'
 #' This function connects to a MongoDB database, removes all existing documents
@@ -375,7 +418,12 @@ mdb_collection_pull <- function(connection_string = NULL, collection_name = NULL
 #' }
 #'
 #' @export
-mdb_collection_push <- function(data = NULL, connection_string = NULL, collection_name = NULL, db_name = NULL) {
+mdb_collection_push <- function(
+  data = NULL,
+  connection_string = NULL,
+  collection_name = NULL,
+  db_name = NULL
+) {
   # Connect to the MongoDB collection
   collection <- mongolite::mongo(
     collection = collection_name,
@@ -444,11 +492,13 @@ get_metadata <- function(log_threshold = logger::DEBUG) {
   tables <-
     pars$metadata$google_sheets$tables %>%
     rlang::set_names() %>%
-    purrr::map(~ googlesheets4::range_read(
-      ss = pars$metadata$google_sheets$sheet_id,
-      sheet = .x,
-      col_types = "c"
-    ))
+    purrr::map(
+      ~ googlesheets4::range_read(
+        ss = pars$metadata$google_sheets$sheet_id,
+        sheet = .x,
+        col_types = "c"
+      )
+    )
 
   tables
 }
