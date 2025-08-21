@@ -55,7 +55,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   valid_data <-
     download_parquet_from_cloud(
-      prefix = conf$surveys$catch$validated$file_prefix,
+      prefix = conf$surveys$wcs$catch$validated$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
     ) |>
