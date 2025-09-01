@@ -2,21 +2,15 @@ conf <- read_config()
 db_name <- conf$storage$mongodb$database$dashboard$name
 connection_string <- conf$storage$mongodb$connection_string
 
-# MongoDB User Management Functions
-# For adding new users with nested BMU information based on treatment groups
+# MongoDB User Management Functions - Version 2
+# For adding users from pre-existing credentials CSV file
 
 # Required packages
 library(mongolite)
 library(dplyr)
 library(bcrypt)
 library(jsonlite)
-
-# Function to generate random 5-character password (alphanumeric only)
-generate_password <- function(length = 5) {
-  # Use letters (upper and lower) and numbers, no special symbols
-  chars <- c(letters, LETTERS, 0:9)
-  paste0(sample(chars, length, replace = TRUE), collapse = "")
-}
+library(readr)
 
 # Function to generate proper MongoDB ObjectId
 generate_mongodb_objectid <- function() {
@@ -52,232 +46,48 @@ generate_mongodb_objectid <- function() {
 
 as_oid <- function(hex) list(`$oid` = unname(hex))
 
-# Function to add new users to MongoDB collection
-mdb_add_users <- function(
-  treatments_df,
-  connection_string,
-  db_name,
-  existing_users = NULL,
-  existing_groups = NULL,
-  existing_bmus = NULL,
-  store_passwords = TRUE # Option to save plain passwords for distribution
-) {
-  # Connect to users collection for INSERTION (not fetching)
-  users_mongo_connection <- mongolite::mongo(
-    collection = "users",
-    db = db_name,
-    url = connection_string
+# Function to read and parse the credentials CSV
+read_credentials_csv <- function(csv_path = "inst/current_login_list.csv") {
+  # Read the CSV file
+  credentials <- readr::read_csv(csv_path, show_col_types = FALSE)
+
+  # Clean column names and standardize
+  colnames(credentials) <- c(
+    "name",
+    "email",
+    "password",
+    "fisher_id",
+    "role",
+    "user_bmu",
+    "treatment_type"
   )
 
-  # If data not provided, fetch it
-  if (is.null(existing_users)) {
-    existing_users <- mdb_collection_pull(
-      collection = "users",
-      db = db_name,
-      connection_string = connection_string
-    )
-  }
+  # Filter out header row if it exists
+  credentials <- credentials %>%
+    dplyr::filter(!is.na(email) & email != "Email") %>%
+    dplyr::mutate(
+      # Standardize the role mapping
+      treatment = case_when(
+        role == "AIA" ~ "AIA",
+        role == "IIA" ~ "IIA",
+        role == "CIA" ~ "CIA",
+        role == "WBCIA" ~ "WBCIA",
+        role == "CCNF" ~ "Control", # Map CCNF to Control
+        TRUE ~ role
+      ),
+      # Clean BMU names to match existing format
+      BMU = stringr::str_to_title(user_bmu)
+    ) %>%
+    # Remove rows with empty fisher_id (BMU admin rows)
+    dplyr::filter(!is.na(fisher_id) & fisher_id != "")
 
-  if (is.null(existing_groups)) {
-    existing_groups <- mdb_collection_pull(
-      collection = "groups",
-      db = db_name,
-      connection_string = connection_string
-    )
-  }
+  message(sprintf("Loaded %d user credentials from CSV", nrow(credentials)))
 
-  if (is.null(existing_bmus)) {
-    existing_bmus <- mdb_collection_pull(
-      collection = "bmu",
-      db = db_name,
-      connection_string = connection_string
-    )
-  }
-
-  # Validate data
-  if (!"_id" %in% names(existing_groups)) {
-    stop("Missing '_id' column in groups data")
-  }
-
-  if (!"_id" %in% names(existing_bmus)) {
-    stop("Missing '_id' column in bmus data")
-  }
-
-  # Create a mapping of treatment to group ID
-  treatment_to_group <- list(
-    "IIA" = existing_groups$`_id`[existing_groups$name == "IIA"],
-    "CIA" = existing_groups$`_id`[existing_groups$name == "CIA"],
-    "WBCIA" = existing_groups$`_id`[existing_groups$name == "WBCIA"],
-    "AIA" = existing_groups$`_id`[existing_groups$name == "AIA"],
-    "Admin" = existing_groups$`_id`[existing_groups$name == "Admin"],
-    "Control" = existing_groups$`_id`[existing_groups$name == "Control"]
-  )
-
-  # Create a mapping of BMU names to IDs
-  bmu_to_id <- setNames(existing_bmus$`_id`, existing_bmus$BMU)
-
-  # Debug: show available BMUs
-  message(sprintf("Found %d BMU mappings", length(bmu_to_id)))
-
-  # Filter out fishers that already exist
-  existing_fisher_ids <- existing_users$fisherId[
-    !is.na(existing_users$fisherId)
-  ]
-  new_treatments <- treatments_df %>%
-    dplyr::filter(!fisher_id %in% existing_fisher_ids)
-
-  if (nrow(new_treatments) == 0) {
-    message("No new users to add. All fishers already exist in the database.")
-    return(list(count = 0, passwords = NULL))
-  }
-
-  # Prepare new user documents for insertion
-  new_users_for_insert <- list()
-  passwords_record <- data.frame() # Store passwords for distribution if needed
-
-  for (i in 1:nrow(new_treatments)) {
-    fisher <- new_treatments[i, ]
-
-    # Generate proper MongoDB ObjectId
-    user_id <- generate_mongodb_objectid()
-
-    # Generate 5-character alphanumeric password
-    plain_password <- generate_password(5)
-
-    # Get the appropriate BMUs based on treatment
-    user_bmus <- get_bmus_for_treatment(
-      treatment = fisher$treatment,
-      user_bmu = fisher$BMU,
-      bmu_to_id = bmu_to_id,
-      existing_bmus = existing_bmus
-    )
-
-    # Get group ID - ensure it's not NULL
-    group_id <- treatment_to_group[[fisher$treatment]]
-    if (is.null(group_id) || length(group_id) == 0) {
-      warning(sprintf("No group found for treatment: %s", fisher$treatment))
-      next # Skip this user
-    }
-
-    # Get user BMU ID
-    user_bmu_id <- bmu_to_id[[fisher$BMU]]
-    if (is.null(user_bmu_id) || length(user_bmu_id) == 0) {
-      warning(sprintf(
-        "No BMU ID found for: '%s'. Available BMUs: %s",
-        fisher$BMU,
-        paste(head(names(bmu_to_id), 10), collapse = ", ")
-      ))
-      user_bmu_id <- NA_character_ # Use NA instead of empty string
-    }
-
-    # Prepare BMUs array - ensure it's properly formatted
-    if (is.null(user_bmus) || length(user_bmus) == 0) {
-      bmus_array <- list()
-    } else {
-      bmus_array <- as.list(user_bmus)
-    }
-
-    # Create user document with proper structure
-    user_doc <- list(
-      email = paste0(fisher$fisher_id, "@fisher.ke"),
-      `__v` = 0L,
-      bmus = if (length(bmus_array) > 0) {
-        lapply(as.list(bmus_array), as_oid)
-      } else {
-        list()
-      }, # array<ObjectId>
-      created_at = jsonlite::unbox(as.POSIXct(Sys.time(), tz = "UTC")),
-      fisherId = fisher$fisher_id,
-      groups = lapply(list(group_id), as_oid), # array<ObjectId> (single element)
-      name = fisher$fisher_id,
-      password = bcrypt::hashpw(plain_password),
-      status = "active",
-      userBmu = if (is.na(user_bmu_id)) NULL else as_oid(user_bmu_id) # ObjectId or NULL
-    )
-
-    # Add to list for insertion
-    new_users_for_insert[[i]] <- user_doc
-
-    # Store password record for distribution
-    if (store_passwords) {
-      passwords_record <- rbind(
-        passwords_record,
-        data.frame(
-          fisher_id = fisher$fisher_id,
-          email = paste0(fisher$fisher_id, "@fisher.ke"),
-          password = plain_password,
-          treatment = fisher$treatment,
-          bmu = fisher$BMU,
-          created_at = Sys.time(),
-          stringsAsFactors = FALSE
-        )
-      )
-    }
-  }
-
-  # Remove any NULL entries (from skipped users)
-  new_users_for_insert <- new_users_for_insert[
-    !sapply(new_users_for_insert, is.null)
-  ]
-
-  # Insert new users if we have any
-  if (length(new_users_for_insert) > 0) {
-    # Convert list of documents to a dataframe for bulk insert
-    success_count <- 0
-
-    json_docs <- vapply(
-      new_users_for_insert,
-      function(doc) {
-        jsonlite::toJSON(
-          doc,
-          auto_unbox = TRUE,
-          null = "null",
-          POSIXt = "mongo"
-        )
-      },
-      FUN.VALUE = character(1)
-    )
-
-    # --- bulk insert ---
-    success_count <- 0
-    result <- users_mongo_connection$insert(json_docs)
-    success_count <- length(json_docs)
-    message(sprintf(
-      "Successfully added %d new users (JSON bulk insert)",
-      success_count
-    ))
-
-    if (success_count > 0) {
-      message(sprintf("Successfully added %d new users", success_count))
-    } else {
-      warning("No users were successfully added to the database")
-    }
-
-    # Save passwords to CSV if requested
-    if (store_passwords && nrow(passwords_record) > 0) {
-      filename <- paste0(
-        "user_passwords_",
-        format(Sys.time(), "%Y%m%d_%H%M%S"),
-        ".csv"
-      )
-      write.csv(passwords_record, filename, row.names = FALSE)
-      message(sprintf("Passwords saved to: %s", filename))
-      message(
-        "*** IMPORTANT: Store this file securely and delete after distributing passwords ***"
-      )
-    }
-
-    return(list(
-      count = success_count,
-      passwords = if (store_passwords) passwords_record else NULL
-    ))
-  }
-
-  return(list(count = 0, passwords = NULL))
+  return(credentials)
 }
 
-# Helper function to get BMUs based on treatment type
-get_bmus_for_treatment <- function(
+# Updated helper function to get BMUs based on treatment type (same logic as v1)
+get_bmus_for_treatment_v2 <- function(
   treatment,
   user_bmu,
   bmu_to_id,
@@ -375,35 +185,10 @@ get_bmus_for_treatment <- function(
   return(result)
 }
 
-# Function to update existing users (if needed)
-mdb_update_user <- function(
-  fisher_id,
-  update_fields,
-  connection_string,
-  db_name
-) {
-  users_collection <- mongolite::mongo(
-    collection = "users",
-    db = db_name,
-    url = connection_string
-  )
-
-  # Create the update query
-  query <- sprintf('{"fisherId": "%s"}', fisher_id)
-
-  # Create the update document
-  update <- jsonlite::toJSON(list(`$set` = update_fields), auto_unbox = TRUE)
-
-  # Perform the update
-  result <- users_collection$update(query, update)
-
-  return(result)
-}
-
 # Function to validate and check for duplicates before adding
-check_duplicates <- function(treatments_df, existing_users) {
+check_duplicates_v2 <- function(credentials_df, existing_users) {
   # Check for duplicate fisher_ids in the input
-  duplicates_in_input <- treatments_df %>%
+  duplicates_in_input <- credentials_df %>%
     dplyr::group_by(fisher_id) %>%
     dplyr::filter(dplyr::n() > 1) %>%
     dplyr::pull(fisher_id) %>%
@@ -411,7 +196,7 @@ check_duplicates <- function(treatments_df, existing_users) {
 
   if (length(duplicates_in_input) > 0) {
     warning(sprintf(
-      "Found %d duplicate fisher_ids in input: %s",
+      "Found %d duplicate fisher_ids in CSV: %s",
       length(duplicates_in_input),
       paste(
         duplicates_in_input[1:min(5, length(duplicates_in_input))],
@@ -424,8 +209,8 @@ check_duplicates <- function(treatments_df, existing_users) {
   existing_fisher_ids <- existing_users$fisherId[
     !is.na(existing_users$fisherId)
   ]
-  already_exists <- treatments_df$fisher_id[
-    treatments_df$fisher_id %in% existing_fisher_ids
+  already_exists <- credentials_df$fisher_id[
+    credentials_df$fisher_id %in% existing_fisher_ids
   ]
 
   if (length(already_exists) > 0) {
@@ -442,18 +227,21 @@ check_duplicates <- function(treatments_df, existing_users) {
   ))
 }
 
-# Main execution function
-add_fishers_to_mongodb <- function(
-  treatments_df,
+# Main execution function for CSV-based user addition
+add_fishers_from_csv <- function(
+  csv_path = "inst/current_login_list.csv",
   connection_string,
   db_name,
   dry_run = FALSE,
-  store_passwords = TRUE, # Save passwords to CSV for distribution
-  existing_users = NULL, # Optional: pass existing data
-  existing_groups = NULL, # Optional: pass existing data
-  existing_bmus = NULL # Optional: pass existing data
+  hash_passwords = TRUE, # Whether to hash the passwords from CSV
+  existing_users = NULL,
+  existing_groups = NULL,
+  existing_bmus = NULL
 ) {
-  message("Starting user addition process...")
+  message("Starting CSV-based user addition process...")
+
+  # Read credentials from CSV
+  credentials_df <- read_credentials_csv(csv_path)
 
   # Fetch existing data if not provided
   if (
@@ -481,7 +269,7 @@ add_fishers_to_mongodb <- function(
 
     if (is.null(existing_bmus)) {
       existing_bmus <- mdb_collection_pull(
-        collection = "bmus",
+        collection = "bmu",
         db = db_name,
         connection_string = connection_string
       )
@@ -496,106 +284,400 @@ add_fishers_to_mongodb <- function(
   ))
 
   # Check for duplicates
-  duplicate_check <- check_duplicates(treatments_df, existing_users)
+  duplicate_check <- check_duplicates_v2(credentials_df, existing_users)
 
   if (dry_run) {
     message("DRY RUN MODE - No changes will be made to the database")
 
     # Filter out existing users
-    new_fishers <- treatments_df %>%
+    new_credentials <- credentials_df %>%
       dplyr::filter(!fisher_id %in% duplicate_check$already_exists)
 
-    message(sprintf("Would add %d new users", nrow(new_fishers)))
+    message(sprintf("Would add %d new users from CSV", nrow(new_credentials)))
 
     # Show sample of what would be added
-    if (nrow(new_fishers) > 0) {
+    if (nrow(new_credentials) > 0) {
       message("\nSample of users to be added:")
-      sample_users <- head(new_fishers, 5)
-
-      # Generate sample passwords to show format
-      for (i in 1:nrow(sample_users)) {
-        sample_users$sample_password[i] <- generate_password(5)
-        sample_users$email[i] <- paste0(sample_users$fisher_id[i], "@fisher.ke")
-      }
-      print(sample_users)
+      sample_users <- head(new_credentials, 5)
+      print(sample_users %>% select(name, email, fisher_id, treatment, BMU))
     }
+
+    # Show treatment breakdown
+    treatment_summary <- new_credentials %>%
+      count(treatment, name = "count")
+    message("\nTreatment breakdown:")
+    print(treatment_summary)
 
     return(invisible(NULL))
   }
 
   # Actually add the users
-  result <- mdb_add_users(
-    treatments_df = treatments_df,
+  result <- mdb_add_users_from_csv(
+    csv_path = csv_path,
     connection_string = connection_string,
     db_name = db_name,
     existing_users = existing_users,
     existing_groups = existing_groups,
     existing_bmus = existing_bmus,
-    store_passwords = store_passwords
+    hash_passwords = hash_passwords
   )
 
-  message(sprintf("\nProcess completed. Added %d new users.", result$count))
+  message(sprintf(
+    "\nProcess completed. Added %d new users from CSV.",
+    result$count
+  ))
 
   return(result)
 }
 
-#### helpful functions ####
+# Function to add users from CSV to MongoDB collection
+mdb_add_users_from_csv <- function(
+  csv_path = "inst/current_login_list.csv",
+  connection_string,
+  db_name,
+  existing_users = NULL,
+  existing_groups = NULL,
+  existing_bmus = NULL,
+  hash_passwords = TRUE # Whether to hash the plain passwords from CSV
+) {
+  # Connect to users collection for INSERTION
+  users_mongo_connection <- mongolite::mongo(
+    collection = "users",
+    db = db_name,
+    url = connection_string
+  )
 
+  # Read credentials from CSV
+  credentials_df <-
+    read_credentials_csv(csv_path) |>
+    dplyr::mutate(fisher_id = tolower(fisher_id)) |>
+    dplyr::filter(role %in% c("IIA", "WBCIA", "CIA"))
+
+  # If data not provided, fetch it
+  if (is.null(existing_users)) {
+    existing_users <- mdb_collection_pull(
+      collection = "users",
+      db = db_name,
+      connection_string = connection_string
+    )
+  }
+
+  if (is.null(existing_groups)) {
+    existing_groups <- mdb_collection_pull(
+      collection = "groups",
+      db = db_name,
+      connection_string = connection_string
+    )
+  }
+
+  if (is.null(existing_bmus)) {
+    existing_bmus <- mdb_collection_pull(
+      collection = "bmu",
+      db = db_name,
+      connection_string = connection_string
+    )
+  }
+
+  # Validate data
+  if (!"_id" %in% names(existing_groups)) {
+    stop("Missing '_id' column in groups data")
+  }
+
+  if (!"_id" %in% names(existing_bmus)) {
+    stop("Missing '_id' column in bmus data")
+  }
+
+  # Create a mapping of treatment to group ID
+  treatment_to_group <- list(
+    "IIA" = existing_groups$`_id`[existing_groups$name == "IIA"],
+    "CIA" = existing_groups$`_id`[existing_groups$name == "CIA"],
+    "WBCIA" = existing_groups$`_id`[existing_groups$name == "WBCIA"],
+    "AIA" = existing_groups$`_id`[existing_groups$name == "AIA"],
+    "Admin" = existing_groups$`_id`[existing_groups$name == "Admin"],
+    "Control" = existing_groups$`_id`[existing_groups$name == "Control"]
+  )
+
+  # Create a mapping of BMU names to IDs
+  bmu_to_id <- setNames(existing_bmus$`_id`, existing_bmus$BMU)
+
+  # Debug: show available BMUs
+  message(sprintf("Found %d BMU mappings", length(bmu_to_id)))
+
+  # Filter out fishers that already exist
+  existing_fisher_ids <- existing_users$fisherId[
+    !is.na(existing_users$fisherId)
+  ]
+  new_credentials <- credentials_df %>%
+    dplyr::filter(!fisher_id %in% existing_fisher_ids)
+
+  if (nrow(new_credentials) == 0) {
+    message("No new users to add. All fishers already exist in the database.")
+    return(list(count = 0, users_added = NULL))
+  }
+
+  message(sprintf("Processing %d new users from CSV", nrow(new_credentials)))
+
+  # new_credentials <- new_credentials %>%
+  #   dplyr::filter(fisher_id %in% c("mtwa6710"))
+
+  # Prepare new user documents for insertion
+  new_users_for_insert <- list()
+  users_added_record <- data.frame() # Keep record of users added
+
+  for (i in 1:nrow(new_credentials)) {
+    user_row <- new_credentials[i, ]
+
+    # Generate proper MongoDB ObjectId
+    user_id <- generate_mongodb_objectid()
+
+    # Use password from CSV (hash it if requested)
+    user_password <- if (hash_passwords) {
+      bcrypt::hashpw(user_row$password)
+    } else {
+      user_row$password
+    }
+
+    # Get the appropriate BMUs based on treatment
+    user_bmus <- get_bmus_for_treatment_v2(
+      treatment = user_row$treatment,
+      user_bmu = user_row$BMU,
+      bmu_to_id = bmu_to_id,
+      existing_bmus = existing_bmus
+    )
+
+    # Get group ID - ensure it's not NULL
+    group_id <- treatment_to_group[[user_row$treatment]]
+    if (is.null(group_id) || length(group_id) == 0) {
+      warning(sprintf("No group found for treatment: %s", user_row$treatment))
+      next # Skip this user
+    }
+
+    # Get user BMU ID
+    user_bmu_id <- bmu_to_id[[user_row$BMU]]
+    if (is.null(user_bmu_id) || length(user_bmu_id) == 0) {
+      warning(sprintf(
+        "No BMU ID found for: '%s'. Available BMUs: %s",
+        user_row$BMU,
+        paste(head(names(bmu_to_id), 10), collapse = ", ")
+      ))
+      user_bmu_id <- NA_character_
+    }
+
+    # Prepare BMUs array
+    if (is.null(user_bmus) || length(user_bmus) == 0) {
+      bmus_array <- list()
+    } else {
+      bmus_array <- as.list(user_bmus)
+    }
+
+    # Create user document with proper structure
+    user_doc <- list(
+      email = user_row$email,
+      `__v` = 0L,
+      bmus = if (length(bmus_array) > 0) {
+        as.list(bmus_array) # Store as plain strings, not ObjectId wrappers
+      } else {
+        list()
+      },
+      created_at = jsonlite::unbox(as.POSIXct(Sys.time(), tz = "UTC")),
+      fisherId = user_row$fisher_id,
+      groups = as.list(group_id), # Store as plain strings, not ObjectId wrappers
+      name = user_row$name,
+      password = user_password,
+      status = "active",
+      userBmu = if (is.na(user_bmu_id)) NULL else user_bmu_id # Store as plain string
+    )
+
+    # Add to list for insertion
+    new_users_for_insert[[i]] <- user_doc
+
+    # Store record of user added
+    users_added_record <- rbind(
+      users_added_record,
+      data.frame(
+        name = user_row$name,
+        fisher_id = user_row$fisher_id,
+        email = user_row$email,
+        treatment = user_row$treatment,
+        bmu = user_row$BMU,
+        original_password = user_row$password,
+        created_at = Sys.time(),
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+
+  # Remove any NULL entries (from skipped users)
+  new_users_for_insert <- new_users_for_insert[
+    !sapply(new_users_for_insert, is.null)
+  ]
+
+  # Insert new users if we have any
+  if (length(new_users_for_insert) > 0) {
+    success_count <- 0
+
+    json_docs <- vapply(
+      new_users_for_insert,
+      function(doc) {
+        jsonlite::toJSON(
+          doc,
+          auto_unbox = TRUE,
+          null = "null",
+          POSIXt = "mongo"
+        )
+      },
+      FUN.VALUE = character(1)
+    )
+
+    # Bulk insert
+    result <- users_mongo_connection$insert(json_docs)
+    success_count <- length(json_docs)
+
+    message(sprintf("Successfully added %d new users from CSV", success_count))
+
+    return(list(
+      count = success_count,
+      users_added = users_added_record
+    ))
+  }
+
+  return(list(count = 0, users_added = NULL))
+}
+
+# Function to replace existing users (delete and recreate)
+replace_existing_users <- function(
+  csv_path = "inst/current_login_list.csv",
+  connection_string,
+  db_name,
+  fisher_ids_to_replace = NULL, # Specific fisher IDs to replace, NULL for all
+  dry_run = FALSE,
+  hash_passwords = TRUE
+) {
+  message("Starting user replacement process...")
+
+  # Connect to users collection
+  users_mongo_connection <- mongolite::mongo(
+    collection = "users",
+    db = db_name,
+    url = connection_string
+  )
+
+  # Read credentials from CSV
+  credentials_df <- read_credentials_csv(csv_path) %>%
+    dplyr::mutate(fisher_id = tolower(fisher_id)) %>%
+    dplyr::filter(role %in% c("IIA", "WBCIA", "CIA"))
+
+  # Filter to specific fisher IDs if provided
+  if (!is.null(fisher_ids_to_replace)) {
+    credentials_df <- credentials_df %>%
+      dplyr::filter(fisher_id %in% fisher_ids_to_replace)
+    message(sprintf("Replacing %d specific users", nrow(credentials_df)))
+  }
+
+  if (nrow(credentials_df) == 0) {
+    message("No users to replace")
+    return(list(deleted = 0, added = 0))
+  }
+
+  # Get existing data
+  existing_users <- mdb_collection_pull(
+    collection = "users",
+    db = db_name,
+    connection_string = connection_string
+  )
+
+  existing_groups <- mdb_collection_pull(
+    collection = "groups",
+    db = db_name,
+    connection_string = connection_string
+  )
+
+  existing_bmus <- mdb_collection_pull(
+    collection = "bmu",
+    db = db_name,
+    connection_string = connection_string
+  )
+
+  # Find users that exist and need to be replaced
+  existing_fisher_ids <- existing_users$fisherId[
+    !is.na(existing_users$fisherId)
+  ]
+  users_to_replace <- credentials_df %>%
+    dplyr::filter(fisher_id %in% existing_fisher_ids)
+
+  message(sprintf("Found %d existing users to replace", nrow(users_to_replace)))
+
+  if (dry_run) {
+    message("DRY RUN MODE - No changes will be made")
+    message("Users that would be replaced:")
+    print(users_to_replace %>% select(name, fisher_id, treatment, BMU))
+    return(invisible(NULL))
+  }
+
+  # Delete existing users
+  deleted_count <- 0
+  for (fisher_id in users_to_replace$fisher_id) {
+    delete_result <- users_mongo_connection$remove(
+      sprintf('{"fisherId": "%s"}', fisher_id)
+    )
+    # mongolite::remove() returns a simple count, not a list
+    if (delete_result > 0) {
+      deleted_count <- deleted_count + delete_result
+      message(sprintf("Deleted user: %s", fisher_id))
+    }
+  }
+
+  message(sprintf("Deleted %d existing users", deleted_count))
+
+  # Now add the new users using the existing function
+  # Create a temporary CSV with just the users we want to replace
+  if (deleted_count > 0) {
+    result <- mdb_add_users_from_csv(
+      csv_path = csv_path,
+      connection_string = connection_string,
+      db_name = db_name,
+      existing_users = existing_users[
+        !existing_users$fisherId %in% users_to_replace$fisher_id,
+      ],
+      existing_groups = existing_groups,
+      existing_bmus = existing_bmus,
+      hash_passwords = hash_passwords
+    )
+
+    message(sprintf(
+      "Replacement completed. Deleted: %d, Added: %d",
+      deleted_count,
+      result$count
+    ))
+    return(list(
+      deleted = deleted_count,
+      added = result$count,
+      users_added = result$users_added
+    ))
+  } else {
+    return(list(deleted = 0, added = 0))
+  }
+}
+
+#### Example usage ####
+
+# # Load configuration
 # conf <- read_config()
-
-# bmus_info <-
-#   get_metadata()$BMUs
-
-# valid_data <-
-#   download_parquet_from_cloud(
-#     prefix = conf$surveys$catch$validated$file_prefix,
-#     provider = conf$storage$google$key,
-#     options = conf$storage$google$options
-#   ) |>
-#   dplyr::filter(.data$landing_date >= "2023-01-01")
-
-# treatments <-
-#   valid_data |>
-#   dplyr::select(BMU = landing_site, fisher_id) |>
-#   dplyr::mutate(BMU = stringr::str_to_title(.data$BMU)) |>
-#   dplyr::filter(!is.na(.data$BMU), !is.na(.data$fisher_id)) |>
-#   dplyr::distinct() |>
-#   dplyr::left_join(bmus_info, by = "BMU") |>
-#   dplyr::select(BMU, treatment, fisher_id) |>
-#   dplyr::filter(!is.na(.data$treatment), !is.na(.data$fisher_id)) |>
-#   dplyr::distinct()
-
-# treatments_df <-
-#   treatments |>
-#   dplyr::filter(treatment == "WBCIA")
-
-# mdb_add_users(
-#   treatments_df = treatments_df,
+#
+# # Run in dry-run mode first to validate
+# add_fishers_from_csv(
+#   csv_path = "inst/current_login_list.csv",
 #   connection_string = conf$storage$mongodb$connection_string,
-#   db_name = conf$storage$mongodb$database$dashboard$name
+#   db_name = conf$storage$mongodb$database$dashboard$name,
+#   dry_run = TRUE,
+#   hash_passwords = TRUE
 # )
-
-# m <- mongo(
-#   collection = "users",
-#   db = conf$storage$mongodb$database$dashboard$name,
-#   url = conf$storage$mongodb$connection_string
+#
+# # If dry run looks good, run for real
+# result <- replace_existing_users(
+#   csv_path = "inst/current_login_list.csv",
+#   connection_string = conf$storage$mongodb$connection_string,
+#   db_name = conf$storage$mongodb$database$dashboard$name,
+#   dry_run = FALSE,
+#   hash_passwords = TRUE
 # )
-
-# # 1) Get the latest 5 _ids (newest first)
-# res <- m$find(
-#   query = '{}',
-#   fields = '{"_id": 1}', # include _id only
-#   sort = '{"_id": -1}', # newest first
-#   limit = 10
-# )
-
-# # _id often comes back as a list like list("$oid"="..."):
-# oid_hex <- function(x) {
-#   if (is.list(x) && !is.null(x$`$oid`)) x$`$oid` else as.character(x)
-# }
-# ids <- vapply(res$`_id`, oid_hex, character(1))
-
-# # 2) Delete them (exactly 5)
-# invisible(lapply(ids, function(id) {
-#   m$remove(sprintf('{"_id": {"$oid": "%s"}}', id), just_one = TRUE)
-# }))

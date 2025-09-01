@@ -698,6 +698,8 @@ apply_gear_mapping_v2 <- function() {
               "trammel_net_1",
               "scoopnet_&_castnet",
               "trammel_net",
+              "Mosquito_net",
+              "nyavu_ya_mbu",
               "nets"
             ) ~
             "Nets",
@@ -709,7 +711,6 @@ apply_gear_mapping_v2 <- function() {
           .data$gear %in% c("longline") ~ "Longline",
           .data$gear %in% c("trolling_line") ~ "Trollingline",
           .data$gear == "trap" ~ "Traps",
-          .data$gear == "handline" ~ "Handline",
           TRUE ~ NA_character_
         )
       )
