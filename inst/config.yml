@@ -100,7 +100,7 @@ default:
       key: gcs
       options:
         project: peskas
-        bucket: kenya-dev
+        bucket: kenya-prod
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
       options_coasts:
         project: peskas
@@ -111,7 +111,7 @@ default:
       key: gcs
       options:
         project: peskas
-        bucket: pds-kenya-dev
+        bucket: pds-kenya-prod
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds:
     token: !expr Sys.getenv('PDS_TOKEN')
@@ -145,7 +145,7 @@ production:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
     google:
       options:
-        bucket: kenya-dev
+        bucket: kenya-prod
       options_coasts: 
         bucket: peskas-coasts
 

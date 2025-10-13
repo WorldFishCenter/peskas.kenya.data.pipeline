@@ -1,3 +1,60 @@
+# peskas.kenya.data.pipeline 4.2.0
+
+## New features
+
+-   **GPS Track Processing and Analysis**:
+    -   Added `process_fishing_tracks()` for comprehensive GPS track processing and fishing activity classification
+    -   Implemented `prepare_gps_data()` to convert raw tracking data into GPSMonitoring format
+    -   Added `classify_fishing_activity()` using speed thresholds and spatial clustering to identify fishing vs transit activities
+    -   Created `process_trajectories_with_speed()` for calculating vessel speeds from GPS positions
+    -   Implemented `calculate_fishing_summaries()` to generate effort metrics by trip and spatial grid
+    -   Added `visualize_fishing_track()` for mapping fishing activities
+    -   Created `create_exclusion_zones()` and `create_extent_polygon()` for spatial analysis
+
+-   **Airtable Integration**:
+    -   Implemented bidirectional Airtable API integration with `airtable_to_df()` for reading records
+    -   Added `df_to_airtable()` for bulk create operations
+    -   Created `update_airtable_record()` for updating individual records
+    -   Implemented `bulk_update_airtable()` for batch update operations
+    -   Added `get_writable_fields()` to retrieve field schemas and validate writable fields
+
+-   **Fishery Metrics Expansion**:
+    -   Extended `get_fishery_metrics()` with normalized long format output for maximum interoperability
+    -   Added metrics for CPUE and RPUE by gear type
+    -   Implemented species composition analysis with top 2 species ranking
+    -   Created fully normalized dataset structure for flexible aggregation and filtering
+
+-   **PDS Tracker Report**:
+    -   Added comprehensive GPS tracking visualization report (inst/reports/pds/trackers.qmd)
+    -   Integrated interactive maps, time series, and network analysis visualizations
+    -   Implemented spatial heatmaps and trip trajectory analysis
+
+## Enhancements
+
+-   **Package Quality and Compliance**:
+    -   Fixed R CMD check warnings by replacing `library()`/`require()` calls with `::` notation and `requireNamespace()`
+    -   Added missing global variable bindings for track and fishery metrics variables
+    -   Updated NAMESPACE with new imports: `dplyr::n`, `dplyr::arrange`, `dplyr::row_number`, `stats::lag`, `stats::time`, `rlang::sym`
+    -   Added GPSMonitoring and ggplot2 to Suggests dependencies
+    -   Excluded `.claude` directory and `.parquet` files from package build via .Rbuildignore
+    -   Reduced R CMD check from 3 warnings/6 notes to 2 warnings/2 notes
+
+-   **KEFS Data Integration**:
+    -   Updated configuration (inst/config.yml) for KEFS survey data integration
+    -   Enhanced inst/kefs_integration.R with improved data processing workflows
+
+## Documentation
+
+-   Added 14 new man pages for GPS tracking functions:
+    -   `process_fishing_tracks.Rd`, `prepare_gps_data.Rd`, `classify_fishing_activity.Rd`
+    -   `process_trajectories_with_speed.Rd`, `calculate_fishing_summaries.Rd`
+    -   `create_exclusion_zones.Rd`, `create_extent_polygon.Rd`, `visualize_fishing_track.Rd`
+-   Added 6 new man pages for Airtable integration:
+    -   `airtable_to_df.Rd`, `df_to_airtable.Rd`, `update_airtable_record.Rd`
+    -   `bulk_update_airtable.Rd`, `get_writable_fields.Rd`
+-   Updated `get_fishery_metrics.Rd` to document dual function signatures for different use cases
+-   Enhanced documentation with comprehensive examples and parameter descriptions
+
 # peskas.kenya.data.pipeline 4.1.0
 
 ## Enhancements

@@ -6,10 +6,7 @@ raw_dat <- download_parquet_from_cloud(
   options = conf$storage$google$options
 )
 
-raw_dat |>
-  dplyr::glimpse()
-
-raw_dat |>
+raw <- raw_dat |>
   dplyr::select(
     "submission_id",
     landing_date = "date_data",
@@ -38,3 +35,6 @@ raw_dat |>
     catch_price = `CATCH_DETAILS.0.CATCH_DETAILS/TValue`,
     catch_shark = "Did_you_catch_any_SHARK"
   )
+
+
+unique(raw_dat$Landing_Site)

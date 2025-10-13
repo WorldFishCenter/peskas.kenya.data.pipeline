@@ -316,6 +316,15 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       )
     }
   )
+
+  f_metrics <- get_fishery_metrics(data = valid_data)
+
+  upload_parquet_to_cloud(
+    data = f_metrics,
+    prefix = "kenya_fishery_metrics",
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options_coasts
+  )
 }
 
 
