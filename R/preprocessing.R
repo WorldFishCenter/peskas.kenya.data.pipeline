@@ -1091,7 +1091,7 @@ generate_track_summaries <- function(data, min_hours = 0.15, max_hours = 15) {
 #'
 #' @examples
 #' \dontrun{
-#' fishery_metrics <- get_fishery_metrics(data = valid_data)
+#' fishery_metrics <- get_fishery_metrics_long(data = valid_data)
 #'
 #' # Filter for CPUE metrics only
 #' cpue_data <- fishery_metrics %>% filter(metric_type == "cpue")
@@ -1104,7 +1104,7 @@ generate_track_summaries <- function(data, min_hours = 0.15, max_hours = 15) {
 #' }
 #'
 #' @export
-get_fishery_metrics <- function(data = NULL) {
+get_fishery_metrics_long <- function(data = NULL) {
   # Calculate base metrics by landing site and month
   base_metrics <- data %>%
     dplyr::mutate(

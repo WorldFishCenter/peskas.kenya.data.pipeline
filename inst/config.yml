@@ -100,7 +100,7 @@ default:
       key: gcs
       options:
         project: peskas
-        bucket: kenya-prod
+        bucket: kenya-dev
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
       options_coasts:
         project: peskas
@@ -111,7 +111,7 @@ default:
       key: gcs
       options:
         project: peskas
-        bucket: pds-kenya-prod
+        bucket: pds-kenya-dev
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds:
     token: !expr Sys.getenv('PDS_TOKEN')
@@ -155,38 +155,38 @@ local:
   ingestion:
       wcs:
         koboform:
-          asset_id: !expr readLines("auth/kobo-asset-id")
-          asset_id_price: !expr readLines("auth/kobo-asset-id-price")
-          username: !expr readLines("auth/kobo-username")
-          password: !expr readLines("auth/kobo-password")
+          asset_id: !expr Sys.getenv('KOBO_ASSET_ID')
+          asset_id_price: !expr Sys.getenv('KOBO_ASSET_ID_PRICE')
+          username: !expr Sys.getenv('KOBO_USERNAME')
+          password: !expr Sys.getenv('KOBO_PASSWORD')
         koboform_kf:
-          asset_id_kf: !expr readLines("auth/kobo-asset-id-kf")
-          asset_id_price_kf: !expr readLines("auth/kobo-asset-id-price-kf")
-          username_kf: !expr readLines("auth/kobo-username-kf")
-          password_kf: !expr readLines("auth/kobo-password-kf")      
+          asset_id_kf: !expr Sys.getenv('KOBO_ASSET_ID_KF')
+          asset_id_price_kf: !expr Sys.getenv('KOBO_ASSET_ID_PRICE_KF')
+          username_kf: !expr Sys.getenv('KOBO_USERNAME_KF')
+          password_kf: !expr Sys.getenv('KOBO_PASSWORD_KF')
       kefs:
         koboform:
-          asset_id: !expr readLines("auth/kefs-kobo-asset-id")
-          username: !expr readLines("auth/kefs-kobo-username")
-          password: !expr readLines("auth/kefs-kobo-password")
+          asset_id: !expr Sys.getenv('KEFS_KOBO_ASSET_ID')
+          username: !expr Sys.getenv('KEFS_KOBO_USERNAME')
+          password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
   storage:
     mongodb:
-      connection_string: !expr readLines("auth/mongodb-connection-string")
+      connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
     google:
       options:
-        service_account_key: !expr readLines("auth/gcp-sa-peskas_ingestion-key.json")
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
       options_coasts:
-        service_account_key: !expr readLines("auth/gcp-sa-peskas_ingestion-key.json")
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds_storage:
     google:
       options:
-        service_account_key: !expr readLines("auth/gcp-sa-peskas_ingestion-key.json")
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds:
-    token: !expr readLines("auth/pds-token")
-    secret: !expr readLines("auth/pds-secret")
+    token: !expr Sys.getenv('PDS_TOKEN')
+    secret: !expr Sys.getenv('PDS_SECRET')
   metadata:
     google_sheets:
-      sheet_id: !expr readLines("auth/metadata-sheet-id")
+      sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
     airtable:
-      base_id: !expr readLines("auth/airtable-baseid")
-      token: !expr readLines("auth/airtable-token")
+      base_id: !expr Sys.getenv("AIRTABLE_BASE_ID")
+      token: !expr Sys.getenv("AIRTABLE_TOKEN")

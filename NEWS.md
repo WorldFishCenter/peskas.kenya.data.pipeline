@@ -1,3 +1,20 @@
+# peskas.kenya.data.pipeline 4.3.0
+
+## Configuration
+
+-   **Environment-based Configuration**:
+    -   Migrated authentication from file-based (`auth/`) to environment variable approach using `.env` files
+    -   Improved security and deployment flexibility by using environment variables for credentials
+    -   Added `.env.example` for reference configuration
+
+## Fixes
+
+-   **Package Quality and R CMD Check**:
+    -   Fixed function naming conflict: renamed `get_fishery_metrics()` in preprocessing.R to `get_fishery_metrics_long()` to avoid duplicate function definitions
+    -   Corrected parameter names in helper functions (`get_fishery_metrics()`, `get_individual_metrics()`, `get_individual_gear_metrics()`) to match documentation
+    -   Resolved "unused arguments" error in `export_summaries()` function calls
+    -   Updated function documentation to align with actual parameter names
+
 # peskas.kenya.data.pipeline 4.2.0
 
 ## New features

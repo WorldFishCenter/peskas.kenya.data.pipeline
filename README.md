@@ -78,12 +78,14 @@ familiarize yourself with the package structure, particularly the
 [`R`](R) directory where the main functions are located.
 
 Each function typically reads the configuration using `read_config()` to
-access necessary parameters. To work on this package locally, you’ll
-need to set up the required authentication files in the `auth/`
-directory and ensure your environment variables are properly set.
-Remember to run `devtools::load_all()` when testing changes locally. If
-you’re new to R package development, consider reviewing the [*R
-packages*](https://r-pkgs.org) book by Hadley Wickham and Jenny Brian.
+access necessary parameters. To work on this package locally, you'll
+need to set up environment variables using a `.env` file. Copy
+`.env.example` to `.env` and fill in your actual credentials. The
+package will automatically load these environment variables when
+reading the configuration. Remember to run `devtools::load_all()` when
+testing changes locally. If you're new to R package development,
+consider reviewing the [*R packages*](https://r-pkgs.org) book by
+Hadley Wickham and Jenny Brian.
 
 ## Quick Guide for Contributors
 
