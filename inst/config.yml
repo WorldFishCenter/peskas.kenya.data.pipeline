@@ -101,18 +101,18 @@ default:
       options:
         project: peskas
         bucket: kenya-dev
-        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
       options_coasts:
         project: peskas
         bucket: peskas-coasts
-        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds_storage:
     google:
       key: gcs
       options:
         project: peskas
         bucket: pds-kenya-dev
-        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds:
     token: !expr Sys.getenv('PDS_TOKEN')
     secret: !expr Sys.getenv('PDS_SECRET')
@@ -174,13 +174,13 @@ local:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
     google:
       options:
-        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
       options_coasts:
-        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds_storage:
     google:
       options:
-        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds:
     token: !expr Sys.getenv('PDS_TOKEN')
     secret: !expr Sys.getenv('PDS_SECRET')

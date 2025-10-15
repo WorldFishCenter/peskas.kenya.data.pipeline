@@ -19,8 +19,6 @@ env:
   KEFS_KOBO_PASSWORD: ${{ secrets.KEFS_KOBO_PASSWORD }}
   PDS_TOKEN: ${{ secrets.PDS_TOKEN }}
   PDS_SECRET: ${{ secrets.PDS_SECRET }}
-
-
   MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
   GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
   GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
