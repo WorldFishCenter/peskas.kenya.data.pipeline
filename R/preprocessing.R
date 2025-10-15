@@ -29,7 +29,7 @@ preprocess_landings_v1 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
   raw_dat <- download_parquet_from_cloud(
-    prefix = conf$surveys$catch$v1$raw$file_prefix,
+    prefix = conf$surveys$wcs$catch$v1$raw$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -41,7 +41,7 @@ preprocess_landings_v1 <- function(log_threshold = logger::DEBUG) {
 
   upload_parquet_to_cloud(
     data = preprocessed_landings,
-    prefix = conf$surveys$catch$v1$preprocessed$file_prefix,
+    prefix = conf$surveys$wcs$catch$v1$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -78,7 +78,7 @@ preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
   raw_dat <- download_parquet_from_cloud(
-    prefix = conf$surveys$catch$v2$raw$file_prefix,
+    prefix = conf$surveys$wcs$catch$v2$raw$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -104,7 +104,7 @@ preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
 
   upload_parquet_to_cloud(
     data = preprocessed_landings,
-    prefix = conf$surveys$catch$v2$preprocessed$file_prefix,
+    prefix = conf$surveys$wcs$catch$v2$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -145,7 +145,7 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
   raw_legacy_dat <- download_parquet_from_cloud(
-    prefix = conf$surveys$catch$legacy$raw$file_prefix,
+    prefix = conf$surveys$wcs$catch$legacy$raw$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -281,7 +281,7 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
 
   upload_parquet_to_cloud(
     data = processed_legacy_landings,
-    prefix = conf$surveys$catch$legacy$preprocessed$file_prefix,
+    prefix = conf$surveys$wcs$catch$legacy$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -400,12 +400,12 @@ preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
   # Define version configurations
   version_configs <- list(
     v1 = list(
-      raw_prefix = conf$surveys$price$v1$raw$file_prefix,
-      preprocessed_prefix = conf$surveys$price$v1$preprocessed$file_prefix
+      raw_prefix = conf$surveys$wcs$price$v1$raw$file_prefix,
+      preprocessed_prefix = conf$surveys$wcs$price$v1$preprocessed$file_prefix
     ),
     v2 = list(
-      raw_prefix = conf$surveys$price$v2$raw$file_prefix,
-      preprocessed_prefix = conf$surveys$price$v2$preprocessed$file_prefix
+      raw_prefix = conf$surveys$wcs$price$v2$raw$file_prefix,
+      preprocessed_prefix = conf$surveys$wcs$price$v2$preprocessed$file_prefix
     )
   )
 
