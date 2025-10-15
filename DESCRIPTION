@@ -15,6 +15,7 @@ Imports:
     arrow,
     config,
     digest,
+    dotenv,
     dplyr,
     furrr,
     future,
