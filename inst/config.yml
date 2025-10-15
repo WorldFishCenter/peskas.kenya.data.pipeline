@@ -39,20 +39,20 @@ default:
         validated:
           file_prefix: wcs-surveys-validated
       price:
-      v1:
-        raw:
-          file_prefix: wcs-price-surveys-raw-v1
-        preprocessed:
-          file_prefix: wcs-price-surveys-preprocessed-v1
-      v2:
-        raw:
-          file_prefix: wcs-price-surveys-raw-v2
-        preprocessed:
-          file_prefix: wcs-price-surveys-preprocessed-v2
-      price_table:
-        file_prefix: wcs-price_table
+        v1:
+          raw:
+            file_prefix: wcs-price-surveys-raw-v1
+          preprocessed:
+            file_prefix: wcs-price-surveys-preprocessed-v1
+        v2:
+          raw:
+            file_prefix: wcs-price-surveys-raw-v2
+          preprocessed:
+            file_prefix: wcs-price-surveys-preprocessed-v2
+        price_table:
+          file_prefix: wcs-price_table
       flags:
-      file_prefix: wcs-alert-flags
+        file_prefix: wcs-alert-flags
     kefs:
       raw:
         file_prefix: kefs-surveys-raw
@@ -101,18 +101,18 @@ default:
       options:
         project: peskas
         bucket: kenya-dev
-        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
       options_coasts:
         project: peskas
         bucket: peskas-coasts
-        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
   pds_storage:
     google:
       key: gcs
       options:
         project: peskas
         bucket: pds-kenya-dev
-        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
   pds:
     token: !expr Sys.getenv('PDS_TOKEN')
     secret: !expr Sys.getenv('PDS_SECRET')
@@ -125,7 +125,7 @@ default:
   metadata:
     google_sheets:
       name: metadata-tables
-      sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
+      sheet_id: !expr Sys.getenv("METADATA_SHEET_ID")
       tables:
         - BMUs
     airtable:
@@ -174,19 +174,19 @@ local:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
     google:
       options:
-        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
       options_coasts:
-        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
   pds_storage:
     google:
       options:
-        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+        service_account_key: !expr Sys.getenv('GCP_SERVICE_ACCOUNT_JSON')
   pds:
     token: !expr Sys.getenv('PDS_TOKEN')
     secret: !expr Sys.getenv('PDS_SECRET')
   metadata:
     google_sheets:
-      sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
+      sheet_id: !expr Sys.getenv("METADATA_SHEET_ID")
     airtable:
       base_id: !expr Sys.getenv("AIRTABLE_BASE_ID")
       token: !expr Sys.getenv("AIRTABLE_TOKEN")

@@ -189,12 +189,12 @@ ingest_landings_price <- function(
     v1 = list(
       kobo = list(
         url = "eu.kobotoolbox.org",
-        asset_id = conf$ingestion$koboform$asset_id_price,
-        username = conf$ingestion$koboform$username,
-        password = conf$ingestion$koboform$password
+        asset_id = conf$ingestion$wcs$koboform$asset_id_price,
+        username = conf$ingestion$wcs$koboform$username,
+        password = conf$ingestion$wcs$koboform$password
       ),
       storage = list(
-        file_prefix = conf$surveys$price$v1$raw$file_prefix,
+        file_prefix = conf$surveys$wcs$price$v1$raw$file_prefix,
         provider = conf$storage$google$key,
         options = conf$storage$google$options
       )
@@ -202,12 +202,12 @@ ingest_landings_price <- function(
     v2 = list(
       kobo = list(
         url = "kf.kobotoolbox.org",
-        asset_id = conf$ingestion$koboform_kf$asset_id_price_kf,
-        username = conf$ingestion$koboform_kf$username,
-        password = conf$ingestion$koboform_kf$password
+        asset_id = conf$ingestion$wcs$koboform_kf$asset_id_price_kf,
+        username = conf$ingestion$wcs$koboform_kf$username_kf,
+        password = conf$ingestion$wcs$koboform_kf$password_kf
       ),
       storage = list(
-        file_prefix = conf$surveys$price$v2$raw$file_prefix,
+        file_prefix = conf$surveys$wcs$price$v2$raw$file_prefix,
         provider = conf$storage$google$key,
         options = conf$storage$google$options
       )
