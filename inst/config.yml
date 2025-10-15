@@ -30,10 +30,10 @@ default:
           preprocessed:
             file_prefix: wcs-surveys-preprocessed-v1
         legacy:
-        raw:
-          file_prefix: wcs-legacy-surveys-raw
-        preprocessed:
-          file_prefix: wcs-legacy-surveys-preprocessed
+          raw:
+            file_prefix: wcs-legacy-surveys-raw
+          preprocessed:
+            file_prefix: wcs-legacy-surveys-preprocessed
         merged:
           file_prefix: wcs-surveys-all_landings
         validated:

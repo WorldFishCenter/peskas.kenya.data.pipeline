@@ -11,11 +11,10 @@ Description: This package implements the data and modelling pipelines
     underpining the WCS-Peskas system in Kenya.
 License: GPL (>= 3)
 URL: https://worldfishcenter.github.io/peskas.kenya.data.pipeline/
-Imports: 
+Imports:
     arrow,
     config,
     digest,
-    dotenv,
     dplyr,
     furrr,
     future,

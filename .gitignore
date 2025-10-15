@@ -27,3 +27,5 @@ auth/*
 /.quarto/
 docs
 
+## Other
+**/.claude/

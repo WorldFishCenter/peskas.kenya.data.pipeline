@@ -41,8 +41,12 @@ jobs:
           image_name: r-runner-peskas-kenya
           dockerfile: Dockerfile.prod
 
-  ingest-landings:
-    name: Ingest catch surveys
+  # ============================================================================
+  # WCS DATA PIPELINE
+  # ============================================================================
+
+  ingest-wcs-catch:
+    name: Ingest WCS catch surveys
     needs: build-container
     runs-on: ubuntu-latest
     container:
@@ -54,11 +58,11 @@ jobs:
       - name: Set env to production
         if: endsWith(github.ref, '/main')
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
-      - name: Call ingest_landings()
-        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_landings()'
+      - name: Call ingest_wcs_surveys()
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_wcs_surveys()'
 
-  ingest-price-landings:
-    name: Ingest price surveys
+  ingest-wcs-price:
+    name: Ingest WCS price surveys
     needs: build-container
     runs-on: ubuntu-latest
     container:
@@ -73,9 +77,9 @@ jobs:
       - name: Call ingest_landings_price(versions = c("v1", "v2"))
         run: Rscript -e 'peskas.kenya.data.pipeline::ingest_landings_price(versions = c("v1", "v2"))'
 
-  preprocess-catch-landings:
-    name: Preprocess catch surveys
-    needs: ingest-landings
+  preprocess-wcs-catch:
+    name: Preprocess WCS catch surveys
+    needs: ingest-wcs-catch
     runs-on: ubuntu-latest
     container:
       image: docker.pkg.github.com/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya
@@ -87,15 +91,15 @@ jobs:
         if: endsWith(github.ref, '/main')
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call preprocess_legacy_landings()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_legacy_landings()'        
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_legacy_landings()'
       - name: Call preprocess_landings_v1()
         run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v1()'
       - name: Call preprocess_landings_v2()
         run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v2()'
 
-  preprocess-price-landings:
-    name: Preprocess price surveys
-    needs: ingest-price-landings
+  preprocess-wcs-price:
+    name: Preprocess WCS price surveys
+    needs: ingest-wcs-price
     runs-on: ubuntu-latest
     container:
       image: docker.pkg.github.com/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya
@@ -110,9 +114,9 @@ jobs:
         run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_price_landings()'        
         
 
-  merge-landings:
-    name: Merge all catch surveys
-    needs: [preprocess-catch-landings]
+  merge-wcs-catch:
+    name: Merge WCS catch surveys
+    needs: [preprocess-wcs-catch]
     runs-on: ubuntu-latest
     container:
       image: docker.pkg.github.com/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya
@@ -126,9 +130,9 @@ jobs:
       - name: Call merge_landings()
         run: Rscript -e 'peskas.kenya.data.pipeline::merge_landings()'
 
-  merge-price-data:
-    name: Merge all price surveys
-    needs: [preprocess-catch-landings, preprocess-price-landings]
+  merge-wcs-price:
+    name: Merge WCS price surveys
+    needs: [preprocess-wcs-catch, preprocess-wcs-price]
     runs-on: ubuntu-latest
     container:
       image: docker.pkg.github.com/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya
@@ -142,9 +146,9 @@ jobs:
       - name: Call merge_prices()
         run: Rscript -e 'peskas.kenya.data.pipeline::merge_prices()'
 
-  validate-landings:
-    name: Validate surveys
-    needs: [merge-landings, merge-price-data]
+  validate-wcs:
+    name: Validate WCS surveys
+    needs: [merge-wcs-catch, merge-wcs-price]
     runs-on: ubuntu-latest
     container:
       image: docker.pkg.github.com/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya
@@ -158,9 +162,9 @@ jobs:
       - name: Call validate_landings()
         run: Rscript -e 'peskas.kenya.data.pipeline::validate_landings()'
 
-  export-landings:
-    name: Export metrics to dashboard
-    needs: validate-landings
+  export-wcs:
+    name: Export WCS metrics to dashboard
+    needs: validate-wcs
     runs-on: ubuntu-latest
     container:
       image: docker.pkg.github.com/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya
@@ -173,3 +177,26 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call export_summaries()
         run: Rscript -e 'peskas.kenya.data.pipeline::export_summaries()'
+
+  # ============================================================================
+  # KEFS DATA PIPELINE
+  # ============================================================================
+
+  ingest-kefs-catch:
+    name: Ingest KEFS catch surveys
+    needs: build-container
+    runs-on: ubuntu-latest
+    container:
+      image: docker.pkg.github.com/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Set env to production
+        if: endsWith(github.ref, '/main')
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call ingest_kefs_landings()
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_landings()'
+
+  # Note: KEFS preprocessing, validation, and export jobs will be added here
+  # as those pipeline stages are developed
