@@ -65,7 +65,7 @@ default:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
       database:
         pipeline:
-          name: pipeline
+          name: pipeline-dev
           collection_name:
             legacy:
               raw: legacy-raw
@@ -80,7 +80,7 @@ default:
               validated: validated
             validation_flags: validation_flags
         dashboard:
-          name: app
+          name: app-dev
           collection_name:
             legacy:
               fishery_metrics: legacy-metrics
@@ -141,14 +141,17 @@ default:
 
 production:
   storage:
-    mongodb:
-      connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
     google:
       options:
         bucket: kenya-prod
       options_coasts: 
         bucket: peskas-coasts
-
+    mongodb:
+      database:
+        pipeline:
+          name: pipeline
+        dashboard:
+          name: app
 
 local:
   inherits: development

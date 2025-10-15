@@ -195,8 +195,8 @@ jobs:
       - name: Set env to production
         if: endsWith(github.ref, '/main')
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
-      - name: Call ingest_kefs_landings()
-        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_landings()'
+      - name: Call ingest_kefs_surveys()
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_surveys()'
 
   # Note: KEFS preprocessing, validation, and export jobs will be added here
   # as those pipeline stages are developed
