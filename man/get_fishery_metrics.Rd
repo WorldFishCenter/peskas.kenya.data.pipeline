@@ -4,10 +4,10 @@
 \alias{get_fishery_metrics}
 \title{Calculate Fishery Performance Metrics}
 \usage{
-get_fishery_metrics(validated_data = NULL, bmus_size_data = NULL)
+get_fishery_metrics(valid_data = NULL, bmu_size = NULL)
 }
 \arguments{
-\item{validated_data}{A data frame containing validated fishery data with columns:
+\item{valid_data}{A data frame containing validated fishery data with columns:
 \itemize{
 \item landing_site: Name of the landing site (will be renamed to BMU)
 \item landing_date: Date of landing
@@ -16,7 +16,7 @@ get_fishery_metrics(validated_data = NULL, bmus_size_data = NULL)
 \item total_catch_price: Total catch value in currency
 }}
 
-\item{bmus_size_data}{A data frame containing BMU size information with columns:
+\item{bmu_size}{A data frame containing BMU size information with columns:
 \itemize{
 \item BMU: Name of the Beach Management Unit (lowercase)
 \item size_km: Size of the BMU in square kilometers

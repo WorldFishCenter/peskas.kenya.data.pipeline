@@ -4,10 +4,10 @@
 \alias{get_individual_metrics}
 \title{Calculate Individual Fisher Performance Metrics}
 \usage{
-get_individual_metrics(validated_data = NULL)
+get_individual_metrics(valid_data = NULL)
 }
 \arguments{
-\item{validated_data}{A data frame containing validated fishery data with columns:
+\item{valid_data}{A data frame containing validated fishery data with columns:
 \itemize{
 \item landing_site: Name of the landing site (will be renamed to BMU)
 \item landing_date: Date of landing

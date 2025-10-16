@@ -27,3 +27,6 @@ auth/*
 /.quarto/
 docs
 
+## Other
+.Rprofile
+.claude/

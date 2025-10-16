@@ -32,7 +32,7 @@ validate_landings <- function() {
 
   merged_landings <-
     download_parquet_from_cloud(
-      prefix = conf$surveys$catch$merged$file_prefix,
+      prefix = conf$surveys$wcs$catch$merged$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
     ) |>
@@ -41,7 +41,7 @@ validate_landings <- function() {
 
   price_tables <-
     download_parquet_from_cloud(
-      prefix = conf$surveys$price$price_table$file_prefix,
+      prefix = conf$surveys$wcs$price$price_table$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
     ) |>
@@ -244,9 +244,9 @@ validate_landings <- function() {
   upload_data <- list(
     list(
       data = clean_data,
-      prefix = conf$surveys$catch$validated$file_prefix
+      prefix = conf$surveys$wcs$catch$validated$file_prefix
     ),
-    list(data = alert_flags, prefix = conf$surveys$flags$file_prefix)
+    list(data = alert_flags, prefix = conf$surveys$wcs$flags$file_prefix)
   )
   # Log messages for each upload
   log_messages <- c(

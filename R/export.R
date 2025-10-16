@@ -55,7 +55,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   valid_data <-
     download_parquet_from_cloud(
-      prefix = conf$surveys$catch$validated$file_prefix,
+      prefix = conf$surveys$wcs$catch$validated$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
     ) |>
@@ -73,10 +73,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       !.data$landing_site %in% setdiff(valid_data$landing_site, bmu_size$BMU)
     )
 
-  individual_stats <- get_individual_metrics(validated_data = valid_data)
-  individual_gear_stats <- get_individual_gear_metrics(
-    validated_data = valid_data
-  )
+  individual_stats <- get_individual_metrics(valid_data)
+  individual_gear_stats <- get_individual_gear_metrics(valid_data)
 
   #tidyr::complete(
   #  .data$BMU,
@@ -86,8 +84,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   monthly_stats <-
     get_fishery_metrics(
-      validated_data = valid_data,
-      bmus_size_data = bmu_size
+      valid_data,
+      bmu_size
     ) |>
     dplyr::group_by(.data$BMU) %>%
     dplyr::arrange(.data$BMU, dplyr::desc(.data$date)) %>%
@@ -105,8 +103,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
   # Caluclate fishers day and summarise by month the main metrics
   monthly_summaries <-
     get_fishery_metrics(
-      validated_data = valid_data,
-      bmus_size_data = bmu_size
+      valid_data,
+      bmu_size
     ) |>
     tidyr::complete(
       .data$BMU,
@@ -292,14 +290,14 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   # Collection names
   collection_names <- list(
-    individual_stats = conf$storage$mongod$database$dashboard$collection_name$v1$individual_stats,
-    individual_gear_stats = conf$storage$mongod$database$dashboard$collection_name$v1$individual_gear_stats,
-    individual_fish_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$individual_fish_distribution,
-    monthly_stats = conf$storage$mongod$database$dashboard$collection_name$v1$monthly_stats,
-    monthly_summaries = conf$storage$mongod$database$dashboard$collection_name$v1$catch_monthly,
-    fish_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$fish_distribution,
-    #map_distribution = conf$storage$mongod$database$dashboard$collection_name$v1$map_distribution,
-    gear_summaries = conf$storage$mongod$database$dashboard$collection_name$v1$gear_summaries
+    individual_stats = conf$storage$mongodb$database$dashboard$collection_name$v1$individual_stats,
+    individual_gear_stats = conf$storage$mongodb$database$dashboard$collection_name$v1$individual_gear_stats,
+    individual_fish_distribution = conf$storage$mongodb$database$dashboard$collection_name$v1$individual_fish_distribution,
+    monthly_stats = conf$storage$mongodb$database$dashboard$collection_name$v1$monthly_stats,
+    monthly_summaries = conf$storage$mongodb$database$dashboard$collection_name$v1$catch_monthly,
+    fish_distribution = conf$storage$mongodb$database$dashboard$collection_name$v1$fish_distribution,
+    #map_distribution = conf$storage$mongodb$database$dashboard$collection_name$v1$map_distribution,
+    gear_summaries = conf$storage$mongodb$database$dashboard$collection_name$v1$gear_summaries
   )
 
   # Iterate over the dataframes and upload them
@@ -312,9 +310,18 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
         data = .x,
         connection_string = conf$storage$mongodb$connection_string,
         collection_name = .y,
-        db_name = conf$storage$mongod$database$dashboard$name
+        db_name = conf$storage$mongodb$database$dashboard$name
       )
     }
+  )
+
+  f_metrics <- get_fishery_metrics_long(data = valid_data)
+
+  upload_parquet_to_cloud(
+    data = f_metrics,
+    prefix = "kenya_fishery_metrics",
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options_coasts
   )
 }
 
@@ -326,7 +333,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 #' including effort, CPUE (Catch Per Unit Effort), CPUA (Catch Per Unit Area),
 #' RPUE (Revenue Per Unit Effort), RPUA (Revenue Per Unit Area) and Price per kg.
 #'
-#' @param validated_data A data frame containing validated fishery data with columns:
+#' @param valid_data A data frame containing validated fishery data with columns:
 #'   \itemize{
 #'     \item landing_site: Name of the landing site (will be renamed to BMU)
 #'     \item landing_date: Date of landing
@@ -334,7 +341,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 #'     \item total_catch_kg: Total catch in kilograms
 #'     \item total_catch_price: Total catch value in currency
 #'   }
-#' @param bmus_size_data A data frame containing BMU size information with columns:
+#' @param bmu_size A data frame containing BMU size information with columns:
 #'   \itemize{
 #'     \item BMU: Name of the Beach Management Unit (lowercase)
 #'     \item size_km: Size of the BMU in square kilometers
@@ -367,8 +374,8 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 #' @importFrom stringr str_to_title
 #'
 #' @keywords helper
-get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
-  validated_data |>
+get_fishery_metrics <- function(valid_data = NULL, bmu_size = NULL) {
+  valid_data |>
     dplyr::rename(BMU = "landing_site") |>
     dplyr::select(
       -c(
@@ -386,7 +393,7 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
     dplyr::filter(!is.na(.data$landing_date)) %>%
     dplyr::distinct() |>
     dplyr::mutate(price_kg = .data$total_catch_price / .data$total_catch_kg) |>
-    dplyr::left_join(bmus_size_data, by = "BMU") |>
+    dplyr::left_join(bmu_size, by = "BMU") |>
     dplyr::group_by(.data$landing_date, .data$BMU) |>
     dplyr::summarise(
       total_fishers = sum(.data$no_of_fishers, na.rm = T),
@@ -444,7 +451,7 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
 #' validated catch data, including CPUE (Catch Per Unit Effort), RPUE (Revenue Per
 #' Unit Effort), price per kg, trip costs, and profit margins for each fisher.
 #'
-#' @param validated_data A data frame containing validated fishery data with columns:
+#' @param valid_data A data frame containing validated fishery data with columns:
 #'   \itemize{
 #'     \item landing_site: Name of the landing site (will be renamed to BMU)
 #'     \item landing_date: Date of landing
@@ -486,8 +493,8 @@ get_fishery_metrics <- function(validated_data = NULL, bmus_size_data = NULL) {
 #' @importFrom stringr str_to_title
 #'
 #' @keywords helper
-get_individual_metrics <- function(validated_data = NULL) {
-  validated_data |>
+get_individual_metrics <- function(valid_data = NULL) {
+  valid_data |>
     dplyr::rename(BMU = "landing_site") |>
     dplyr::select(
       -c(
@@ -555,7 +562,7 @@ get_individual_metrics <- function(validated_data = NULL) {
 #' metrics as \code{get_individual_metrics} but includes gear type as an additional
 #' grouping variable, allowing for analysis of gear-specific performance patterns.
 #'
-#' @param validated_data A data frame containing validated fishery data with columns:
+#' @param valid_data A data frame containing validated fishery data with columns:
 #'   \itemize{
 #'     \item landing_site: Name of the landing site (will be renamed to BMU)
 #'     \item landing_date: Date of landing
@@ -605,8 +612,8 @@ get_individual_metrics <- function(validated_data = NULL) {
 #' @seealso \code{\link{get_individual_metrics}} for metrics without gear stratification
 #'
 #' @keywords helper
-get_individual_gear_metrics <- function(validated_data = NULL) {
-  validated_data |>
+get_individual_gear_metrics <- function(valid_data = NULL) {
+  valid_data |>
     dplyr::rename(BMU = "landing_site") |>
     dplyr::select(
       -c(

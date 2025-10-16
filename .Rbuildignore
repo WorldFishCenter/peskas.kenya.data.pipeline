@@ -15,7 +15,11 @@
 ^.idea$
 ^rstudio-prefs.json$
 ^auth$
+^\.env$
+^\.env\..*$
 ^Python$
 ^.DS_Store$
 
 ^CODE_OF_CONDUCT\.md$
+^\.claude$
+^.*\.parquet$

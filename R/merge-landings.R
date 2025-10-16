@@ -35,7 +35,7 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
     purrr::set_names() |>
     purrr::map(
       ~ download_parquet_from_cloud(
-        prefix = conf$surveys$catch[[.x]]$preprocessed$file_prefix,
+        prefix = conf$surveys$wcs$catch[[.x]]$preprocessed$file_prefix,
         provider = conf$storage$google$key,
         options = conf$storage$google$options
       )
@@ -72,7 +72,7 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
   # upload preprocessed landings
   upload_parquet_to_cloud(
     data = merged_landings,
-    prefix = conf$surveys$catch$merged$file_prefix,
+    prefix = conf$surveys$wcs$catch$merged$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -107,7 +107,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
   logger::log_info("Downloading legacy price data from mongodb")
 
   legacy <- download_parquet_from_cloud(
-    prefix = conf$surveys$catch$legacy$preprocessed$file_prefix,
+    prefix = conf$surveys$wcs$catch$legacy$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   ) |>
@@ -124,7 +124,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
   logger::log_info("Downloading ongoing price data from mongodb")
 
   v1_price <- download_parquet_from_cloud(
-    prefix = conf$surveys$price$v1$preprocessed$file_prefix,
+    prefix = conf$surveys$wcs$price$v1$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   ) |>
@@ -138,7 +138,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
     summarise_catch_price(unit = "year")
 
   v2_price <- download_parquet_from_cloud(
-    prefix = conf$surveys$price$v2$preprocessed$file_prefix,
+    prefix = conf$surveys$wcs$price$v2$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   ) |>
@@ -164,7 +164,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
 
   upload_parquet_to_cloud(
     data = price_table,
-    prefix = conf$surveys$price$price_table$file_prefix,
+    prefix = conf$surveys$wcs$price$price_table$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
