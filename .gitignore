@@ -28,4 +28,5 @@ auth/*
 docs
 
 ## Other
-**/.claude/
+.Rprofile
+.claude/
