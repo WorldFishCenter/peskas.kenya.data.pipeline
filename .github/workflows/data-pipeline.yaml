@@ -48,9 +48,9 @@ jobs:
           context: .
           file: Dockerfile.prod
           push: true
-          tags: ghcr.io/${{ github.repository }}/r-runner-peskas-kenya:latest
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/r-runner-peskas-kenya:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/r-runner-peskas-kenya:buildcache,mode=max
+          tags: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+          cache-from: type=registry,ref=ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:buildcache
+          cache-to: type=registry,ref=ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:buildcache,mode=max
 
   # ============================================================================
   # WCS DATA PIPELINE
