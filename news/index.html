@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,108 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.3.0" id="peskaskenyadatapipeline-430">peskas.kenya.data.pipeline 4.3.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-430"></a></h2>
+<div class="section level3">
+<h3 id="configuration-4-3-0">Configuration<a class="anchor" aria-label="anchor" href="#configuration-4-3-0"></a></h3>
+<ul><li>
+<strong>Environment-based Configuration</strong>:
+<ul><li>Migrated authentication from file-based (<code>auth/</code>) to environment variable approach using <code>.env</code> files</li>
+<li>Improved security and deployment flexibility by using environment variables for credentials</li>
+<li>Added <code>.env.example</code> for reference configuration</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-4-3-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-4-3-0"></a></h3>
+<ul><li>
+<strong>Package Quality and R CMD Check</strong>:
+<ul><li>Fixed function naming conflict: renamed <code><a href="../reference/get_fishery_metrics.html">get_fishery_metrics()</a></code> in preprocessing.R to <code><a href="../reference/get_fishery_metrics_long.html">get_fishery_metrics_long()</a></code> to avoid duplicate function definitions</li>
+<li>Corrected parameter names in helper functions (<code><a href="../reference/get_fishery_metrics.html">get_fishery_metrics()</a></code>, <code><a href="../reference/get_individual_metrics.html">get_individual_metrics()</a></code>, <code><a href="../reference/get_individual_gear_metrics.html">get_individual_gear_metrics()</a></code>) to match documentation</li>
+<li>Resolved “unused arguments” error in <code><a href="../reference/export_summaries.html">export_summaries()</a></code> function calls</li>
+<li>Updated function documentation to align with actual parameter names</li>
+</ul></li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.2.0" id="peskaskenyadatapipeline-420">peskas.kenya.data.pipeline 4.2.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-420"></a></h2>
+<div class="section level3">
+<h3 id="new-features-4-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-4-2-0"></a></h3>
+<ul><li>
+<strong>GPS Track Processing and Analysis</strong>:
+<ul><li>Added <code>process_fishing_tracks()</code> for comprehensive GPS track processing and fishing activity classification</li>
+<li>Implemented <code>prepare_gps_data()</code> to convert raw tracking data into GPSMonitoring format</li>
+<li>Added <code>classify_fishing_activity()</code> using speed thresholds and spatial clustering to identify fishing vs transit activities</li>
+<li>Created <code>process_trajectories_with_speed()</code> for calculating vessel speeds from GPS positions</li>
+<li>Implemented <code>calculate_fishing_summaries()</code> to generate effort metrics by trip and spatial grid</li>
+<li>Added <code>visualize_fishing_track()</code> for mapping fishing activities</li>
+<li>Created <code>create_exclusion_zones()</code> and <code>create_extent_polygon()</code> for spatial analysis</li>
+</ul></li>
+<li>
+<strong>Airtable Integration</strong>:
+<ul><li>Implemented bidirectional Airtable API integration with <code><a href="../reference/airtable_to_df.html">airtable_to_df()</a></code> for reading records</li>
+<li>Added <code><a href="../reference/df_to_airtable.html">df_to_airtable()</a></code> for bulk create operations</li>
+<li>Created <code><a href="../reference/update_airtable_record.html">update_airtable_record()</a></code> for updating individual records</li>
+<li>Implemented <code><a href="../reference/bulk_update_airtable.html">bulk_update_airtable()</a></code> for batch update operations</li>
+<li>Added <code><a href="../reference/get_writable_fields.html">get_writable_fields()</a></code> to retrieve field schemas and validate writable fields</li>
+</ul></li>
+<li>
+<strong>Fishery Metrics Expansion</strong>:
+<ul><li>Extended <code><a href="../reference/get_fishery_metrics.html">get_fishery_metrics()</a></code> with normalized long format output for maximum interoperability</li>
+<li>Added metrics for CPUE and RPUE by gear type</li>
+<li>Implemented species composition analysis with top 2 species ranking</li>
+<li>Created fully normalized dataset structure for flexible aggregation and filtering</li>
+</ul></li>
+<li>
+<strong>PDS Tracker Report</strong>:
+<ul><li>Added comprehensive GPS tracking visualization report (inst/reports/pds/trackers.qmd)</li>
+<li>Integrated interactive maps, time series, and network analysis visualizations</li>
+<li>Implemented spatial heatmaps and trip trajectory analysis</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-4-2-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-4-2-0"></a></h3>
+<ul><li>
+<strong>Package Quality and Compliance</strong>:
+<ul><li>Fixed R CMD check warnings by replacing <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code>/<code><a href="https://rdrr.io/r/base/library.html" class="external-link">require()</a></code> calls with <code>::</code> notation and <code><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace()</a></code>
+</li>
+<li>Added missing global variable bindings for track and fishery metrics variables</li>
+<li>Updated NAMESPACE with new imports: <code><a href="https://dplyr.tidyverse.org/reference/context.html" class="external-link">dplyr::n</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">dplyr::arrange</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/row_number.html" class="external-link">dplyr::row_number</a></code>, <code><a href="https://rdrr.io/r/stats/lag.html" class="external-link">stats::lag</a></code>, <code><a href="https://rdrr.io/r/stats/time.html" class="external-link">stats::time</a></code>, <code><a href="https://rlang.r-lib.org/reference/sym.html" class="external-link">rlang::sym</a></code>
+</li>
+<li>Added GPSMonitoring and ggplot2 to Suggests dependencies</li>
+<li>Excluded <code>.claude</code> directory and <code>.parquet</code> files from package build via .Rbuildignore</li>
+<li>Reduced R CMD check from 3 warnings/6 notes to 2 warnings/2 notes</li>
+</ul></li>
+<li>
+<strong>KEFS Data Integration</strong>:
+<ul><li>Updated configuration (inst/config.yml) for KEFS survey data integration</li>
+<li>Enhanced inst/kefs_integration.R with improved data processing workflows</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-4-2-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-4-2-0"></a></h3>
+<ul><li>Added 14 new man pages for GPS tracking functions:
+<ul><li>
+<code>process_fishing_tracks.Rd</code>, <code>prepare_gps_data.Rd</code>, <code>classify_fishing_activity.Rd</code>
+</li>
+<li>
+<code>process_trajectories_with_speed.Rd</code>, <code>calculate_fishing_summaries.Rd</code>
+</li>
+<li>
+<code>create_exclusion_zones.Rd</code>, <code>create_extent_polygon.Rd</code>, <code>visualize_fishing_track.Rd</code>
+</li>
+</ul></li>
+<li>Added 6 new man pages for Airtable integration:
+<ul><li>
+<code>airtable_to_df.Rd</code>, <code>df_to_airtable.Rd</code>, <code>update_airtable_record.Rd</code>
+</li>
+<li>
+<code>bulk_update_airtable.Rd</code>, <code>get_writable_fields.Rd</code>
+</li>
+</ul></li>
+<li>Updated <code>get_fishery_metrics.Rd</code> to document dual function signatures for different use cases</li>
+<li>Enhanced documentation with comprehensive examples and parameter descriptions</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="4.1.0" id="peskaskenyadatapipeline-410">peskas.kenya.data.pipeline 4.1.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-410"></a></h2>
 <div class="section level3">

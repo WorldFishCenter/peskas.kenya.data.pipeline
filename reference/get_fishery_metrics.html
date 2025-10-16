@@ -11,7 +11,7 @@ RPUE (Revenue Per Unit Effort), RPUA (Revenue Per Unit Area) and Price per kg.">
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,14 +43,14 @@ RPUE (Revenue Per Unit Effort), RPUA (Revenue Per Unit Area) and Price per kg.</
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_fishery_metrics</span><span class="op">(</span>validated_data <span class="op">=</span> <span class="cn">NULL</span>, bmus_size_data <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_fishery_metrics</span><span class="op">(</span>valid_data <span class="op">=</span> <span class="cn">NULL</span>, bmu_size <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-validated-data">validated_data<a class="anchor" aria-label="anchor" href="#arg-validated-data"></a></dt>
+<dl><dt id="arg-valid-data">valid_data<a class="anchor" aria-label="anchor" href="#arg-valid-data"></a></dt>
 <dd><p>A data frame containing validated fishery data with columns:</p><ul><li><p>landing_site: Name of the landing site (will be renamed to BMU)</p></li>
 <li><p>landing_date: Date of landing</p></li>
 <li><p>no_of_fishers: Number of fishers</p></li>
@@ -59,7 +59,7 @@ RPUE (Revenue Per Unit Effort), RPUA (Revenue Per Unit Area) and Price per kg.</
 </ul></dd>
 
 
-<dt id="arg-bmus-size-data">bmus_size_data<a class="anchor" aria-label="anchor" href="#arg-bmus-size-data"></a></dt>
+<dt id="arg-bmu-size">bmu_size<a class="anchor" aria-label="anchor" href="#arg-bmu-size"></a></dt>
 <dd><p>A data frame containing BMU size information with columns:</p><ul><li><p>BMU: Name of the Beach Management Unit (lowercase)</p></li>
 <li><p>size_km: Size of the BMU in square kilometers</p></li>
 </ul></dd>
