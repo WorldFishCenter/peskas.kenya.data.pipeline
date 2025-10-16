@@ -125,7 +125,7 @@ default:
   metadata:
     google_sheets:
       name: metadata-tables
-      sheet_id: !expr Sys.getenv("METADATA_SHEET_ID")
+      sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
       tables:
         - BMUs
     airtable:
@@ -189,7 +189,7 @@ local:
     secret: !expr Sys.getenv('PDS_SECRET')
   metadata:
     google_sheets:
-      sheet_id: !expr Sys.getenv("METADATA_SHEET_ID")
+      sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
     airtable:
       base_id: !expr Sys.getenv("AIRTABLE_BASE_ID")
       token: !expr Sys.getenv("AIRTABLE_TOKEN")
