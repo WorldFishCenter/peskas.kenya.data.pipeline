@@ -1103,6 +1103,7 @@ generate_track_summaries <- function(data, min_hours = 0.15, max_hours = 15) {
 #' main_gear <- fishery_metrics %>% filter(metric_type == "predominant_gear")
 #' }
 #'
+#' @keywords helper
 #' @export
 get_fishery_metrics_long <- function(data = NULL) {
   # Calculate base metrics by landing site and month

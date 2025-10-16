@@ -15,3 +15,4 @@ SF object with formatted GPS data
 \description{
 Converts raw tracking data into format required by GPSMonitoring package
 }
+\keyword{internal}

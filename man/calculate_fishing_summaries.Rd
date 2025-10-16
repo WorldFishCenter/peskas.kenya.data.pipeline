@@ -17,3 +17,4 @@ List with effort summaries
 \description{
 Summarizes fishing effort by trip and spatial grid
 }
+\keyword{internal}

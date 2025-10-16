@@ -15,3 +15,4 @@ SF polygon defining study extent
 \description{
 Creates bounding polygon for study area
 }
+\keyword{internal}

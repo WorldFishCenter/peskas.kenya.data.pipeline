@@ -937,6 +937,7 @@ process_single_track <- function(trip_id, pars) {
 #'
 #' @return A tibble with all records and an 'airtable_id' column.
 #'
+#' @keywords ingestion
 #' @export
 airtable_to_df <- function(
   base_id,

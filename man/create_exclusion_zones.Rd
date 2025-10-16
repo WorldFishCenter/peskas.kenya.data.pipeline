@@ -17,3 +17,4 @@ SF object with unified exclusion zone
 \description{
 Creates buffer zones around ports to exclude anchored vessels
 }
+\keyword{internal}

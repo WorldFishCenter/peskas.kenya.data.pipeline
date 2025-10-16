@@ -29,3 +29,4 @@ SF object with activity classification
 \description{
 Uses speed thresholds and spatial clustering to identify fishing
 }
+\keyword{internal}

@@ -26,3 +26,4 @@ SF object with speed calculations
 \description{
 Processes trajectories and calculates speed between consecutive points
 }
+\keyword{internal}

@@ -9,6 +9,7 @@
 #'
 #' @return A tibble with all records and an 'airtable_id' column.
 #'
+#' @keywords ingestion
 #' @export
 airtable_to_df <- function(
   base_id,
@@ -98,6 +99,7 @@ airtable_to_df <- function(
 #'
 #' @return Character vector of writable field names.
 #'
+#' @keywords helper
 #' @export
 get_writable_fields <- function(base_id, token, table_name) {
   schema_url <- glue::glue(
@@ -158,6 +160,7 @@ get_writable_fields <- function(base_id, token, table_name) {
 #'
 #' @return httr2 response object.
 #'
+#' @keywords export
 #' @export
 update_airtable_record <- function(
   base_id,
@@ -204,6 +207,7 @@ update_airtable_record <- function(
 #'
 #' @return List of response objects.
 #'
+#' @keywords export
 #' @export
 bulk_update_airtable <- function(base_id, table_name, token, updates_df) {
   base_url <- glue::glue(
@@ -264,6 +268,7 @@ bulk_update_airtable <- function(base_id, table_name, token, updates_df) {
 #'
 #' @return List of response objects.
 #'
+#' @keywords export
 #' @export
 df_to_airtable <- function(df, base_id, table_name, token) {
   base_url <- glue::glue(

@@ -56,6 +56,7 @@
 #' print(plot)
 #' }
 #'
+#' @keywords preprocessing
 #' @export
 process_fishing_tracks <- function(
   tracks_file,
@@ -145,6 +146,7 @@ process_fishing_tracks <- function(
 #' @description Converts raw tracking data into format required by GPSMonitoring package
 #' @param tracks Data frame with vessel tracking data
 #' @return SF object with formatted GPS data
+#' @keywords internal
 prepare_gps_data <- function(tracks) {
   tracks %>%
     dplyr::mutate(
@@ -173,6 +175,7 @@ prepare_gps_data <- function(tracks) {
 #' @param ports_df Data frame with port locations
 #' @param buffer_m Buffer radius in meters
 #' @return SF object with unified exclusion zone
+#' @keywords internal
 create_exclusion_zones <- function(ports_df, buffer_m = 500) {
   # Convert buffer from meters to approximate degrees
   buffer_deg <- buffer_m / 111000 # rough conversion at equator
@@ -189,6 +192,7 @@ create_exclusion_zones <- function(ports_df, buffer_m = 500) {
 #' @description Creates bounding polygon for study area
 #' @param gps_data SF object with GPS positions
 #' @return SF polygon defining study extent
+#' @keywords internal
 create_extent_polygon <- function(gps_data) {
   bbox <- sf::st_bbox(gps_data)
   emprise <- matrix(
@@ -218,6 +222,7 @@ create_extent_polygon <- function(gps_data) {
 #' @param standardize Whether to standardize time intervals
 #' @param interval_seconds Target interval in seconds if standardizing
 #' @return SF object with speed calculations
+#' @keywords internal
 process_trajectories_with_speed <- function(
   gps_data,
   trip_gap_seconds = 7200,
@@ -293,6 +298,7 @@ process_trajectories_with_speed <- function(
 #' @param circle_radius Radius for clustering analysis (meters)
 #' @param circle_window Time window for clustering
 #' @return SF object with activity classification
+#' @keywords internal
 classify_fishing_activity <- function(
   gps_data,
   speed_threshold = 1.5,
@@ -353,6 +359,7 @@ classify_fishing_activity <- function(
 #' @param gps_data SF object with classified activities
 #' @param interval_seconds Time interval between positions
 #' @return List with effort summaries
+#' @keywords internal
 calculate_fishing_summaries <- function(gps_data, interval_seconds = 300) {
   # Effort by trip
   effort_by_trip <- gps_data %>%
@@ -423,6 +430,7 @@ calculate_fishing_summaries <- function(gps_data, interval_seconds = 300) {
 #' plot <- visualize_fishing_track(results$processed_data, track_id = 12345)
 #' }
 #'
+#' @keywords helper
 #' @export
 visualize_fishing_track <- function(processed_data, track_id = NULL) {
   if (is.null(track_id)) {

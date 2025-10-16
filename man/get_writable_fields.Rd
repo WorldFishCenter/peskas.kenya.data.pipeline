@@ -19,3 +19,4 @@ Character vector of writable field names.
 \description{
 Returns which fields can be updated (excludes computed fields).
 }
+\keyword{helper}

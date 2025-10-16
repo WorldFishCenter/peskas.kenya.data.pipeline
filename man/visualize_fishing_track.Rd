@@ -27,3 +27,4 @@ plot <- visualize_fishing_track(results$processed_data, track_id = 12345)
 }
 
 }
+\keyword{helper}

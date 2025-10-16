@@ -21,3 +21,4 @@ List of response objects.
 \description{
 Updates multiple records in batches of 10.
 }
+\keyword{export}
