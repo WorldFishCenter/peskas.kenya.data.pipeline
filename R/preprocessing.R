@@ -1,3 +1,170 @@
+#' Preprocess KEFS Survey Data
+#'
+#' This function preprocesses raw KEFS (Kenya Fisheries Service) survey data from Google Cloud Storage.
+#' It performs data cleaning, transformation, standardization of field names, type conversions,
+#' and mapping to standardized taxonomic and gear names using Airtable reference tables.
+#'
+#' @param log_threshold Logging threshold level (default: logger::DEBUG)
+#'
+#' @return No return value. Function processes the data and uploads the result as a Parquet file to Google Cloud Storage.
+#'
+#' @details
+#' The function performs the following main operations:
+#' 1. **Fetches metadata assets**: Retrieves taxonomic, gear, vessel, and landing site mappings from Airtable
+#'    based on the KEFS Kobo form asset ID
+#' 2. **Downloads raw data**: Retrieves raw survey data from Google Cloud Storage
+#' 3. **Extracts trip information**: Selects and renames relevant trip-level fields including:
+#'    - Landing details (date, site, district, BMU)
+#'    - Fishing ground and JCMA (Joint Community Management Area) information
+#'    - Vessel details (type, name, registration, motorization, horsepower)
+#'    - Trip details (crew size, start/end times, gear, mesh size, fuel)
+#'    - Catch outcome indicators
+#' 4. **Reshapes catch data**: Transforms catch details from wide to long format using `reshape_catch_data()`
+#' 5. **Type conversions and calculations**:
+#'    - Converts date/time fields to proper datetime format
+#'    - Calculates trip duration in hours from start and end times
+#'    - Converts numeric fields (hp, fishers, mesh size, fuel) to appropriate types
+#' 6. **Joins trip and catch data**: Combines trip information with catch records using full join on submission_id
+#' 7. **Standardizes names**: Maps survey labels to standardized names using `map_surveys()`:
+#'    - Taxonomic names to scientific names and alpha3 codes
+#'    - Gear types to standardized gear names
+#'    - Vessel types to standardized vessel categories
+#'    - Landing site codes to full site names
+#' 8. **Uploads processed data**: Saves preprocessed data as a Parquet file to Google Cloud Storage
+#'
+#' @section Data Structure:
+#' The preprocessed output includes the following key fields:
+#' \itemize{
+#'   \item \strong{Trip identifiers}: submission_id
+#'   \item \strong{Temporal}: landing_date, fishing_trip_start, fishing_trip_end, trip_duration
+#'   \item \strong{Spatial}: district, BMU, landing_site, fishing_ground, jcma, jcma_site
+#'   \item \strong{Vessel}: vessel_type, boat_name, vessel_reg_number, motorized, hp
+#'   \item \strong{Crew}: captain_name, no_of_fishers
+#'   \item \strong{Gear}: gear, mesh_size
+#'   \item \strong{Catch}: scientific_name, alpha3_code, total_catch_weight, price_per_kg, total_value
+#'   \item \strong{Operations}: fuel, catch_outcome, catch_shark
+#' }
+#'
+#' @section Pipeline Integration:
+#' This function is part of the KEFS data pipeline sequence:
+#' 1. `ingest_kefs_surveys()` - Downloads raw data from Kobo
+#' 2. **`preprocess_kefs_surveys()`** - Cleans and standardizes data (this function)
+#' 3. Validation step (to be implemented)
+#' 4. Export step (to be implemented)
+#'
+#' @keywords workflow preprocessing
+#' @examples
+#' \dontrun{
+#' # Preprocess KEFS survey data
+#' preprocess_kefs_surveys()
+#'
+#' # Run with custom logging level
+#' preprocess_kefs_surveys(log_threshold = logger::INFO)
+#' }
+#' @export
+preprocess_kefs_surveys <- function(log_threshold = logger::DEBUG) {
+  conf <- read_config()
+
+  assets <- fetch_assets(
+    form_id = get_airtable_form_id(
+      kobo_asset_id = conf$ingestion$kefs$koboform$asset_id,
+      conf = conf
+    ),
+    conf = conf
+  )
+
+  assets$sites <- assets$sites |>
+    dplyr::mutate(
+      site = stringr::str_trim(stringr::str_replace_all(.data$site, "\\n", ""))
+    )
+
+  raw_dat <- download_parquet_from_cloud(
+    prefix = conf$surveys$kefs$raw$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+
+  trip_info <-
+    raw_dat |>
+    dplyr::select(
+      "submission_id",
+      landing_date = "date_data",
+      district = "sub_county",
+      "BMU",
+      landing_site = "Landing_Site",
+      fishing_ground = "Area_Fished",
+      jcma = "Are_you_within_a_JCMA_Joint_C",
+      jcma_site = "If_YES_Please_choos_from_the_list_below",
+      vessel_type = "Craft_Typ",
+      other_vessel = "Craft_TypOther",
+      boat_name = "vessel_name",
+      vessel_reg_number = "vessel_reg",
+      "captain_name",
+      motorized = "Motorized_or_Non",
+      hp = "HP",
+      no_of_fishers = "NumCrew",
+      fishing_trip_start = "Enter_date_and_time_sel_left_for_fishing",
+      fishing_trip_end = "Enter_date_and_time_the_vessel_landed",
+      gear = "gear_type",
+      mesh_size = "MESH_SIZE",
+      fuel = "FUEL_USED",
+      catch_outcome = "Did_you_Catch_ANY_FISH_TODAY",
+      catch_shark = "Did_you_catch_any_SHARK"
+    )
+
+  catch_data <- reshape_catch_data(raw_data = raw_dat)
+
+  # fix fields
+
+  trip_info_preprocessed <-
+    trip_info |>
+    dplyr::mutate(
+      submission_id = as.character(.data$submission_id),
+      hp = as.integer(.data$hp),
+      no_of_fishers = as.integer(.data$no_of_fishers),
+      fishing_trip_start = lubridate::ymd_hms(.data$fishing_trip_start),
+      fishing_trip_end = lubridate::ymd_hms(.data$fishing_trip_end),
+      trip_duration = as.numeric(difftime(
+        fishing_trip_end,
+        fishing_trip_start,
+        units = "hours"
+      )),
+      mesh_size = as.numeric(.data$mesh_size),
+      fuel = as.numeric(.data$fuel)
+    ) |>
+    dplyr::relocate(.data$trip_duration, .after = "fishing_trip_end")
+
+  catch_data_preprocessed <-
+    catch_data |>
+    dplyr::mutate(
+      submission_id = as.character(.data$submission_id)
+    )
+
+  preprocessed_landings <-
+    dplyr::full_join(
+      trip_info_preprocessed,
+      catch_data_preprocessed,
+      by = "submission_id"
+    )
+
+  preprocessed_data <-
+    map_surveys(
+      data = preprocessed_landings,
+      taxa_mapping = assets$taxa,
+      gear_mapping = assets$gear,
+      vessels_mapping = assets$vessels,
+      sites_mapping = assets$sites
+    )
+
+  # upload preprocessed landings
+  upload_parquet_to_cloud(
+    data = preprocessed_data,
+    prefix = conf$surveys$kefs$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+}
+
 #' Preprocess Landings Data (Version 1)
 #'
 #' This function preprocesses raw landings data from Google Cloud Storage.
@@ -1262,4 +1429,299 @@ get_fishery_metrics_long <- function(data = NULL) {
     )
 
   return(long_format)
+}
+
+#' Reshape catch details from wide to long format
+#'
+#' Transforms catch data from a wide format (multiple columns per catch)
+#' to a long format (one row per catch per submission). This function is
+#' designed to work with KoBo survey data containing multiple catch details.
+#'
+#' @param raw_data A data frame containing submission_id and CATCH_DETAILS columns
+#'   in wide format. The CATCH_DETAILS columns should follow the naming pattern
+#'   CATCH_DETAILS.N.CATCH_DETAILS/variable where N is the catch number (0-based).
+#'
+#' @return A data frame in long format with the following columns:
+#'   \describe{
+#'     \item{submission_id}{Unique identifier for each submission}
+#'     \item{n_catch}{Catch number (1-based indexing)}
+#'     \item{species}{Marine species caught}
+#'     \item{total_catch_weight}{Weight of the catch (numeric)}
+#'     \item{price_per_kg}{Price per kilogram (numeric)}
+#'     \item{total_value}{Total value of the catch (numeric)}
+#'   }
+#'
+#' @examples
+#' \dontrun{
+#' # Load your raw KoBo survey data
+#' raw_data <- read.csv("kobo_survey_data.csv")
+#'
+#' # Reshape to long format
+#' long_data <- reshape_catch_data(raw_data)
+#'
+#' # View the reshaped data
+#' head(long_data)
+#' }
+#' @keywords preprocessing
+#' @export
+reshape_catch_data <- function(raw_data = NULL) {
+  data <-
+    raw_data |>
+    dplyr::select("submission_id", dplyr::contains("CATCH_DETAILS"))
+
+  # Extract all catch detail columns
+  catch_cols <- names(data)[grepl("CATCH_DETAILS", names(data))]
+
+  # Get the maximum catch number (0-based indexing in your data)
+  max_catch <- max(
+    as.numeric(stringr::str_extract(catch_cols, "\\d+")),
+    na.rm = TRUE
+  )
+
+  # Create empty list to store reshaped data
+  long_data_list <- list()
+
+  # Loop through each catch number
+  for (i in 0:max_catch) {
+    # Select columns for this catch number
+    current_catch_cols <- catch_cols[grepl(
+      paste0("CATCH_DETAILS\\.", i, "\\."),
+      catch_cols
+    )]
+
+    if (length(current_catch_cols) > 0) {
+      # Extract data for this catch
+      current_data <- data |>
+        dplyr::select("submission_id", dplyr::all_of(current_catch_cols))
+
+      # Rename columns to remove the prefix
+      names(current_data) <- c(
+        "submission_id",
+        "species",
+        "total_catch_weight",
+        "price_per_kg",
+        "total_value"
+      )
+
+      # Add catch number
+      current_data$n_catch <- i + 1 # Convert to 1-based indexing
+
+      # Filter out rows where all catch details are NA
+      current_data <- current_data |>
+        dplyr::filter(
+          !is.na(.data$species) |
+            !is.na(.data$total_catch_weight) |
+            !is.na(.data$price_per_kg) |
+            !is.na(.data$total_value)
+        )
+
+      # Add to list
+      long_data_list[[length(long_data_list) + 1]] <- current_data
+    }
+  }
+
+  # Combine all catches into one dataframe
+  long_data <- dplyr::bind_rows(long_data_list)
+
+  # Reorder columns for clarity
+  long_data <- long_data |>
+    dplyr::select(
+      "submission_id",
+      "n_catch",
+      catch_taxon = "species",
+      "total_catch_weight",
+      "price_per_kg",
+      "total_value"
+    )
+
+  # Convert numeric columns from character to numeric
+  long_data <- long_data |>
+    dplyr::mutate(
+      total_catch_weight = as.numeric(.data$total_catch_weight),
+      price_per_kg = as.numeric(.data$price_per_kg),
+      total_value = as.numeric(.data$total_value)
+    )
+
+  return(long_data)
+}
+
+
+#' Get Airtable Form ID from KoBoToolbox Asset ID
+#'
+#' @description
+#' Retrieves the Airtable record ID for a form based on its KoBoToolbox asset ID.
+#'
+#' @param kobo_asset_id Character. The KoBoToolbox asset ID to match.
+#' @param conf Configuration object from read_config().
+#'
+#' @return Character. The Airtable record ID for the matching form.
+#' @keywords preprocessing helper
+#' @export
+get_airtable_form_id <- function(kobo_asset_id = NULL, conf = NULL) {
+  airtable_to_df(
+    base_id = conf$metadata$airtable$base_id,
+    table_name = "forms",
+    token = conf$metadata$airtable$token
+  ) |>
+    janitor::clean_names() |>
+    dplyr::filter(.data$form_id == kobo_asset_id) |>
+    dplyr::pull(.data$airtable_id)
+}
+
+#' Map Survey Labels to Standardized Taxa, Gear, and Vessel Names
+#'
+#' @description
+#' Converts local species, gear, and vessel labels from surveys to standardized names using
+#' Airtable reference tables. Replaces catch_taxon with scientific_name and alpha3_code,
+#' and replaces local gear and vessel names with standardized types.
+#'
+#' @param data A data frame with preprocessed survey data containing catch_taxon, gear,
+#'   vessel_type, and landing_site columns.
+#' @param taxa_mapping A data frame from Airtable taxa table with survey_label, alpha3_code,
+#'   and scientific_name columns.
+#' @param gear_mapping A data frame from Airtable gears table with survey_label and
+#'   standard_name columns.
+#' @param vessels_mapping A data frame from Airtable vessels table with survey_label and
+#'   standard_name columns.
+#' @param sites_mapping A data frame from Airtable landing_sites table with site_code and
+#'   site columns.
+#'
+#' @return A tibble with catch_taxon replaced by scientific_name and alpha3_code, gear and
+#'   vessel_type replaced by standardized names, and landing_site replaced by the full site name.
+#'   Records without matches will have NA values.
+#'
+#' @details
+#' This function is called within `preprocess_landings()` after processing raw survey data.
+#' The mapping tables are retrieved from Airtable frame base and filtered by
+#' form ID before being passed to this function.
+#'
+#' @keywords preprocessing helper
+#' @export
+map_surveys <- function(
+  data = NULL,
+  taxa_mapping = NULL,
+  gear_mapping = NULL,
+  vessels_mapping = NULL,
+  sites_mapping = NULL
+) {
+  data |>
+    dplyr::left_join(taxa_mapping, by = c("catch_taxon" = "survey_label")) |>
+    dplyr::select(-c("catch_taxon")) |>
+    dplyr::relocate("scientific_name", .after = "n_catch") |>
+    dplyr::relocate("alpha3_code", .after = "scientific_name") |>
+    dplyr::left_join(gear_mapping, by = c("gear" = "survey_label")) |>
+    dplyr::select(-c("gear")) |>
+    dplyr::relocate("standard_name", .after = "vessel_type") |>
+    dplyr::rename(gear = "standard_name") |>
+    dplyr::left_join(
+      vessels_mapping,
+      by = c("vessel_type" = "survey_label")
+    ) |>
+    dplyr::select(-c("vessel_type")) |>
+    dplyr::relocate("standard_name", .after = "jcma_site") |>
+    dplyr::rename(vessel_type = "standard_name") |>
+    dplyr::left_join(
+      sites_mapping,
+      by = c("landing_site" = "site_code")
+    ) |>
+    dplyr::select(-c("landing_site")) |>
+    dplyr::relocate("site", .after = "BMU") |>
+    dplyr::rename(landing_site = "site")
+}
+
+
+#' Fetch and Filter Asset Data from Airtable
+#'
+#' @description
+#' Retrieves data from a specified Airtable table and filters it based on form ID.
+#' Handles cases where form_id column contains multiple comma-separated IDs.
+#'
+#' @param table_name Character. Name of the Airtable table to fetch.
+#' @param select_cols Character vector. Column names to select from the table.
+#' @param form Character. Form ID to filter by.
+#' @param conf Configuration object from read_config().
+#'
+#' @return A filtered and selected data frame from Airtable containing only rows where
+#'   the form_id field contains the specified form ID.
+#'
+#' @details
+#' This function uses string detection to handle multi-valued form_id fields that may
+#' contain comma-separated lists of form IDs.
+#'
+#' @keywords preprocessing helper
+#' @export
+fetch_asset <- function(
+  table_name = NULL,
+  select_cols = NULL,
+  form = NULL,
+  conf = NULL
+) {
+  airtable_to_df(
+    base_id = conf$metadata$airtable$base_id,
+    table_name = table_name,
+    token = conf$metadata$airtable$token
+  ) |>
+    janitor::clean_names() |>
+    # Filter rows where form_id contains the target ID
+    dplyr::filter(stringr::str_detect(
+      .data$form_id,
+      stringr::fixed(form)
+    )) |>
+    dplyr::select(dplyr::all_of(select_cols))
+}
+
+#' Fetch Multiple Asset Tables from Airtable
+#'
+#' @description
+#' Fetches taxa, gear, vessels, and landing sites data from Airtable filtered
+#' by the specified form ID. Returns distinct records for each table.
+#'
+#' @param form_id Character. Form ID to filter assets by. This is passed to each
+#'   individual fetch_asset call.
+#' @param conf Configuration object from read_config().
+#'
+#' @return A named list containing four data frames:
+#'   \itemize{
+#'     \item \code{taxa}: Contains survey_label, alpha3_code, and scientific_name columns
+#'     \item \code{gear}: Contains survey_label and standard_name columns
+#'     \item \code{vessels}: Contains survey_label and standard_name columns
+#'     \item \code{sites}: Contains site and site_code columns
+#'   }
+#'
+#' @details
+#' Each table is fetched separately using `fetch_asset()` and filtered to return
+#' only distinct rows to avoid duplicates in the mapping tables.
+#'
+#' @keywords preprocessing helper
+#' @export
+fetch_assets <- function(form_id = NULL, conf = NULL) {
+  assets_list <-
+    list(
+      taxa = fetch_asset(
+        table_name = "taxa",
+        select_cols = c("survey_label", "alpha3_code", "scientific_name"),
+        form = form_id,
+        conf = conf
+      ),
+      gear = fetch_asset(
+        table_name = "gears",
+        select_cols = c("survey_label", "standard_name"),
+        form = form_id,
+        conf = conf
+      ),
+      vessels = fetch_asset(
+        table_name = "vessels",
+        select_cols = c("survey_label", "standard_name"),
+        form = form_id,
+        conf = conf
+      ),
+      sites = fetch_asset(
+        table_name = "landing_sites",
+        select_cols = c("site", "site_code"),
+        form = form_id,
+        conf = conf
+      )
+    )
+
+  purrr::map(assets_list, ~ dplyr::distinct(.x))
 }
