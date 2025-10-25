@@ -13,7 +13,8 @@ default:
         password_kf: !expr Sys.getenv('KOBO_PASSWORD_KF')
     kefs:
       koboform:
-        asset_id: !expr Sys.getenv('KEFS_KOBO_ASSET_ID')
+        asset_id_v1: !expr Sys.getenv('KEFS_KOBO_ASSET_ID_V1')
+        asset_id_v2: !expr Sys.getenv('KEFS_KOBO_ASSET_ID_V2')
         username: !expr Sys.getenv('KEFS_KOBO_USERNAME')
         password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
   surveys:
@@ -54,12 +55,20 @@ default:
       flags:
         file_prefix: wcs-alert-flags
     kefs:
-      raw:
-        file_prefix: kefs-surveys-raw
-      preprocessed:
-        file_prefix: kefs-surveys-preprocessed
-      validated:
-        file_prefix: kefs-surveys-validated
+      v1:
+        raw:
+          file_prefix: kefs-v1-surveys-raw
+        preprocessed:
+          file_prefix: kefs-v1-surveys-preprocessed
+        validated:
+          file_prefix: kefs-v1-surveys-validated
+      v2:
+        raw:
+          file_prefix: kefs-v2-surveys-raw
+        preprocessed:
+          file_prefix: kefs-v2-surveys-preprocessed
+        validated:
+          file_prefix: kefs-v2-surveys-validated
   storage:
     mongodb:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
@@ -169,7 +178,8 @@ local:
           password_kf: !expr Sys.getenv('KOBO_PASSWORD_KF')
       kefs:
         koboform:
-          asset_id: !expr Sys.getenv('KEFS_KOBO_ASSET_ID')
+          asset_id_v1: !expr Sys.getenv('KEFS_KOBO_ASSET_ID_V1')
+          asset_id_v2: !expr Sys.getenv('KEFS_KOBO_ASSET_ID_V2')
           username: !expr Sys.getenv('KEFS_KOBO_USERNAME')
           password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
   storage:

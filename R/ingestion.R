@@ -117,9 +117,9 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
   )
 }
 
-#' Download and Process KEFS Catch Surveys from Kobotoolbox
+#' Download and Process KEFS (BMU DAILY ARTISANAL 2025) Catch Surveys from Kobotoolbox
 #'
-#' This function retrieves KEFS (Kenya Fisheries Service) survey data from their
+#' This function retrieves KEFS (BMU DAILY ARTISANAL 2025) survey data from their
 #' dedicated Kobo instance, processes it, and uploads the raw data as a Parquet file
 #' to Google Cloud Storage.
 #'
@@ -142,9 +142,9 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
 #'
 #' @examples
 #' \dontrun{
-#' ingest_kefs_surveys()
+#' ingest_kefs_surveys_v1()
 #' }
-ingest_kefs_surveys <- function(log_threshold = logger::DEBUG) {
+ingest_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
   # Define KEFS configuration
@@ -152,12 +152,12 @@ ingest_kefs_surveys <- function(log_threshold = logger::DEBUG) {
     kefs = list(
       kobo = list(
         url = "kf.fimskenya.co.ke",
-        asset_id = conf$ingestion$kefs$koboform$asset_id,
+        asset_id = conf$ingestion$kefs$koboform$asset_id_v1,
         username = conf$ingestion$kefs$koboform$username,
         password = conf$ingestion$kefs$koboform$password
       ),
       storage = list(
-        file_prefix = conf$surveys$kefs$raw$file_prefix,
+        file_prefix = conf$surveys$kefs$v1$raw$file_prefix,
         provider = conf$storage$google$key,
         options = conf$storage$google$options
       )
@@ -177,40 +177,66 @@ ingest_kefs_surveys <- function(log_threshold = logger::DEBUG) {
   )
 }
 
-#' Download and Process All Catch Surveys (WCS + KEFS)
+#' Download and Process KEFS (CATCH ASSESSMENT QUESTIONNAIRE) Catch Surveys from Kobotoolbox
 #'
-#' @description
-#' **DEPRECATED**: This function is maintained for backward compatibility but will be removed
-#' in a future version. Use `ingest_wcs_surveys()` and `ingest_kefs_surveys()` separately instead.
-#'
-#' This function ingests both WCS and KEFS catch surveys in a single call, which creates
-#' coupling between data sources. If one source fails, both fail.
+#' This function retrieves KEFS (CATCH ASSESSMENT QUESTIONNAIRE) survey data from their
+#' dedicated Kobo instance, processes it, and uploads the raw data as a Parquet file
+#' to Google Cloud Storage.
 #'
 #' @param log_threshold Logging threshold level (default: logger::DEBUG)
 #'
 #' @return No return value. Function downloads data, processes it, and uploads to Google Cloud Storage.
+#'
+#' @details
+#' The function performs the following steps:
+#' 1. Reads configuration settings.
+#' 2. Downloads survey data from KEFS Kobo instance (kf.fimskenya.co.ke).
+#' 3. Checks for uniqueness of submissions.
+#' 4. Converts data to tabular format.
+#' 5. Uploads raw data as a Parquet file to Google Cloud Storage.
+#'
+#' Note: Preprocessing, validation, and export stages for KEFS data are not yet implemented.
 #'
 #' @keywords workflow ingestion
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' # Old way (deprecated):
-#' ingest_landings()
-#'
-#' # New way (preferred):
-#' ingest_wcs_surveys()
-#' ingest_kefs_surveys()
+#' ingest_kefs_surveys_v2()
 #' }
-ingest_landings <- function(log_threshold = logger::DEBUG) {
-  logger::log_warn(
-    "ingest_landings() is deprecated. Use ingest_wcs_surveys() and ingest_kefs_surveys() separately."
+ingest_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
+  conf <- read_config()
+
+  # Define KEFS configuration
+  kefs_config <- list(
+    kefs = list(
+      kobo = list(
+        url = "kf.fimskenya.co.ke",
+        asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+        username = conf$ingestion$kefs$koboform$username,
+        password = conf$ingestion$kefs$koboform$password
+      ),
+      storage = list(
+        file_prefix = conf$surveys$kefs$v2$raw$file_prefix,
+        provider = conf$storage$google$key,
+        options = conf$storage$google$options
+      )
+    )
   )
 
-  # Call both functions
-  ingest_wcs_surveys(log_threshold = log_threshold)
-  ingest_kefs_surveys(log_threshold = log_threshold)
+  # Process KEFS data
+  purrr::iwalk(
+    kefs_config,
+    ~ {
+      ingest_catch_survey_version(
+        version = .y,
+        kobo_config = .x$kobo,
+        storage_config = .x$storage
+      )
+    }
+  )
 }
+
 
 #' Download and Process WCS Price Surveys from Kobotoolbox
 #'

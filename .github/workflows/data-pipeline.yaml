@@ -14,7 +14,8 @@ env:
   KOBO_PASSWORD: ${{ secrets.KOBO_PASSWORD }}
   KOBO_USERNAME_KF: ${{ secrets.KOBO_USERNAME_KF }}
   KOBO_PASSWORD_KF: ${{ secrets.KOBO_PASSWORD_KF }}
-  KEFS_KOBO_ASSET_ID: ${{ secrets.KEFS_KOBO_ASSET_ID }}
+  KEFS_KOBO_ASSET_ID_V1: ${{ secrets.KEFS_KOBO_ASSET_ID_V1 }}
+  KEFS_KOBO_ASSET_ID_V2: ${{ secrets.KEFS_KOBO_ASSET_ID_V2 }}
   KEFS_KOBO_USERNAME: ${{ secrets.KEFS_KOBO_USERNAME }}
   KEFS_KOBO_PASSWORD: ${{ secrets.KEFS_KOBO_PASSWORD }}
   PDS_TOKEN: ${{ secrets.PDS_TOKEN }}
@@ -195,8 +196,8 @@ jobs:
   # KEFS DATA PIPELINE
   # ============================================================================
 
-  ingest-kefs-catch:
-    name: Ingest KEFS catch surveys
+  ingest-kefs-catch-v1:
+    name: Ingest KEFS (BMU DAILY) surveys
     needs: build-container
     runs-on: ubuntu-latest
     container:
@@ -208,12 +209,12 @@ jobs:
       - name: Set env to production
         if: endsWith(github.ref, '/main')
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
-      - name: Call ingest_kefs_surveys()
-        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_surveys()'
+      - name: Call ingest_kefs_surveys_v1()
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_surveys_v1()'
 
-  preprocess-kefs-catch:
-    name: Preprocess KEFS catch surveys
-    needs: ingest-kefs-catch
+  ingest-kefs-catch-v2:
+    name: Ingest KEFS (CATCH ASSESSMENT) catch surveys
+    needs: build-container
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
@@ -224,8 +225,40 @@ jobs:
       - name: Set env to production
         if: endsWith(github.ref, '/main')
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
-      - name: Call preprocess_kefs_surveys()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys()'
+      - name: Call ingest_kefs_surveys_v2()
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_surveys_v2()'
+
+  preprocess-kefs-catch-v1:
+    name: Preprocess KEFS (BMU DAILY) surveys
+    needs: ingest-kefs-catch-v1
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Set env to production
+        if: endsWith(github.ref, '/main')
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call preprocess_kefs_surveys_v1()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v1()'
+
+  preprocess-kefs-catch-v2:
+    name: Preprocess KEFS (CATCH ASSESSMENT) surveys
+    needs: ingest-kefs-catch-v2
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Set env to production
+        if: endsWith(github.ref, '/main')
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call preprocess_kefs_surveys_v2()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v2()'
 
   # Note: KEFS validation and export jobs will be added here
   # as those pipeline stages are developed

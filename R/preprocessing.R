@@ -47,8 +47,8 @@
 #'
 #' @section Pipeline Integration:
 #' This function is part of the KEFS data pipeline sequence:
-#' 1. `ingest_kefs_surveys()` - Downloads raw data from Kobo
-#' 2. **`preprocess_kefs_surveys()`** - Cleans and standardizes data (this function)
+#' 1. `ingest_kefs_surveys_v1()` - Downloads raw data from Kobo
+#' 2. **`preprocess_kefs_surveys_v1()`** - Cleans and standardizes data (this function)
 #' 3. Validation step (to be implemented)
 #' 4. Export step (to be implemented)
 #'
@@ -56,18 +56,18 @@
 #' @examples
 #' \dontrun{
 #' # Preprocess KEFS survey data
-#' preprocess_kefs_surveys()
+#' preprocess_kefs_surveys_v1()
 #'
 #' # Run with custom logging level
-#' preprocess_kefs_surveys(log_threshold = logger::INFO)
+#' preprocess_kefs_surveys_v1(log_threshold = logger::INFO)
 #' }
 #' @export
-preprocess_kefs_surveys <- function(log_threshold = logger::DEBUG) {
+preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
   assets <- fetch_assets(
     form_id = get_airtable_form_id(
-      kobo_asset_id = conf$ingestion$kefs$koboform$asset_id,
+      kobo_asset_id = conf$ingestion$kefs$koboform$asset_id_v1,
       conf = conf
     ),
     conf = conf
@@ -79,7 +79,7 @@ preprocess_kefs_surveys <- function(log_threshold = logger::DEBUG) {
     )
 
   raw_dat <- download_parquet_from_cloud(
-    prefix = conf$surveys$kefs$raw$file_prefix,
+    prefix = conf$surveys$kefs$v1$raw$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -112,7 +112,7 @@ preprocess_kefs_surveys <- function(log_threshold = logger::DEBUG) {
       catch_shark = "Did_you_catch_any_SHARK"
     )
 
-  catch_data <- reshape_catch_data(raw_data = raw_dat)
+  catch_data <- reshape_catch_data_v1(raw_data = raw_dat)
 
   # fix fields
 
@@ -125,8 +125,8 @@ preprocess_kefs_surveys <- function(log_threshold = logger::DEBUG) {
       fishing_trip_start = lubridate::ymd_hms(.data$fishing_trip_start),
       fishing_trip_end = lubridate::ymd_hms(.data$fishing_trip_end),
       trip_duration = as.numeric(difftime(
-        fishing_trip_end,
-        fishing_trip_start,
+        .data$fishing_trip_end,
+        .data$fishing_trip_start,
         units = "hours"
       )),
       mesh_size = as.numeric(.data$mesh_size),
@@ -153,7 +153,8 @@ preprocess_kefs_surveys <- function(log_threshold = logger::DEBUG) {
       taxa_mapping = assets$taxa,
       gear_mapping = assets$gear,
       vessels_mapping = assets$vessels,
-      sites_mapping = assets$sites
+      sites_mapping = assets$sites,
+      kefs_v2 = FALSE
     )
 
   # upload preprocessed landings
@@ -164,6 +165,185 @@ preprocess_kefs_surveys <- function(log_threshold = logger::DEBUG) {
     options = conf$storage$google$options
   )
 }
+#' Preprocess KEFS (CATCH ASSESSMENT QUESTIONNAIRE) Survey Data
+#'
+#' This function preprocesses raw KEFS (CATCH ASSESSMENT QUESTIONNAIRE) survey data from Google Cloud Storage.
+#' It performs data cleaning, transformation, standardization of field names, type conversions,
+#' and mapping to standardized taxonomic and gear names using Airtable reference tables.
+#'
+#' @param log_threshold Logging threshold level (default: logger::DEBUG)
+#'
+#' @return No return value. Function processes the data and uploads the result as a Parquet file to Google Cloud Storage.
+#'
+#' @details
+#' The function performs the following main operations:
+#' 1. **Fetches metadata assets**: Retrieves taxonomic, gear, vessel, and landing site mappings from Airtable
+#'    based on the KEFS Kobo form asset ID
+#' 2. **Downloads raw data**: Retrieves raw survey data from Google Cloud Storage
+#' 3. **Extracts trip information**: Selects and renames relevant trip-level fields including:
+#'    - Landing details (date, site, district, BMU)
+#'    - Fishing ground and JCMA (Joint Community Management Area) information
+#'    - Vessel details (type, name, registration, motorization, horsepower)
+#'    - Trip details (crew size, start/end times, gear, mesh size, fuel)
+#'    - Catch outcome indicators
+#' 4. **Reshapes catch data**: Transforms catch details from wide to long format using `reshape_catch_data_v2()`
+#' 5. **Type conversions and calculations**:
+#'    - Converts date/time fields to proper datetime format
+#'    - Calculates trip duration in hours from start and end times
+#'    - Converts numeric fields (hp, fishers, mesh size, fuel) to appropriate types
+#' 6. **Joins trip and catch data**: Combines trip information with catch records using full join on submission_id
+#' 7. **Standardizes names**: Maps survey labels to standardized names using `map_surveys()`:
+#'    - Taxonomic names to scientific names and alpha3 codes
+#'    - Gear types to standardized gear names
+#'    - Vessel types to standardized vessel categories
+#'    - Landing site codes to full site names
+#' 8. **Uploads processed data**: Saves preprocessed data as a Parquet file to Google Cloud Storage
+#'
+#' @section Data Structure:
+#' The preprocessed output includes the following key fields:
+#' \itemize{
+#'   \item \strong{Trip identifiers}: submission_id
+#'   \item \strong{Temporal}: landing_date, fishing_trip_start, fishing_trip_end, trip_duration
+#'   \item \strong{Spatial}: district, BMU, landing_site, fishing_ground, jcma, jcma_site
+#'   \item \strong{Vessel}: vessel_type, boat_name, vessel_reg_number, motorized, hp
+#'   \item \strong{Crew}: captain_name, no_of_fishers
+#'   \item \strong{Gear}: gear, mesh_size
+#'   \item \strong{Catch}: scientific_name, alpha3_code, total_catch_weight, price_per_kg, total_value
+#'   \item \strong{Operations}: fuel, catch_outcome, catch_shark
+#' }
+#'
+#' @section Pipeline Integration:
+#' This function is part of the KEFS data pipeline sequence:
+#' 1. `ingest_kefs_surveys_v2()` - Downloads raw data from Kobo
+#' 2. **`preprocess_kefs_surveys_v2()`** - Cleans and standardizes data (this function)
+#' 3. Validation step (to be implemented)
+#' 4. Export step (to be implemented)
+#'
+#' @keywords workflow preprocessing
+#' @examples
+#' \dontrun{
+#' # Preprocess KEFS survey data
+#' preprocess_kefs_surveys_v2()
+#'
+#' # Run with custom logging level
+#' preprocess_kefs_surveys_v2(log_threshold = logger::INFO)
+#' }
+#' @export
+preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
+  conf <- read_config()
+
+  assets <- fetch_assets(
+    form_id = get_airtable_form_id(
+      kobo_asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+      conf = conf
+    ),
+    conf = conf
+  )
+
+  assets$sites <- assets$sites |>
+    dplyr::mutate(
+      site = stringr::str_trim(stringr::str_replace_all(.data$site, "\\n", ""))
+    )
+
+  raw_dat <- download_parquet_from_cloud(
+    prefix = conf$surveys$kefs$v2$raw$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+
+  trip_info <-
+    raw_dat |>
+    dplyr::select(
+      "submission_id",
+      enumeraotor_name = "Name_of_Data_Collector",
+      landing_date = "date_data",
+      district = "sub_county",
+      "BMU",
+      landing_site = "Landing_sites",
+      fishing_ground = "Area_Fished",
+      vessel_type = "Craft_Typ",
+      pds = "Is_a_PDS_or_CLASS_B_stalled_on_your_Boat",
+      other_vessel = "Craft_TypOther",
+      boat_name = "vessel_name",
+      vessel_reg_number = "vessel_reg",
+      "captain_name",
+      motorized = "Motorized_or_Non",
+      "hp",
+      no_of_fishers = "NumCrew",
+      fishing_trip_start = "Enter_date_and_time_sel_left_for_fishing",
+      fishing_trip_end = "Enter_date_and_time_the_vessel_landed",
+      gear = "gear_type",
+      mesh_size = "Please_enter_the_mesh_size_in_inches",
+      catch_outcome = "Did_you_CATCH_FISH_TODAY",
+      length_measure = "Are_you_taking_lengt_the_priority_species",
+      protected_species = "SpeciesETP",
+      sample_weight = "SampleWeight",
+      catch_weight = "TotalCatchWeight",
+      price_kg = "PricePerKg",
+      catch_price = "TValue"
+    )
+
+  priority_df <- reshape_priority_species(raw_data = raw_dat)
+  sample_df <- reshape_overall_sample(raw_data = raw_dat)
+
+  catch_info <- dplyr::full_join(
+    priority_df,
+    sample_df,
+    by = c("submission_id")
+  ) |>
+    dplyr::mutate(
+      submission_id = as.character(.data$submission_id)
+    ) |>
+    dplyr::distinct()
+
+  # fix fields
+  trip_info_preprocessed <-
+    trip_info |>
+    dplyr::mutate(
+      submission_id = as.character(.data$submission_id),
+      hp = as.integer(.data$hp),
+      no_of_fishers = as.integer(.data$no_of_fishers),
+      fishing_trip_start = lubridate::ymd_hms(.data$fishing_trip_start),
+      fishing_trip_end = lubridate::ymd_hms(.data$fishing_trip_end),
+      trip_duration = as.numeric(difftime(
+        .data$fishing_trip_end,
+        .data$fishing_trip_start,
+        units = "hours"
+      )),
+      mesh_size = as.numeric(.data$mesh_size),
+      sample_weight = as.numeric(.data$sample_weight),
+      catch_weight = as.numeric(.data$catch_weight),
+      price_kg = as.numeric(.data$price_kg),
+      catch_price = as.numeric(.data$catch_price)
+    ) |>
+    dplyr::relocate("trip_duration", .after = "fishing_trip_end")
+
+  preprocessed_landings <-
+    dplyr::full_join(
+      trip_info_preprocessed,
+      catch_info,
+      by = "submission_id"
+    )
+
+  preprocessed_data <-
+    map_surveys(
+      data = preprocessed_landings,
+      taxa_mapping = assets$taxa,
+      gear_mapping = assets$gear,
+      vessels_mapping = assets$vessels,
+      sites_mapping = assets$sites,
+      kefs_v2 = TRUE
+    )
+
+  # upload preprocessed landings
+  upload_parquet_to_cloud(
+    data = preprocessed_data,
+    prefix = conf$surveys$kefs$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+}
+
 
 #' Preprocess Landings Data (Version 1)
 #'
@@ -1457,14 +1637,14 @@ get_fishery_metrics_long <- function(data = NULL) {
 #' raw_data <- read.csv("kobo_survey_data.csv")
 #'
 #' # Reshape to long format
-#' long_data <- reshape_catch_data(raw_data)
+#' long_data <- reshape_catch_data_v1(raw_data)
 #'
 #' # View the reshaped data
 #' head(long_data)
 #' }
 #' @keywords preprocessing
 #' @export
-reshape_catch_data <- function(raw_data = NULL) {
+reshape_catch_data_v1 <- function(raw_data = NULL) {
   data <-
     raw_data |>
     dplyr::select("submission_id", dplyr::contains("CATCH_DETAILS"))
@@ -1545,6 +1725,196 @@ reshape_catch_data <- function(raw_data = NULL) {
   return(long_data)
 }
 
+#' Reshape Priority Species Catch Data from Wide to Long Format
+#'
+#' @description
+#' Transforms priority species catch data from wide to long format. Extracts columns containing
+#' "PrioritySpeciesCatch", reshapes them into rows, and converts to numeric types.
+#'
+#' @param raw_data Data frame with priority species columns following pattern `PrioritySpeciesCatch.{i}.{field}`.
+#'
+#' @return Tibble with columns: submission_id, n_priority, priority_species, length_type, length_cm, weight_priority.
+#'
+#' @details
+#' Iterates through priority species numbers (0-based in raw data, 1-based in output), reshapes each
+#' group to standardized column names, filters out incomplete records, and combines into long format.
+#'
+#' @keywords preprocessing helper
+#' @export
+reshape_priority_species <- function(raw_data = NULL) {
+  data <-
+    raw_data |>
+    dplyr::select("submission_id", dplyr::contains("PrioritySpeciesCatch"))
+
+  # Extract all priority species columns
+  priority_cols <- names(data)[grepl("PrioritySpeciesCatch", names(data))]
+
+  # Get the maximum catch number (0-based indexing)
+  max_priority <- max(
+    as.numeric(stringr::str_extract(priority_cols, "\\d+")),
+    na.rm = TRUE
+  )
+
+  # Create empty list to store reshaped data
+  long_data_list <- list()
+
+  # Loop through each priority species number
+  for (i in 0:max_priority) {
+    # Select columns for this priority number
+    current_priority_cols <- priority_cols[grepl(
+      paste0("PrioritySpeciesCatch\\.", i, "\\."),
+      priority_cols
+    )]
+
+    if (length(current_priority_cols) > 0) {
+      # Extract data for this priority species
+      current_data <- data |>
+        dplyr::select("submission_id", dplyr::all_of(current_priority_cols))
+
+      # Rename columns to remove the prefix
+      names(current_data) <- c(
+        "submission_id",
+        "priority_species",
+        "length_type",
+        "length_cm",
+        "weight_kg"
+      )
+
+      # Add priority number
+      current_data$n_priority <- i
+      1 # Convert to 1-based indexing
+
+      # Filter out rows where all priority details are NA
+      current_data <- current_data |>
+        dplyr::filter(
+          !is.na(.data$priority_species) |
+            !is.na(.data$length_type) |
+            !is.na(.data$length_cm) |
+            !is.na(.data$weight_kg)
+        )
+
+      # Add to list
+      long_data_list[[length(long_data_list) + 1]] <- current_data
+    }
+  }
+
+  # Combine all priority species into one dataframe
+  long_data <- dplyr::bind_rows(long_data_list)
+
+  # Reorder columns for clarity
+  long_data <- long_data |>
+    dplyr::select(
+      "submission_id",
+      "n_priority",
+      "priority_species",
+      "length_type",
+      "length_cm",
+      weight_priority = "weight_kg"
+    )
+
+  # Convert numeric columns from character to numeric
+  long_data <- long_data |>
+    dplyr::mutate(
+      length_cm = as.numeric(.data$length_cm),
+      weight_priority = as.numeric(.data$weight_priority)
+    )
+
+  return(long_data)
+}
+
+#' Reshape Overall Sample Weight Data from Wide to Long Format
+#'
+#' @description
+#' Transforms overall sample weight data from wide to long format. Extracts columns containing
+#' "OverallSampleWeight" (excluding calculation columns), reshapes them into rows, and converts to numeric types.
+#'
+#' @param raw_data Data frame with sample weight columns following pattern `OverallSampleWeight.{i}.{field}`.
+#'
+#' @return Tibble with columns: submission_id, n_sample, sample_species, weight_sample, price_sample.
+#'
+#' @details
+#' Iterates through sample numbers (0-based in raw data, 1-based in output), reshapes each
+#' group to standardized column names, filters out incomplete records, and combines into long format.
+#'
+#' @keywords preprocessing helper
+#' @export
+reshape_overall_sample <- function(raw_data = NULL) {
+  data <-
+    raw_data |>
+    dplyr::select("submission_id", dplyr::contains("OverallSampleWeight")) |>
+    dplyr::select(-dplyr::ends_with("calculation"))
+
+  # Extract all overall sample columns
+  sample_cols <- names(data)[grepl("OverallSampleWeight", names(data))]
+
+  # Get the maximum sample number (0-based indexing)
+  max_sample <- max(
+    as.numeric(stringr::str_extract(sample_cols, "\\d+")),
+    na.rm = TRUE
+  )
+
+  # Create empty list to store reshaped data
+  long_data_list <- list()
+
+  # Loop through each sample number
+  for (i in 0:max_sample) {
+    # Select columns for this sample number
+    current_sample_cols <- sample_cols[grepl(
+      paste0("OverallSampleWeight\\.", i, "\\."),
+      sample_cols
+    )]
+
+    if (length(current_sample_cols) > 0) {
+      # Extract data for this sample
+      current_data <- data |>
+        dplyr::select("submission_id", dplyr::all_of(current_sample_cols))
+
+      # Rename columns to remove the prefix
+      names(current_data) <- c(
+        "submission_id",
+        "species",
+        "weight_sample",
+        "price_sample"
+      )
+
+      # Add sample number
+      current_data$n_sample <- i + 1 # Convert to 1-based indexing
+
+      # Filter out rows where all sample details are NA
+      current_data <- current_data |>
+        dplyr::filter(
+          !is.na(.data$species) |
+            !is.na(.data$weight_sample) |
+            !is.na(.data$price_sample)
+        )
+
+      # Add to list
+      long_data_list[[length(long_data_list) + 1]] <- current_data
+    }
+  }
+
+  # Combine all samples into one dataframe
+  long_data <- dplyr::bind_rows(long_data_list)
+
+  # Reorder columns for clarity
+  long_data <- long_data |>
+    dplyr::select(
+      "submission_id",
+      "n_sample",
+      sample_species = "species",
+      "weight_sample",
+      "price_sample"
+    )
+
+  # Convert numeric columns from character to numeric
+  long_data <- long_data |>
+    dplyr::mutate(
+      weight_sample = as.numeric(.data$weight_sample),
+      price_sample = as.numeric(.data$price_sample)
+    )
+
+  return(long_data)
+}
 
 #' Get Airtable Form ID from KoBoToolbox Asset ID
 #'
@@ -1572,11 +1942,14 @@ get_airtable_form_id <- function(kobo_asset_id = NULL, conf = NULL) {
 #'
 #' @description
 #' Converts local species, gear, and vessel labels from surveys to standardized names using
-#' Airtable reference tables. Replaces catch_taxon with scientific_name and alpha3_code,
-#' and replaces local gear and vessel names with standardized types.
+#' Airtable reference tables. Handles two survey form types: the standard form which uses
+#' catch_taxon, and the KEFs v2 form which uses priority_species and sample_species.
+#' Replaces local names with scientific names and alpha3 codes, and standardizes gear,
+#' vessel, and site names.
 #'
-#' @param data A data frame with preprocessed survey data containing catch_taxon, gear,
-#'   vessel_type, and landing_site columns.
+#' @param data A data frame with preprocessed survey data. For standard surveys, must contain
+#'   catch_taxon, gear, vessel_type, and landing_site columns. For KEFs v2 surveys, must
+#'   contain priority_species, sample_species, gear, vessel_type, and landing_site columns.
 #' @param taxa_mapping A data frame from Airtable taxa table with survey_label, alpha3_code,
 #'   and scientific_name columns.
 #' @param gear_mapping A data frame from Airtable gears table with survey_label and
@@ -1585,15 +1958,28 @@ get_airtable_form_id <- function(kobo_asset_id = NULL, conf = NULL) {
 #'   standard_name columns.
 #' @param sites_mapping A data frame from Airtable landing_sites table with site_code and
 #'   site columns.
+#' @param kefs_v2 Logical. If TRUE, processes data from the KEFs v2 survey form which
+#'   uses priority_species and sample_species columns. If FALSE (default), processes
+#'   standard survey forms with catch_taxon column.
 #'
-#' @return A tibble with catch_taxon replaced by scientific_name and alpha3_code, gear and
-#'   vessel_type replaced by standardized names, and landing_site replaced by the full site name.
+#' @return A tibble with survey labels replaced by standardized names:
+#'   \itemize{
+#'     \item For standard surveys: catch_taxon replaced by scientific_name and alpha3_code
+#'     \item For KEFs v2 surveys: priority_species replaced by priority_scientific_name and
+#'       priority_alpha3_code; sample_species replaced by sample_scientific_name and
+#'       sample_alpha3_code
+#'     \item gear and vessel_type replaced by standardized names
+#'     \item landing_site replaced by the full site name
+#'   }
 #'   Records without matches will have NA values.
 #'
 #' @details
 #' This function is called within `preprocess_landings()` after processing raw survey data.
 #' The mapping tables are retrieved from Airtable frame base and filtered by
 #' form ID before being passed to this function.
+#'
+#' The KEFs v2 survey form captures both priority species (target catch) and sample species
+#' (for biological sampling), requiring separate taxonomic mappings for each.
 #'
 #' @keywords preprocessing helper
 #' @export
@@ -1602,13 +1988,51 @@ map_surveys <- function(
   taxa_mapping = NULL,
   gear_mapping = NULL,
   vessels_mapping = NULL,
-  sites_mapping = NULL
+  sites_mapping = NULL,
+  kefs_v2 = FALSE
 ) {
-  data |>
-    dplyr::left_join(taxa_mapping, by = c("catch_taxon" = "survey_label")) |>
-    dplyr::select(-c("catch_taxon")) |>
-    dplyr::relocate("scientific_name", .after = "n_catch") |>
-    dplyr::relocate("alpha3_code", .after = "scientific_name") |>
+  taxa_map <-
+    if (isTRUE(kefs_v2)) {
+      data |>
+        dplyr::left_join(
+          taxa_mapping,
+          by = c("priority_species" = "survey_label")
+        ) |>
+        dplyr::select(-c("priority_species")) |>
+        dplyr::rename(
+          priority_scientific_name = "scientific_name",
+          priority_alpha3_code = "alpha3_code"
+        ) |>
+        dplyr::relocate("priority_scientific_name", .after = "n_priority") |>
+        dplyr::relocate(
+          "priority_alpha3_code",
+          .after = "priority_scientific_name"
+        ) |>
+        dplyr::left_join(
+          taxa_mapping,
+          by = c("sample_species" = "survey_label")
+        ) |>
+        dplyr::select(-c("sample_species")) |>
+        dplyr::rename(
+          sample_scientific_name = "scientific_name",
+          sample_alpha3_code = "alpha3_code"
+        ) |>
+        dplyr::relocate("sample_scientific_name", .after = "n_sample") |>
+        dplyr::relocate(
+          "sample_alpha3_code",
+          .after = "sample_scientific_name"
+        )
+    } else {
+      data |>
+        dplyr::left_join(
+          taxa_mapping,
+          by = c("catch_taxon" = "survey_label")
+        ) |>
+        dplyr::select(-c("catch_taxon")) |>
+        dplyr::relocate("scientific_name", .after = "n_catch") |>
+        dplyr::relocate("alpha3_code", .after = "scientific_name")
+    }
+  taxa_map |>
     dplyr::left_join(gear_mapping, by = c("gear" = "survey_label")) |>
     dplyr::select(-c("gear")) |>
     dplyr::relocate("standard_name", .after = "vessel_type") |>
@@ -1618,7 +2042,10 @@ map_surveys <- function(
       by = c("vessel_type" = "survey_label")
     ) |>
     dplyr::select(-c("vessel_type")) |>
-    dplyr::relocate("standard_name", .after = "jcma_site") |>
+    dplyr::relocate(
+      "standard_name",
+      .after = dplyr::any_of(c("vessel_type", "gear"))
+    ) |>
     dplyr::rename(vessel_type = "standard_name") |>
     dplyr::left_join(
       sites_mapping,
