@@ -314,3 +314,122 @@ df_to_airtable <- function(df, base_id, table_name, token) {
   cat("Successfully created", nrow(df), "records!\n")
   return(responses)
 }
+
+
+#' Fetch and Filter Asset Data from Airtable
+#'
+#' @description
+#' Retrieves data from a specified Airtable table and filters it based on form ID.
+#' Handles cases where form_id column contains multiple comma-separated IDs.
+#'
+#' @param table_name Character. Name of the Airtable table to fetch.
+#' @param select_cols Character vector. Column names to select from the table.
+#' @param form Character. Form ID to filter by.
+#' @param conf Configuration object from read_config().
+#'
+#' @return A filtered and selected data frame from Airtable containing only rows where
+#'   the form_id field contains the specified form ID.
+#'
+#' @details
+#' This function uses string detection to handle multi-valued form_id fields that may
+#' contain comma-separated lists of form IDs.
+#'
+#' @keywords preprocessing helper
+#' @export
+fetch_asset <- function(
+  table_name = NULL,
+  select_cols = NULL,
+  form = NULL,
+  conf = NULL
+) {
+  airtable_to_df(
+    base_id = conf$metadata$airtable$base_id,
+    table_name = table_name,
+    token = conf$metadata$airtable$token
+  ) |>
+    janitor::clean_names() |>
+    # Filter rows where form_id contains the target ID
+    dplyr::filter(stringr::str_detect(
+      .data$form_id,
+      stringr::fixed(form)
+    )) |>
+    dplyr::select(dplyr::all_of(select_cols))
+}
+
+#' Fetch Multiple Asset Tables from Airtable
+#'
+#' @description
+#' Fetches taxa, gear, vessels, and landing sites data from Airtable filtered
+#' by the specified form ID. Returns distinct records for each table.
+#'
+#' @param form_id Character. Form ID to filter assets by. This is passed to each
+#'   individual fetch_asset call.
+#' @param conf Configuration object from read_config().
+#'
+#' @return A named list containing four data frames:
+#'   \itemize{
+#'     \item \code{taxa}: Contains survey_label, alpha3_code, and scientific_name columns
+#'     \item \code{gear}: Contains survey_label and standard_name columns
+#'     \item \code{vessels}: Contains survey_label and standard_name columns
+#'     \item \code{sites}: Contains site and site_code columns
+#'   }
+#'
+#' @details
+#' Each table is fetched separately using `fetch_asset()` and filtered to return
+#' only distinct rows to avoid duplicates in the mapping tables.
+#'
+#' @keywords preprocessing helper
+#' @export
+fetch_assets <- function(form_id = NULL, conf = NULL) {
+  assets_list <-
+    list(
+      taxa = fetch_asset(
+        table_name = "taxa",
+        select_cols = c("survey_label", "alpha3_code", "scientific_name"),
+        form = form_id,
+        conf = conf
+      ),
+      gear = fetch_asset(
+        table_name = "gears",
+        select_cols = c("survey_label", "standard_name"),
+        form = form_id,
+        conf = conf
+      ),
+      vessels = fetch_asset(
+        table_name = "vessels",
+        select_cols = c("survey_label", "standard_name"),
+        form = form_id,
+        conf = conf
+      ),
+      sites = fetch_asset(
+        table_name = "landing_sites",
+        select_cols = c("site", "site_code"),
+        form = form_id,
+        conf = conf
+      )
+    )
+
+  purrr::map(assets_list, ~ dplyr::distinct(.x))
+}
+
+#' Get Airtable Form ID from KoBoToolbox Asset ID
+#'
+#' @description
+#' Retrieves the Airtable record ID for a form based on its KoBoToolbox asset ID.
+#'
+#' @param kobo_asset_id Character. The KoBoToolbox asset ID to match.
+#' @param conf Configuration object from read_config().
+#'
+#' @return Character. The Airtable record ID for the matching form.
+#' @keywords preprocessing helper
+#' @export
+get_airtable_form_id <- function(kobo_asset_id = NULL, conf = NULL) {
+  airtable_to_df(
+    base_id = conf$metadata$airtable$base_id,
+    table_name = "forms",
+    token = conf$metadata$airtable$token
+  ) |>
+    janitor::clean_names() |>
+    dplyr::filter(.data$form_id == kobo_asset_id) |>
+    dplyr::pull(.data$airtable_id)
+}
