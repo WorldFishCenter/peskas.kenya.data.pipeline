@@ -138,6 +138,7 @@ default:
       tables:
         - BMUs
     airtable:
+      assets: assets
       base_id: !expr Sys.getenv("AIRTABLE_BASE_ID")
       token: !expr Sys.getenv("AIRTABLE_TOKEN")
 

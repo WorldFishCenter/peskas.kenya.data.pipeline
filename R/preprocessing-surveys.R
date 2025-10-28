@@ -65,17 +65,33 @@
 preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  assets <- fetch_assets(
-    form_id = get_airtable_form_id(
-      kobo_asset_id = conf$ingestion$kefs$koboform$asset_id_v1,
-      conf = conf
-    ),
+  target_form_id = get_airtable_form_id(
+    kobo_asset_id = conf$ingestion$kefs$koboform$asset_id_v1,
     conf = conf
   )
 
-  assets$sites <- assets$sites |>
-    dplyr::mutate(
-      site = stringr::str_trim(stringr::str_replace_all(.data$site, "\\n", ""))
+  assets <-
+    cloud_object_name(
+      prefix = conf$metadata$airtable$assets,
+      provider = conf$storage$google$key,
+      version = "latest",
+      extension = "rds",
+      options = conf$storage$google$options_coasts
+    ) |>
+    download_cloud_file(
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options_coasts
+    ) |>
+    readr::read_rds() |>
+    purrr::keep_at(c("taxa", "gear", "vessels", "sites")) |>
+    purrr::map(
+      ~ dplyr::filter(
+        .x,
+        stringr::str_detect(
+          .data$form_id,
+          paste0("(^|,\\s*)", !!target_form_id, "(\\s*,|$)")
+        )
+      )
     )
 
   raw_dat <- download_parquet_from_cloud(
@@ -133,6 +149,7 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
     trip_info |>
     dplyr::mutate(
       submission_id = as.character(.data$submission_id),
+      landing_date = lubridate::as_date(.data$landing_date),
       hp = as.integer(.data$hp),
       no_of_fishers = as.integer(.data$no_of_fishers),
       fishing_trip_start = lubridate::ymd_hms(.data$fishing_trip_start),
@@ -173,7 +190,7 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
   # upload preprocessed landings
   upload_parquet_to_cloud(
     data = preprocessed_data,
-    prefix = conf$surveys$kefs$preprocessed$file_prefix,
+    prefix = conf$surveys$kefs$v1$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -245,15 +262,37 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
 preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  assets <- fetch_assets(
-    form_id = get_airtable_form_id(
-      kobo_asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
-      conf = conf
-    ),
+  target_form_id = get_airtable_form_id(
+    kobo_asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
     conf = conf
   )
 
-  assets$sites <- assets$sites |>
+  assets <-
+    cloud_object_name(
+      prefix = conf$metadata$airtable$assets,
+      provider = conf$storage$google$key,
+      version = "latest",
+      extension = "rds",
+      options = conf$storage$google$options_coasts
+    ) |>
+    download_cloud_file(
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options_coasts
+    ) |>
+    readr::read_rds() |>
+    purrr::keep_at(c("taxa", "gear", "vessels", "sites")) |>
+    purrr::map(
+      ~ dplyr::filter(
+        .x,
+        stringr::str_detect(
+          .data$form_id,
+          paste0("(^|,\\s*)", !!target_form_id, "(\\s*,|$)")
+        )
+      )
+    )
+
+  assets$sites <-
+    assets$sites |>
     dplyr::mutate(
       site = stringr::str_trim(stringr::str_replace_all(.data$site, "\\n", ""))
     )
@@ -326,6 +365,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     trip_info |>
     dplyr::mutate(
       submission_id = as.character(.data$submission_id),
+      landing_date = lubridate::as_date(.data$landing_date),
       hp = as.integer(.data$hp),
       no_of_fishers = as.integer(.data$no_of_fishers),
       fishing_trip_start = lubridate::ymd_hms(.data$fishing_trip_start),
@@ -363,7 +403,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
   # upload preprocessed landings
   upload_parquet_to_cloud(
     data = preprocessed_data,
-    prefix = conf$surveys$kefs$preprocessed$file_prefix,
+    prefix = conf$surveys$kefs$v2$preprocessed$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
@@ -1380,7 +1420,7 @@ map_surveys <- function(
           taxa_mapping,
           by = c("priority_species" = "survey_label")
         ) |>
-        dplyr::select(-c("priority_species")) |>
+        dplyr::select(-c("priority_species", "form_id", "english_name")) |>
         dplyr::rename(
           priority_scientific_name = "scientific_name",
           priority_alpha3_code = "alpha3_code"
@@ -1394,7 +1434,7 @@ map_surveys <- function(
           taxa_mapping,
           by = c("sample_species" = "survey_label")
         ) |>
-        dplyr::select(-c("sample_species")) |>
+        dplyr::select(-c("sample_species", "form_id", "english_name")) |>
         dplyr::rename(
           sample_scientific_name = "scientific_name",
           sample_alpha3_code = "alpha3_code"
@@ -1410,20 +1450,20 @@ map_surveys <- function(
           taxa_mapping,
           by = c("catch_taxon" = "survey_label")
         ) |>
-        dplyr::select(-c("catch_taxon")) |>
+        dplyr::select(-c("catch_taxon", "form_id", "english_name")) |>
         dplyr::relocate("scientific_name", .after = "n_catch") |>
         dplyr::relocate("alpha3_code", .after = "scientific_name")
     }
   taxa_map |>
     dplyr::left_join(gear_mapping, by = c("gear" = "survey_label")) |>
-    dplyr::select(-c("gear")) |>
+    dplyr::select(-c("gear", "form_id")) |>
     dplyr::relocate("standard_name", .after = "vessel_type") |>
     dplyr::rename(gear = "standard_name") |>
     dplyr::left_join(
       vessels_mapping,
       by = c("vessel_type" = "survey_label")
     ) |>
-    dplyr::select(-c("vessel_type")) |>
+    dplyr::select(-c("vessel_type", "form_id")) |>
     dplyr::relocate(
       "standard_name",
       .after = dplyr::any_of(c("vessel_type", "gear"))
@@ -1433,7 +1473,7 @@ map_surveys <- function(
       sites_mapping,
       by = c("landing_site" = "site_code")
     ) |>
-    dplyr::select(-c("landing_site")) |>
+    dplyr::select(-c("landing_site", "form_id")) |>
     dplyr::relocate("site", .after = "BMU") |>
     dplyr::rename(landing_site = "site")
 }
