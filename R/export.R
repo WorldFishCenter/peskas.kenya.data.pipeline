@@ -412,7 +412,7 @@ get_fishery_metrics <- function(valid_data = NULL, bmu_size = NULL) {
       rpue = .data$aggregated_catch_price / .data$total_fishers,
       rpua = .data$aggregated_catch_price / .data$size_km,
       price_kg = .data$median_price_kg,
-      profit = .data$rpue - .data$cost
+      profit = .data$aggregated_catch_price - .data$cost
     ) |>
     dplyr::mutate(
       date = lubridate::floor_date(.data$landing_date, unit = "month"),
