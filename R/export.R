@@ -219,9 +219,9 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     # Group by BMU, gear, and landing_date to get daily metrics
     dplyr::group_by(.data$BMU, .data$gear, .data$landing_date) |>
     dplyr::summarise(
-      daily_fishers = sum(.data$no_of_fishers, na.rm = TRUE),
-      daily_catch_kg = sum(.data$total_catch_kg, na.rm = TRUE),
-      daily_catch_price = sum(.data$total_catch_price, na.rm = TRUE),
+      daily_fishers = sum(.data$no_of_fishers),
+      daily_catch_kg = sum(.data$total_catch_kg),
+      daily_catch_price = sum(.data$total_catch_price),
       daily_cost = sum(.data$trip_cost),
       daily_trips = dplyr::n_distinct(.data$submission_id),
       .groups = "drop"
@@ -244,15 +244,15 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     dplyr::group_by(.data$BMU, .data$date, .data$gear) |>
     dplyr::summarise(
       days_with_data = dplyr::n(),
-      total_fishers = sum(.data$daily_fishers, na.rm = TRUE),
+      total_fishers = sum(.data$daily_fishers),
       # monthly means of **daily per-fisher** metrics
       mean_effort = mean(.data$daily_effort, na.rm = TRUE),
       mean_cpue = mean(.data$daily_cpue, na.rm = TRUE),
       mean_cpua = mean(.data$daily_cpua, na.rm = TRUE),
       mean_rpue = mean(.data$daily_rpue, na.rm = TRUE),
       mean_rpua = mean(.data$daily_rpua, na.rm = TRUE),
-      mean_cost = mean(.data$daily_cost, na.rm = TRUE),
-      mean_profit = mean(.data$daily_profit, na.rm = TRUE),
+      mean_cost = mean(.data$daily_cost),
+      mean_profit = mean(.data$daily_profit),
       .groups = "drop"
     ) |>
     dplyr::select(-c("days_with_data", "total_fishers")) |>
@@ -390,11 +390,7 @@ get_fishery_metrics <- function(valid_data = NULL, bmu_size = NULL) {
     dplyr::filter(!is.na(.data$landing_date)) %>%
     dplyr::distinct() |>
     dplyr::mutate(price_kg = .data$total_catch_price / .data$total_catch_kg) |>
-    dplyr::left_join(
-      bmu_size %>% dplyr::distinct(BMU, .keep_all = TRUE),
-      by = "BMU",
-      relationship = "many-to-one"
-    ) |>
+    dplyr::left_join(bmu_size, by = "BMU") |>
     dplyr::group_by(.data$landing_date, .data$BMU) |>
     dplyr::summarise(
       total_fishers = sum(.data$no_of_fishers, na.rm = TRUE),
@@ -442,8 +438,7 @@ get_fishery_metrics <- function(valid_data = NULL, bmu_size = NULL) {
       mean_profit = mean(.data$profit, na.rm = TRUE),
       mean_price_kg = mean(.data$price_kg, na.rm = TRUE),
       .groups = "drop"
-    ) |>
-    dplyr::ungroup()
+    )
 }
 
 #' Calculate Individual Fisher Performance Metrics
