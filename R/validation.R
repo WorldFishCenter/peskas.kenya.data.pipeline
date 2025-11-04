@@ -470,3 +470,192 @@ validate_kefs_surveys_v2 <- function() {
 
   invisible(NULL)
 }
+
+#' Synchronize Validation Statuses with KoboToolbox
+#'
+#' @description
+#' Synchronizes validation statuses between the local system and KoboToolbox by processing
+#' validation flags and updating submission statuses accordingly. This function handles
+#' both flagged (not approved) and clean (approved) submissions in parallel.
+#'
+#' @details
+#' The function follows these steps:
+#' 1. Downloads the current validation flags from cloud storage
+#' 2. Sets up parallel processing using the future package
+#' 3. Processes submissions with alert flags (marking them as not approved in KoboToolbox)
+#' 4. Processes submissions without alert flags (marking them as approved in KoboToolbox)
+#' 5. Retrieves current validation status from KoboToolbox for all submissions
+#' 6. Adds KoboToolbox validation status (validation_status, validated_at, validated_by) to validation flags
+#' 7. Pushes all validation flags with KoboToolbox status to MongoDB for record-keeping
+#'
+#' Progress reporting is enabled to track the status of submissions being processed.
+#'
+#' @param log_threshold The logging level threshold for the logger package (e.g., DEBUG, INFO).
+#'        Default is logger::DEBUG.
+#'
+#' @return None. The function performs status updates and database operations as side effects.
+#'
+#' @section Parallel Processing:
+#' The function uses the future and furrr packages for parallel processing, with the number
+#' of workers set to system cores minus 2 to prevent resource exhaustion.
+#'
+#' @note
+#' This function requires proper configuration in the config file, including:
+#' - MongoDB connection parameters
+#' - KoboToolbox asset ID and token (configured under ingestion$kobo-adnap)
+#' - Google cloud storage parameters
+#'
+#' @examples
+#' \dontrun{
+#' # Run with default DEBUG logging
+#' sync_validation_submissions()
+#'
+#' # Run with INFO level logging
+#' sync_validation_submissions(log_threshold = logger::INFO)
+#' }
+#'
+#' @importFrom logger log_threshold log_info
+#' @importFrom dplyr filter pull
+#' @importFrom future plan multicore availableCores
+#' @importFrom progressr handlers handler_progress with_progress progressor
+#' @importFrom furrr future_walk
+#'
+#' @keywords workflow validation
+#' @export
+sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
+  logger::log_threshold(log_threshold)
+
+  conf <- read_config()
+
+  # Download validation flags for ADNAP
+  validation_flags <-
+    download_parquet_from_cloud(
+      prefix = conf$surveys$kefs$v2$validation$flags$file_prefix,
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options
+    )
+
+  # 1. First handle submissions with alert flags (mark as not approved)
+  flagged_submissions <-
+    validation_flags %>%
+    dplyr::filter(!is.na(.data$alert_flag)) %>%
+    dplyr::pull(.data$submission_id) %>%
+    unique()
+
+  future::plan(
+    strategy = future::multisession,
+    workers = future::availableCores() - 2
+  )
+
+  # Enable progress reporting globally
+  progressr::handlers(progressr::handler_progress(
+    format = "[:bar] :current/:total (:percent) eta: :eta"
+  ))
+
+  logger::log_info(
+    "Processing {length(flagged_submissions)} submissions with alert flags"
+  )
+
+  # Process flagged submissions
+  progressr::with_progress({
+    p_flagged <- progressr::progressor(along = flagged_submissions)
+
+    flagged_submissions %>%
+      furrr::future_walk(
+        function(id) {
+          update_validation_status(
+            submission_id = id,
+            status = "validation_status_not_approved",
+            asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+            token = conf$ingestion$kefs$koboform$token
+          )
+        },
+        .options = furrr::furrr_options(seed = TRUE)
+      )
+  })
+
+  # 2. Now handle submissions without alert flags (mark as approved)
+  clean_submissions <-
+    validation_flags %>%
+    dplyr::filter(is.na(.data$alert_flag)) %>%
+    dplyr::pull(.data$submission_id) %>%
+    unique()
+
+  logger::log_info(
+    "Processing {length(clean_submissions)} submissions without alert flags"
+  )
+
+  progressr::with_progress({
+    p_clean <- progressr::progressor(along = clean_submissions)
+
+    clean_submissions %>%
+      furrr::future_walk(
+        function(id) {
+          update_validation_status(
+            submission_id = id,
+            status = "validation_status_approved",
+            asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+            token = conf$ingestion$kefs$koboform$token
+          )
+        },
+        .options = furrr::furrr_options(seed = TRUE)
+      )
+  })
+
+  # Get current validation status from KoboToolbox for all submissions
+  logger::log_info(
+    "Retrieving current validation status from KoboToolbox for {nrow(validation_flags)} submissions"
+  )
+
+  submission_ids <- validation_flags$submission_id
+
+  current_kobo_status <- submission_ids %>%
+    furrr::future_map_dfr(
+      get_validation_status,
+      asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+      token = conf$ingestion$kefs$koboform$token,
+      .options = furrr::furrr_options(seed = TRUE)
+    )
+
+  # Add current KoboToolbox validation status to validation_flags
+  validation_flags_with_kobo_status <-
+    validation_flags %>%
+    dplyr::left_join(
+      current_kobo_status,
+      by = "submission_id",
+      suffix = c("", "_kobo")
+    )
+
+  # Create long format for enumerators statistics
+  validation_flags_long <-
+    validation_flags_with_kobo_status |>
+    dplyr::mutate(alert_flag = as.character(.data$alert_flag)) %>%
+    tidyr::separate_rows("alert_flag", sep = ",\\s*") |>
+    dplyr::select(-c(dplyr::starts_with("valid")))
+
+  asset_id <- conf$ingestion$kefs$koboform$asset_id_v2
+  # Push the validation flags with KoboToolbox status to MongoDB
+  mdb_collection_push(
+    data = validation_flags_with_kobo_status,
+    connection_string = conf$storage$mongodb$database$validation$connection_string,
+    db_name = conf$storage$mongodb$database$validation$database_name,
+    collection_name = paste(
+      conf$storage$mongodb$database$validation$collections$flags,
+      asset_id,
+      sep = "-"
+    )
+  )
+  # Push enumerators statistics to MongoDB
+  mdb_collection_push(
+    data = validation_flags_long,
+    connection_string = conf$storage$mongodb$database$validation$connection_string,
+    db_name = conf$storage$mongodb$database$validation$database_name,
+    collection_name = paste(
+      conf$storage$mongodb$database$validation$collections$enumerators_stats,
+      asset_id,
+      sep = "-"
+    )
+  )
+
+  logger::log_info("Validation synchronization completed successfully")
+}

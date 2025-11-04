@@ -262,7 +262,7 @@ jobs:
         run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v2()'
 
   validate-kefs-catch-v2:
-    name: Preprocess KEFS (CATCH ASSESSMENT) surveys
+    name: Validate KEFS (CATCH ASSESSMENT) surveys
     needs: preprocess-kefs-catch-v2
     runs-on: ubuntu-latest
     container:
@@ -274,8 +274,25 @@ jobs:
       - name: Set env to production
         if: endsWith(github.ref, '/main')
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
-      - name: Call preprocess_kefs_surveys_v2()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v2()'
+      - name: Call validate_kefs_surveys_v2()
+        run: Rscript -e 'peskas.kenya.data.pipeline::validate_kefs_surveys_v2()'
+
+
+  sync-validation:
+    name: Sync surveys validation
+    needs: validate-adnap-landings
+    runs-on: ubuntu-24.04
+    container:
+      image: docker.pkg.github.com/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Set env to production
+        if: endsWith(github.ref, '/main')
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call sync_validation_submissions()
+        run: Rscript --vanilla -e 'peskas.kenya.data.pipeline::sync_validation_submissions()'
 
   # Note: KEFS validation and export jobs will be added here
   # as those pipeline stages are developed

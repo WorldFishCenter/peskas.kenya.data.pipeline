@@ -1166,6 +1166,7 @@ update_validation_status <- function(
   )
 }
 
+
 #' Generate Trip-Level Validation Flags
 #'
 #' This function validates trip-level characteristics from KEFS survey data and generates
