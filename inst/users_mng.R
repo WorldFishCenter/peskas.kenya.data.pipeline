@@ -1,6 +1,6 @@
 conf <- read_config()
-db_name <- conf$storage$mongodb$database$dashboard$name
-connection_string <- conf$storage$mongodb$connection_string
+db_name <- conf$storage$mongodb$cluster$dashboard$database
+connection_string <- conf$storage$mongodb$cluster$dashboard$connection_string
 
 # MongoDB User Management Functions
 # For adding new users with nested BMU information based on treatment groups
@@ -571,14 +571,14 @@ add_fishers_to_mongodb <- function(
 
 # mdb_add_users(
 #   treatments_df = treatments_df,
-#   connection_string = conf$storage$mongodb$connection_string,
-#   db_name = conf$storage$mongodb$database$dashboard$name
+#   connection_string = conf$storage$mongodb$cluster$dashboard$connection_string,
+#   db_name = conf$storage$mongodb$cluster$dashboard$database
 # )
 
 # m <- mongo(
 #   collection = "users",
-#   db = conf$storage$mongodb$database$dashboard$name,
-#   url = conf$storage$mongodb$connection_string
+#   db = conf$storage$mongodb$cluster$dashboard$database,
+#   url = conf$storage$mongodb$cluster$dashboard$connection_string
 # )
 
 # # 1) Get the latest 5 _ids (newest first)

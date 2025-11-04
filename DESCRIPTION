@@ -30,6 +30,7 @@ Imports:
     lubridate,
     magrittr,
     mongolite,
+    progressr,
     purrr,
     readr,
     rlang,
