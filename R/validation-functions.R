@@ -945,7 +945,7 @@ get_validation_status <- function(
   debug = FALSE
 ) {
   base_url <- paste0(
-    "https://eu.kobotoolbox.org/api/v2/assets/",
+    "https://kf.kobotoolbox.org/api/v2/assets/",
     asset_id,
     "/data/"
   )
@@ -1089,7 +1089,7 @@ update_validation_status <- function(
 
   # Construct the URL
   base_url <- paste0(
-    "https://eu.kobotoolbox.org/api/v2/assets/",
+    "https://kf.kobotoolbox.org/api/v2/assets/",
     asset_id,
     "/data/"
   )

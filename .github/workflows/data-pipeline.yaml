@@ -62,8 +62,8 @@ jobs:
   # WCS DATA PIPELINE
   # ============================================================================
 
-  ingest-wcs-catch:
-    name: Ingest WCS catch surveys
+  ingest-preprocess-wcs-catch:
+    name: Ingest and preprocess WCS catch surveys
     needs: build-container
     runs-on: ubuntu-latest
     container:
@@ -77,9 +77,15 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call ingest_wcs_surveys()
         run: Rscript -e 'peskas.kenya.data.pipeline::ingest_wcs_surveys()'
+      - name: Call preprocess_legacy_landings()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_legacy_landings()'
+      - name: Call preprocess_landings_v1()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v1()'
+      - name: Call preprocess_landings_v2()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v2()'
 
-  ingest-wcs-price:
-    name: Ingest WCS price surveys
+  ingest-preprocess-wcs-price:
+    name: Ingest and preprocess WCS price surveys
     needs: build-container
     runs-on: ubuntu-latest
     container:
@@ -93,46 +99,12 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call ingest_landings_price(versions = c("v1", "v2"))
         run: Rscript -e 'peskas.kenya.data.pipeline::ingest_landings_price(versions = c("v1", "v2"))'
-
-  preprocess-wcs-catch:
-    name: Preprocess WCS catch surveys
-    needs: ingest-wcs-catch
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Set env to production
-        if: endsWith(github.ref, '/main')
-        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
-      - name: Call preprocess_legacy_landings()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_legacy_landings()'
-      - name: Call preprocess_landings_v1()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v1()'
-      - name: Call preprocess_landings_v2()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v2()'
-
-  preprocess-wcs-price:
-    name: Preprocess WCS price surveys
-    needs: ingest-wcs-price
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Set env to production
-        if: endsWith(github.ref, '/main')
-        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call preprocess_price_landings()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_price_landings()'        
-        
-  merge-wcs-catch:
-    name: Merge WCS catch surveys
-    needs: [preprocess-wcs-catch]
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_price_landings()'
+
+  merge-wcs:
+    name: Merge WCS surveys
+    needs: [ingest-preprocess-wcs-catch, ingest-preprocess-wcs-price]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
@@ -145,26 +117,12 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call merge_landings()
         run: Rscript -e 'peskas.kenya.data.pipeline::merge_landings()'
-
-  merge-wcs-price:
-    name: Merge WCS price surveys
-    needs: [preprocess-wcs-catch, preprocess-wcs-price]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Set env to production
-        if: endsWith(github.ref, '/main')
-        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call merge_prices()
         run: Rscript -e 'peskas.kenya.data.pipeline::merge_prices()'
 
-  validate-wcs:
-    name: Validate WCS surveys
-    needs: [merge-wcs-catch, merge-wcs-price]
+  validate-export-wcs:
+    name: Validate and export WCS surveys
+    needs: merge-wcs
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
@@ -177,20 +135,6 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call validate_landings()
         run: Rscript -e 'peskas.kenya.data.pipeline::validate_landings()'
-
-  export-wcs:
-    name: Export WCS metrics to dashboard
-    needs: validate-wcs
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Set env to production
-        if: endsWith(github.ref, '/main')
-        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call export_summaries()
         run: Rscript -e 'peskas.kenya.data.pipeline::export_summaries()'
 
@@ -198,8 +142,8 @@ jobs:
   # KEFS DATA PIPELINE
   # ============================================================================
 
-  ingest-kefs-catch-v1:
-    name: Ingest KEFS (BMU DAILY) surveys
+  ingest-preprocess-kefs-v1:
+    name: Ingest and preprocess KEFS (BMU DAILY) surveys
     needs: build-container
     runs-on: ubuntu-latest
     container:
@@ -213,9 +157,11 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call ingest_kefs_surveys_v1()
         run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_surveys_v1()'
+      - name: Call preprocess_kefs_surveys_v1()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v1()'
 
-  ingest-kefs-catch-v2:
-    name: Ingest KEFS (CATCH ASSESSMENT) catch surveys
+  ingest-preprocess-kefs-v2:
+    name: Ingest and preprocess KEFS (CATCH ASSESSMENT) surveys
     needs: build-container
     runs-on: ubuntu-latest
     container:
@@ -229,42 +175,12 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call ingest_kefs_surveys_v2()
         run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_surveys_v2()'
-
-  preprocess-kefs-catch-v1:
-    name: Preprocess KEFS (BMU DAILY) surveys
-    needs: ingest-kefs-catch-v1
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Set env to production
-        if: endsWith(github.ref, '/main')
-        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
-      - name: Call preprocess_kefs_surveys_v1()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v1()'
-
-  preprocess-kefs-catch-v2:
-    name: Preprocess KEFS (CATCH ASSESSMENT) surveys
-    needs: ingest-kefs-catch-v2
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Set env to production
-        if: endsWith(github.ref, '/main')
-        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call preprocess_kefs_surveys_v2()
         run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v2()'
 
-  validate-kefs-catch-v2:
-    name: Validate KEFS (CATCH ASSESSMENT) surveys
-    needs: preprocess-kefs-catch-v2
+  validate-sync-kefs-v2:
+    name: Validate and sync KEFS (CATCH ASSESSMENT) surveys
+    needs: ingest-preprocess-kefs-v2
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
@@ -277,23 +193,8 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call validate_kefs_surveys_v2()
         run: Rscript -e 'peskas.kenya.data.pipeline::validate_kefs_surveys_v2()'
-
-
-  sync-validation:
-    name: Sync surveys validation
-    needs: validate-kefs-catch-v2
-    runs-on: ubuntu-24.04
-    container:
-      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Set env to production
-        if: endsWith(github.ref, '/main')
-        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call sync_validation_submissions()
         run: Rscript --vanilla -e 'peskas.kenya.data.pipeline::sync_validation_submissions()'
 
-  # Note: KEFS validation and export jobs will be added here
+  # Note: KEFS v1 validation and export jobs will be added here
   # as those pipeline stages are developed
