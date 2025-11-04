@@ -36,7 +36,9 @@ validate_landings <- function() {
       provider = conf$storage$google$key,
       options = conf$storage$google$options
     ) |>
-    dplyr::mutate(submission_id = paste0(.data$version, "-", .data$submission_id)) |>
+    dplyr::mutate(
+      submission_id = paste0(.data$version, "-", .data$submission_id)
+    ) |>
     dplyr::relocate("submission_id", .after = "version")
 
   price_tables <-
@@ -239,7 +241,6 @@ validate_landings <- function() {
     dplyr::select(-c("year", "median_ksh_kg_imputed")) |>
     dplyr::distinct()
 
-
   # Define the data and their corresponding collection names
   upload_data <- list(
     list(
@@ -267,4 +268,205 @@ validate_landings <- function() {
       )
     }
   )
+}
+
+
+#' Validate KEFS Surveys Data (Version 2)
+#'
+#' This function imports and validates preprocessed KEFS (Kenya Fisheries) survey data
+#' from Google Cloud Storage. It performs validation checks on trip characteristics,
+#' catch data, and derived indicators (CPUE, RPUE, price per kg). The function queries
+#' KoboToolbox for manual validation status and respects human-reviewed approvals while
+#' generating automated validation flags for data quality issues.
+#'
+#' @return No return value. Function processes the data and uploads the validated results
+#' and alert flags as Parquet files to Google Cloud Storage.
+#'
+#' @details
+#' The function performs the following main operations:
+#' 1. Downloads preprocessed KEFS survey data from Google Cloud Storage.
+#' 2. Queries KoboToolbox API to retrieve existing validation statuses for submissions.
+#' 3. Identifies manually approved submissions (excluding system approvals) to preserve
+#'    human review decisions.
+#' 4. Validates the data across multiple dimensions:
+#'    - Information flags: Missing catch outcome and weight data (flag 1.1)
+#'    - Trip flags: Horse power, number of fishers, trip duration, and revenue anomalies (flags 1-4)
+#'    - Catch flags: Sample weight inconsistencies (flags 5.1-5.2)
+#'    - Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.3)
+#' 5. Combines all validation flags into a comprehensive alert system.
+#' 6. Filters valid data based on presence of alert flags.
+#' 7. Uploads both the validation flags and validated dataset as Parquet files to Google Cloud Storage.
+#'
+#' @section Validation Limits:
+#' The function uses the following default limits for trip validation:
+#' \itemize{
+#'   \item max_hp: 150 (maximum horse power)
+#'   \item max_n_fishers: 100 (maximum number of fishers)
+#'   \item max_trip_duration: 96 hours (maximum trip duration)
+#'   \item max_revenue: 387,600 KSH (approximately 3,000 USD)
+#' }
+#'
+#' And for indicator validation:
+#' \itemize{
+#'   \item max_cpue: 20 kg/fisher/hour (maximum catch per unit effort)
+#'   \item max_rpue: 3,876 KSH/fisher/hour (approximately 30 USD/fisher/hour)
+#'   \item max_price_kg: 3,876 KSH/kg (approximately 30 USD/kg)
+#' }
+#'
+#' @note
+#' This function requires:
+#' - A configuration file with Google Cloud Storage credentials and KoboToolbox API credentials
+#' - The `future` package configured for parallel processing
+#' - The preprocessed KEFS surveys data to be available in Google Cloud Storage
+#'
+#' @keywords workflow validation
+#' @export
+validate_kefs_surveys_v2 <- function() {
+  conf <- read_config()
+
+  preprocessed_surveys <-
+    download_parquet_from_cloud(
+      prefix = conf$surveys$kefs$v2$preprocessed$file_prefix,
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options
+    )
+
+  future::plan(
+    strategy = future::multisession,
+    workers = future::availableCores() - 2
+  )
+
+  # Get validation status from KoboToolbox for existing submissions
+  submission_ids <- unique(preprocessed_surveys$submission_id)
+
+  # Query validation status from kefs asset
+  logger::log_info(
+    "Querying validation status from kefs asset for {length(submission_ids)} submissions"
+  )
+
+  validation_results <- submission_ids %>%
+    furrr::future_map_dfr(
+      get_validation_status,
+      asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+      token = conf$ingestion$kefs$koboform$token,
+      .options = furrr::furrr_options(seed = TRUE)
+    )
+
+  # Extract manually approved IDs (exclude system-approved)
+  # Only human-reviewed approvals should override automatic validation flags
+  manual_approved_ids <- validation_results %>%
+    dplyr::filter(
+      .data$validation_status == "validation_status_approved" &
+        !is.na(.data$validated_by) &
+        .data$validated_by != "" &
+        .data$validated_by != conf$ingestion$kefs$koboform$username # Exclude system approvals
+    ) %>%
+    dplyr::pull(.data$submission_id) %>%
+    unique()
+
+  logger::log_info(
+    "Found {length(manual_approved_ids)} manually approved submissions in KoboToolbox"
+  )
+
+  info_flags <-
+    preprocessed_surveys |>
+    dplyr::mutate(
+      alert_info = dplyr::case_when(
+        is.na(.data$catch_outcome) & is.na(.data$total_catch_weight) ~ "1.1",
+        TRUE ~ NA_character_
+      )
+    ) |>
+    dplyr::select(
+      "submission_id",
+      dplyr::starts_with("alert_")
+    ) |>
+    dplyr::distinct()
+
+  preprocessed_surveys <-
+    preprocessed_surveys |>
+    dplyr::filter(!.data$submission_id %in% !is.na(info_flags$alert_info))
+
+  trip_limits <-
+    list(
+      max_hp = 150,
+      max_n_fishers = 100,
+      max_trip_duration = 96,
+      max_revenue = 387600
+    )
+
+  trip_flags <- get_trips_flags(
+    dat = preprocessed_surveys,
+    limits = trip_limits
+  )
+  catch_flags <- get_catch_flags(dat = preprocessed_surveys)
+
+  no_flags_ids <-
+    dplyr::full_join(trip_flags, catch_flags, by = "submission_id") |>
+    dplyr::filter(
+      is.na(.data$alert_flag_trip) & is.na(.data$alert_flag_catch)
+    ) |>
+    dplyr::select("submission_id") |>
+    dplyr::pull(.data$submission_id) |>
+    unique()
+
+  indicator_limits <-
+    list(
+      max_cpue = 20, # max catch per unit effort (fisher/hours) 20 kg/hour
+      max_rpue = 3876, # max revenue per unit effort (fisher/hours) 30 USD/hour
+      max_price_kg = 3876 # max price per kg 30 USD/kg
+    )
+
+  composite_flags <- get_indicators_flags(
+    dat = preprocessed_surveys,
+    limits = indicator_limits,
+    clean_ids = no_flags_ids
+  )
+
+  flags_combined <-
+    dplyr::full_join(trip_flags, catch_flags, by = "submission_id") |>
+    dplyr::full_join(composite_flags, by = "submission_id") |>
+    dplyr::full_join(info_flags, by = "submission_id") |>
+    tidyr::unite(
+      col = "alert_flag",
+      "alert_flag_trip",
+      "alert_flag_catch",
+      "alert_flag_indicators",
+      "alert_info",
+      sep = ",",
+      na.rm = TRUE
+    ) |>
+    dplyr::mutate(alert_flag = dplyr::na_if(.data$alert_flag, "")) |>
+    dplyr::left_join(
+      preprocessed_surveys |>
+        dplyr::select(
+          "submission_id",
+          "submission_date",
+          submitted_by = "enumerator_name_clean"
+        )
+    ) |>
+    dplyr::distinct()
+
+  valid_data <-
+    preprocessed_surveys |>
+    dplyr::semi_join(
+      flags_combined |> dplyr::filter(!is.na(.data$alert_flag)),
+      by = "submission_id"
+    ) |>
+    dplyr::distinct()
+
+  upload_parquet_to_cloud(
+    data = flags_combined,
+    prefix = conf$surveys$kefs$v2$validation$flags$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+
+  upload_parquet_to_cloud(
+    data = valid_data,
+    prefix = conf$surveys$kefs$v2$validated$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+
+  invisible(NULL)
 }

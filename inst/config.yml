@@ -17,6 +17,7 @@ default:
         asset_id_v2: !expr Sys.getenv('KEFS_KOBO_ASSET_ID_V2')
         username: !expr Sys.getenv('KEFS_KOBO_USERNAME')
         password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
+        token: !expr Sys.getenv('KEFS_KOBO_TOKEN')
   surveys:
     wcs:
       catch:
@@ -62,6 +63,9 @@ default:
           file_prefix: kefs-v1-surveys-preprocessed
         validated:
           file_prefix: kefs-v1-surveys-validated
+        validation:
+          flags:
+            file_prefix: kefs-v2-flags                    
       v2:
         raw:
           file_prefix: kefs-v2-surveys-raw
@@ -69,6 +73,9 @@ default:
           file_prefix: kefs-v2-surveys-preprocessed
         validated:
           file_prefix: kefs-v2-surveys-validated
+        validation:
+          flags:
+            file_prefix: kefs-v2-flags          
   storage:
     mongodb:
       connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')

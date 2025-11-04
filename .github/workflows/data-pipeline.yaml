@@ -18,6 +18,7 @@ env:
   KEFS_KOBO_ASSET_ID_V2: ${{ secrets.KEFS_KOBO_ASSET_ID_V2 }}
   KEFS_KOBO_USERNAME: ${{ secrets.KEFS_KOBO_USERNAME }}
   KEFS_KOBO_PASSWORD: ${{ secrets.KEFS_KOBO_PASSWORD }}
+  KEFS_KOBO_TOKEN: ${{ secrets.KEFS_KOBO_TOKEN }}
   PDS_TOKEN: ${{ secrets.PDS_TOKEN }}
   PDS_SECRET: ${{ secrets.PDS_SECRET }}
   MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
@@ -247,6 +248,22 @@ jobs:
   preprocess-kefs-catch-v2:
     name: Preprocess KEFS (CATCH ASSESSMENT) surveys
     needs: ingest-kefs-catch-v2
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Set env to production
+        if: endsWith(github.ref, '/main')
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call preprocess_kefs_surveys_v2()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v2()'
+
+  validate-kefs-catch-v2:
+    name: Preprocess KEFS (CATCH ASSESSMENT) surveys
+    needs: preprocess-kefs-catch-v2
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest

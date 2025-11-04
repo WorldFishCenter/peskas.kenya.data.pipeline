@@ -196,14 +196,14 @@ reshape_priority_species <- function(raw_data = NULL) {
       "priority_species",
       "length_type",
       "length_cm",
-      weight_priority = "weight_kg"
+      priority_weight = "weight_kg"
     )
 
   # Convert numeric columns from character to numeric
   long_data <- long_data |>
     dplyr::mutate(
       length_cm = as.numeric(.data$length_cm),
-      weight_priority = as.numeric(.data$weight_priority)
+      priority_weight = as.numeric(.data$priority_weight)
     )
 
   return(long_data)
@@ -289,15 +289,15 @@ reshape_overall_sample <- function(raw_data = NULL) {
       "submission_id",
       "n_sample",
       sample_species = "species",
-      "weight_sample",
-      "price_sample"
+      sample_weight = "weight_sample",
+      sample_price = "price_sample"
     )
 
   # Convert numeric columns from character to numeric
   long_data <- long_data |>
     dplyr::mutate(
-      weight_sample = as.numeric(.data$weight_sample),
-      price_sample = as.numeric(.data$price_sample)
+      sample_weight = as.numeric(.data$sample_weight),
+      sample_price = as.numeric(.data$sample_price)
     )
 
   return(long_data)

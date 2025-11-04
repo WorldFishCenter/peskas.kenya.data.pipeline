@@ -307,6 +307,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     raw_dat |>
     dplyr::select(
       "submission_id",
+      submission_date = "_submission_time",
       enumerator_name = "Name_of_Data_Collector",
       landing_date = "date_data",
       district = "sub_county",
@@ -324,15 +325,24 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       no_of_fishers = "NumCrew",
       fishing_trip_start = "Enter_date_and_time_sel_left_for_fishing",
       fishing_trip_end = "Enter_date_and_time_the_vessel_landed",
+      fishing_per_week = "BAC",
       gear = "gear_type",
       mesh_size = "Please_enter_the_mesh_size_in_inches",
       catch_outcome = "Did_you_CATCH_FISH_TODAY",
       length_measure = "Are_you_taking_lengt_the_priority_species",
       protected_species = "SpeciesETP",
-      sample_weight = "SampleWeight",
-      catch_weight = "TotalCatchWeight",
-      price_kg = "PricePerKg",
-      catch_price = "TValue"
+      total_sample_weight = "SampleWeight",
+      total_catch_weight = "TotalCatchWeight",
+      total_price_kg = "PricePerKg",
+      total_catch_price = "TValue"
+    ) |>
+    dplyr::mutate(
+      catch_outcome = dplyr::if_else(
+        is.na(.data$catch_outcome) & .data$total_catch_weight > 0,
+        "yes",
+        .data$catch_outcome
+      ),
+      fishing_per_week = stringr::str_extract(.data$fishing_per_week, "\\d+")
     ) |>
     dplyr::left_join(
       standardize_enumerator_names(
@@ -365,6 +375,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     trip_info |>
     dplyr::mutate(
       submission_id = as.character(.data$submission_id),
+      submission_date = lubridate::as_datetime(.data$submission_date),
       landing_date = lubridate::as_date(.data$landing_date),
       hp = as.integer(.data$hp),
       no_of_fishers = as.integer(.data$no_of_fishers),
@@ -375,11 +386,12 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
         .data$fishing_trip_start,
         units = "hours"
       )),
+      fishing_per_week = as.integer(.data$fishing_per_week),
       mesh_size = as.numeric(.data$mesh_size),
-      sample_weight = as.numeric(.data$sample_weight),
-      catch_weight = as.numeric(.data$catch_weight),
-      price_kg = as.numeric(.data$price_kg),
-      catch_price = as.numeric(.data$catch_price)
+      total_sample_weight = as.numeric(.data$total_sample_weight),
+      total_catch_weight = as.numeric(.data$total_catch_weight),
+      total_price_kg = as.numeric(.data$total_price_kg),
+      total_catch_price = as.numeric(.data$total_catch_price)
     ) |>
     dplyr::relocate("trip_duration", .after = "fishing_trip_end")
 
