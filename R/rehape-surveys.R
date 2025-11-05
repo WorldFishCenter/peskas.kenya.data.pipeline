@@ -167,9 +167,8 @@ reshape_priority_species <- function(raw_data = NULL) {
         "weight_kg"
       )
 
-      # Add priority number
-      current_data$n_priority <- i
-      1 # Convert to 1-based indexing
+      # Add priority number (convert from 0-based to 1-based indexing)
+      current_data$n_priority <- i + 1
 
       # Filter out rows where all priority details are NA
       current_data <- current_data |>
