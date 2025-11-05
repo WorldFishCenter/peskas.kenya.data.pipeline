@@ -384,7 +384,10 @@ validate_kefs_surveys_v2 <- function() {
 
   preprocessed_surveys <-
     preprocessed_surveys |>
-    dplyr::filter(!.data$submission_id %in% !is.na(info_flags$alert_info))
+    dplyr::filter(
+      !.data$submission_id %in%
+        info_flags$submission_id[!is.na(info_flags$alert_info)]
+    )
 
   trip_limits <-
     list(
@@ -449,7 +452,7 @@ validate_kefs_surveys_v2 <- function() {
   valid_data <-
     preprocessed_surveys |>
     dplyr::semi_join(
-      flags_combined |> dplyr::filter(!is.na(.data$alert_flag)),
+      flags_combined |> dplyr::filter(is.na(.data$alert_flag)),
       by = "submission_id"
     ) |>
     dplyr::distinct()

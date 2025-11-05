@@ -789,7 +789,7 @@ ingest_pds_tracks <- function(
 
   # Select tracks to process
   process_ids <- if (!is.null(batch_size)) {
-    new_trip_ids[1:batch_size]
+    new_trip_ids[1:min(batch_size, length(new_trip_ids))]
   } else {
     new_trip_ids
   }
