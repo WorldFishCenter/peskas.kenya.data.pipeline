@@ -517,12 +517,6 @@ validate_kefs_surveys_v2 <- function() {
 #' sync_validation_submissions(log_threshold = logger::INFO)
 #' }
 #'
-#' @importFrom logger log_threshold log_info
-#' @importFrom dplyr filter pull
-#' @importFrom future plan multicore availableCores
-#' @importFrom progressr handlers handler_progress with_progress progressor
-#' @importFrom furrr future_walk
-#'
 #' @keywords workflow validation
 #' @export
 sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
@@ -538,16 +532,11 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
       options = conf$storage$google$options
     )
 
-  # 1. First handle submissions with alert flags (mark as not approved)
-  flagged_submissions <-
-    validation_flags %>%
-    dplyr::filter(!is.na(.data$alert_flag)) %>%
-    dplyr::pull(.data$submission_id) %>%
-    unique()
-
+  # Set up limited parallel processing with rate limiting for kf.fimskenya.co.ke
+  # Max 4 workers to avoid overwhelming the server
   future::plan(
     strategy = future::multisession,
-    workers = future::availableCores() - 2
+    workers = min(4, future::availableCores() - 2)
   )
 
   # Enable progress reporting globally
@@ -555,70 +544,63 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
     format = "[:bar] :current/:total (:percent) eta: :eta"
   ))
 
-  logger::log_info(
-    "Processing {length(flagged_submissions)} submissions with alert flags"
+  # 1. Handle submissions with alert flags (mark as not approved)
+  flagged_submissions <-
+    validation_flags %>%
+    dplyr::filter(!is.na(.data$alert_flag)) %>%
+    dplyr::pull(.data$submission_id) %>%
+    unique()
+
+  flagged_results <- process_submissions_parallel(
+    submission_ids = flagged_submissions,
+    process_fn = function(id) {
+      update_validation_status(
+        submission_id = id,
+        status = "validation_status_not_approved",
+        asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+        token = conf$ingestion$kefs$koboform$token
+      )
+    },
+    description = "submissions with alert flags",
+    rate_limit = 0.2
   )
 
-  # Process flagged submissions
-  progressr::with_progress({
-    p_flagged <- progressr::progressor(along = flagged_submissions)
-
-    flagged_submissions %>%
-      furrr::future_walk(
-        function(id) {
-          update_validation_status(
-            submission_id = id,
-            status = "validation_status_not_approved",
-            asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
-            token = conf$ingestion$kefs$koboform$token
-          )
-        },
-        .options = furrr::furrr_options(seed = TRUE)
-      )
-  })
-
-  # 2. Now handle submissions without alert flags (mark as approved)
+  # 2. Handle submissions without alert flags (mark as approved)
   clean_submissions <-
     validation_flags %>%
     dplyr::filter(is.na(.data$alert_flag)) %>%
     dplyr::pull(.data$submission_id) %>%
     unique()
 
-  logger::log_info(
-    "Processing {length(clean_submissions)} submissions without alert flags"
-  )
-
-  progressr::with_progress({
-    p_clean <- progressr::progressor(along = clean_submissions)
-
-    clean_submissions %>%
-      furrr::future_walk(
-        function(id) {
-          update_validation_status(
-            submission_id = id,
-            status = "validation_status_approved",
-            asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
-            token = conf$ingestion$kefs$koboform$token
-          )
-        },
-        .options = furrr::furrr_options(seed = TRUE)
+  clean_results <- process_submissions_parallel(
+    submission_ids = clean_submissions,
+    process_fn = function(id) {
+      update_validation_status(
+        submission_id = id,
+        status = "validation_status_approved",
+        asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+        token = conf$ingestion$kefs$koboform$token
       )
-  })
-
-  # Get current validation status from KoboToolbox for all submissions
-  logger::log_info(
-    "Retrieving current validation status from KoboToolbox for {nrow(validation_flags)} submissions"
+    },
+    description = "submissions without alert flags",
+    rate_limit = 0.2
   )
 
+  # 3. Get current validation status from KoboToolbox for all submissions
   submission_ids <- validation_flags$submission_id
 
-  current_kobo_status <- submission_ids %>%
-    furrr::future_map_dfr(
-      get_validation_status,
-      asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
-      token = conf$ingestion$kefs$koboform$token,
-      .options = furrr::furrr_options(seed = TRUE)
-    )
+  current_kobo_status <- process_submissions_parallel(
+    submission_ids = submission_ids,
+    process_fn = function(id) {
+      get_validation_status(
+        submission_id = id,
+        asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+        token = conf$ingestion$kefs$koboform$token
+      )
+    },
+    description = "validation status retrievals",
+    rate_limit = 0.2
+  )
 
   # Add current KoboToolbox validation status to validation_flags
   validation_flags_with_kobo_status <-
@@ -661,4 +643,61 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
   )
 
   logger::log_info("Validation synchronization completed successfully")
+}
+
+
+#' Process Submissions with Rate-Limited Parallel API Calls
+#'
+#' @description
+#' Helper function to process multiple submissions in parallel with rate limiting,
+#' progress tracking, and error logging.
+#'
+#' @param submission_ids Character vector of submission IDs to process
+#' @param process_fn Function to apply to each submission ID
+#' @param description Character string describing what's being processed (for logging)
+#' @param rate_limit Numeric delay in seconds between requests (default: 0.2)
+#'
+#' @return Data frame with results from process_fn for all submissions
+#'
+#' @keywords internal
+process_submissions_parallel <- function(
+  submission_ids,
+  process_fn,
+  description = "submissions",
+  rate_limit = 0.2
+) {
+  logger::log_info("Processing {length(submission_ids)} {description}")
+
+  progressr::with_progress({
+    p <- progressr::progressor(along = submission_ids)
+
+    results <- furrr::future_map_dfr(
+      submission_ids,
+      function(id) {
+        # Add delay to respect rate limits
+        Sys.sleep(rate_limit)
+
+        result <- process_fn(id)
+        p()
+        result
+      },
+      .options = furrr::furrr_options(seed = TRUE)
+    )
+
+    # Log failures if update_success column exists
+    if ("update_success" %in% names(results)) {
+      failures <- results %>% dplyr::filter(!.data$update_success)
+      if (nrow(failures) > 0) {
+        logger::log_warn(
+          "Failed to update {nrow(failures)} {description}: {paste(failures$submission_id, collapse = ', ')}"
+        )
+      } else {
+        logger::log_info(
+          "Successfully processed all {length(submission_ids)} {description}"
+        )
+      }
+    }
+
+    results
+  })
 }
