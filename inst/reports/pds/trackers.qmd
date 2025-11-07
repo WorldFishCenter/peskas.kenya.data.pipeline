@@ -132,7 +132,7 @@ theme_set(theme_modern())
 
 ```{r data-load}
 # Load vessel tracking data
-tracks_binned <- arrow::read_parquet("tracks_binned_24-09.parquet")
+tracks_binned <- arrow::read_parquet("tracks_binned_07-11.parquet")
 #tracks_binned <- arrow::read_parquet("inst/reports/pds/tracks_binned_28-08.parquet")
 
 # Calculate distance from coastline for accurate spatial analysis
