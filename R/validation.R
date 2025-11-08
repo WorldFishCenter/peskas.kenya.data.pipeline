@@ -285,17 +285,18 @@ validate_landings <- function() {
 #' @details
 #' The function performs the following main operations:
 #' 1. Downloads preprocessed KEFS survey data from Google Cloud Storage.
-#' 2. Queries KoboToolbox API to retrieve existing validation statuses for submissions.
-#' 3. Identifies manually approved submissions (excluding system approvals) to preserve
-#'    human review decisions.
-#' 4. Validates the data across multiple dimensions:
+#' 2. Sets up parallel processing with rate limiting (max 4 workers, 200ms delay) to avoid overwhelming the API server.
+#' 3. Queries KoboToolbox API to retrieve existing validation statuses for all submissions.
+#' 4. Identifies manually approved submissions (excluding system approvals) to preserve human review decisions.
+#' 5. Validates the data across multiple dimensions:
 #'    - Information flags: Missing catch outcome and weight data (flag 1.1)
 #'    - Trip flags: Horse power, number of fishers, trip duration, and revenue anomalies (flags 1-4)
 #'    - Catch flags: Sample weight inconsistencies (flags 5.1-5.2)
 #'    - Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.3)
-#' 5. Combines all validation flags into a comprehensive alert system.
-#' 6. Filters valid data based on presence of alert flags.
-#' 7. Uploads both the validation flags and validated dataset as Parquet files to Google Cloud Storage.
+#' 6. Combines all validation flags into a comprehensive alert system.
+#' 7. Clears validation flags for manually approved submissions (respecting human decisions).
+#' 8. Filters valid data based on presence of alert flags.
+#' 9. Uploads both the validation flags and validated dataset as Parquet files to Google Cloud Storage.
 #'
 #' @section Validation Limits:
 #' The function uses the following default limits for trip validation:
@@ -331,9 +332,10 @@ validate_kefs_surveys_v2 <- function() {
       options = conf$storage$google$options
     )
 
+  # Set up limited parallel processing with rate limiting for kf.fimskenya.co.ke
+  # Max 4 workers to avoid overwhelming the server
   future::plan(
     strategy = future::multisession,
-    workers = future::availableCores() - 2
   )
 
   # Get validation status from KoboToolbox for existing submissions
@@ -344,13 +346,28 @@ validate_kefs_surveys_v2 <- function() {
     "Querying validation status from kefs asset for {length(submission_ids)} submissions"
   )
 
-  validation_results <- submission_ids %>%
-    furrr::future_map_dfr(
-      get_validation_status,
-      asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
-      token = conf$ingestion$kefs$koboform$token,
-      .options = furrr::furrr_options(seed = TRUE)
-    )
+  # Enable progress reporting
+  progressr::handlers(progressr::handler_progress(
+    format = "[:bar] :current/:total (:percent) eta: :eta"
+  ))
+
+  validation_results <- progressr::with_progress({
+    p <- progressr::progressor(along = submission_ids)
+
+    submission_ids %>%
+      furrr::future_map_dfr(
+        function(id) {
+          result <- get_validation_status(
+            submission_id = id,
+            asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+            token = conf$ingestion$kefs$koboform$token
+          )
+          p()
+          result
+        },
+        .options = furrr::furrr_options(seed = TRUE)
+      )
+  })
 
   # Extract manually approved IDs (exclude system-approved)
   # Only human-reviewed approvals should override automatic validation flags
@@ -439,6 +456,14 @@ validate_kefs_surveys_v2 <- function() {
       na.rm = TRUE
     ) |>
     dplyr::mutate(alert_flag = dplyr::na_if(.data$alert_flag, "")) |>
+    # Respect manual approvals: clear flags for manually approved submissions
+    dplyr::mutate(
+      alert_flag = dplyr::if_else(
+        .data$submission_id %in% manual_approved_ids,
+        NA_character_,
+        .data$alert_flag
+      )
+    ) |>
     dplyr::left_join(
       preprocessed_surveys |>
         dplyr::select(
@@ -448,6 +473,17 @@ validate_kefs_surveys_v2 <- function() {
         )
     ) |>
     dplyr::distinct()
+
+  # Log how many manually approved submissions had flags cleared
+  cleared_flags <- flags_combined %>%
+    dplyr::filter(.data$submission_id %in% manual_approved_ids) %>%
+    nrow()
+
+  if (cleared_flags > 0) {
+    logger::log_info(
+      "Cleared validation flags for {cleared_flags} manually approved submissions"
+    )
+  }
 
   valid_data <-
     preprocessed_surveys |>
@@ -477,22 +513,21 @@ validate_kefs_surveys_v2 <- function() {
 #' Synchronize Validation Statuses with KoboToolbox
 #'
 #' @description
-#' Synchronizes validation statuses between the local system and KoboToolbox by intelligently
-#' processing validation flags and updating submission statuses only when necessary. This function
-#' respects manual human approvals and avoids unnecessary API calls.
+#' Synchronizes validation statuses between the local system and KoboToolbox by processing
+#' validation flags and updating submission statuses accordingly. This function respects
+#' manual human approvals and handles both flagged and clean submissions in parallel with rate limiting.
 #'
 #' @details
 #' The function follows these steps:
 #' 1. Downloads the current validation flags from cloud storage
 #' 2. Sets up parallel processing using the future package (max 4 workers with rate limiting)
-#' 3. Fetches current validation status from KoboToolbox for all submissions
+#' 3. Fetches current validation status from KoboToolbox to identify manual approvals
 #' 4. Identifies manually approved submissions and preserves them (excludes system approvals)
-#' 5. Determines which flagged submissions need updating (excludes manual approvals and already correct)
-#' 6. Determines which clean submissions need updating (only those not already approved)
-#' 7. Updates only the submissions that need status changes
-#' 8. Combines updated and unchanged statuses
-#' 9. Adds KoboToolbox validation status to validation flags
-#' 10. Pushes all validation flags with KoboToolbox status to MongoDB for record-keeping
+#' 5. Processes flagged submissions (marking as not approved), EXCLUDING manually approved ones
+#' 6. Processes clean submissions (marking as approved)
+#' 7. Combines validation statuses from updates and preserved manual approvals
+#' 8. Adds KoboToolbox validation status to validation flags
+#' 9. Pushes all validation flags with KoboToolbox status to MongoDB for record-keeping
 #'
 #' Progress reporting is enabled to track the status of submissions being processed.
 #'
@@ -503,13 +538,17 @@ validate_kefs_surveys_v2 <- function() {
 #'
 #' @section Manual Approval Preservation:
 #' The function identifies submissions that have been manually approved by humans (validated_by
-#' is not empty and not the system username) and preserves these approvals even if automated
-#' validation would flag them. This ensures human review decisions are respected.
+#' is not empty and is not the system username) and preserves these approvals even if automated
+#' validation would flag them. Flagged submissions that were manually approved will NOT be
+#' marked as "not approved" by this function. This ensures human review decisions are always
+#' respected and never overwritten by the automated system.
 #'
 #' @section Rate Limiting:
 #' To avoid overwhelming the KoboToolbox API server (kf.fimskenya.co.ke), the function limits
 #' parallel workers to 4 and adds a 200ms delay between requests. This provides approximately
-#' 20 requests per second across all workers while maintaining server stability.
+#' 20 requests per second across all workers while maintaining server stability. With this
+#' configuration, processing 13,000 submissions takes approximately 2-3 hours (including the
+#' initial status fetch to identify manual approvals).
 #'
 #' @note
 #' This function requires proper configuration in the config file, including:
@@ -545,7 +584,7 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
   # Max 4 workers to avoid overwhelming the server
   future::plan(
     strategy = future::multisession,
-    workers = min(4, future::availableCores() - 2)
+    workers = future::availableCores() - 2
   )
 
   # Enable progress reporting globally
@@ -553,11 +592,11 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
     format = "[:bar] :current/:total (:percent) eta: :eta"
   ))
 
-  # 1. Fetch current validation status from KoboToolbox first
+  # 1. Fetch current validation status to identify manual approvals
   all_submission_ids <- unique(validation_flags$submission_id)
 
   logger::log_info(
-    "Fetching current validation status for {length(all_submission_ids)} submissions"
+    "Fetching current validation status for {length(all_submission_ids)} submissions to identify manual approvals"
   )
 
   current_kobo_status <- process_submissions_parallel(
@@ -569,8 +608,8 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
         token = conf$ingestion$kefs$koboform$token
       )
     },
-    description = "submission statuses",
-    rate_limit = 0.2
+    description = "current validation statuses",
+    rate_limit = 0.1
   )
 
   # 2. Identify manually approved submissions (preserve human decisions)
@@ -589,26 +628,17 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
     )
   }
 
-  # 3. Determine which flagged submissions need updating
+  # 3. Process submissions with alert flags (mark as not approved)
+  # EXCLUDE manually approved submissions
   flagged_submissions <- validation_flags %>%
     dplyr::filter(!is.na(.data$alert_flag)) %>%
     dplyr::pull(.data$submission_id) %>%
-    unique()
+    unique() %>%
+    setdiff(manual_approved_ids)
 
-  # Exclude manually approved submissions and those already in correct state
-  flagged_to_update <- flagged_submissions %>%
-    setdiff(manual_approved_ids) %>%
-    intersect(
-      current_kobo_status %>%
-        dplyr::filter(
-          .data$validation_status != "validation_status_not_approved"
-        ) %>%
-        dplyr::pull(.data$submission_id)
-    )
-
-  flagged_results <- if (length(flagged_to_update) > 0) {
+  flagged_results <- if (length(flagged_submissions) > 0) {
     process_submissions_parallel(
-      submission_ids = flagged_to_update,
+      submission_ids = flagged_submissions,
       process_fn = function(id) {
         update_validation_status(
           submission_id = id,
@@ -618,25 +648,28 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
         )
       },
       description = "flagged submissions",
-      rate_limit = 0.2
+      rate_limit = 0.1
     )
   } else {
-    logger::log_info("No flagged submissions need updating")
+    logger::log_info(
+      "No flagged submissions to update (excluding manual approvals)"
+    )
     dplyr::tibble()
   }
 
-  # 4. Determine which clean submissions need updating
+  # 4. Process submissions without alert flags (mark as approved)
+  # Skip submissions that are already approved to avoid redundant API calls
   clean_submissions <- validation_flags %>%
     dplyr::filter(is.na(.data$alert_flag)) %>%
     dplyr::pull(.data$submission_id) %>%
     unique()
 
-  # Only update if not already approved
+  # Filter out submissions that are already approved
   clean_to_update <- clean_submissions %>%
-    intersect(
+    setdiff(
       current_kobo_status %>%
         dplyr::filter(
-          .data$validation_status != "validation_status_approved"
+          .data$validation_status == "validation_status_approved"
         ) %>%
         dplyr::pull(.data$submission_id)
     )
@@ -656,38 +689,59 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
       rate_limit = 0.2
     )
   } else {
-    logger::log_info("No clean submissions need updating")
+    logger::log_info(
+      "No clean submissions need updating (all already approved)"
+    )
     dplyr::tibble()
   }
 
-  # 5. Combine updated statuses with unchanged ones
+  # For submissions we didn't update (already approved), get their current status
+  already_approved_clean <- current_kobo_status %>%
+    dplyr::filter(
+      .data$submission_id %in%
+        clean_submissions &
+        .data$validation_status == "validation_status_approved" &
+        !.data$submission_id %in% manual_approved_ids # Don't duplicate manual approvals
+    ) %>%
+    dplyr::select(
+      "submission_id",
+      "validation_status",
+      "validated_at",
+      "validated_by"
+    )
+
+  # 5. Combine validation statuses from all sources
   logger::log_info("Combining validation status results")
 
-  # Get updated statuses from results
-  updated_statuses <- dplyr::bind_rows(
-    flagged_results,
-    clean_results
-  ) %>%
-    dplyr::select(
-      "submission_id",
-      "validation_status",
-      "validated_at",
-      "validated_by"
-    )
-
-  # For submissions we didn't update, use the current status we fetched
-  unchanged_statuses <- current_kobo_status %>%
-    dplyr::filter(!.data$submission_id %in% updated_statuses$submission_id) %>%
-    dplyr::select(
-      "submission_id",
-      "validation_status",
-      "validated_at",
-      "validated_by"
-    )
-
+  # Combine all status sources:
+  # - Updated flagged submissions (marked as not approved)
+  # - Updated clean submissions (marked as approved)
+  # - Manually approved submissions (preserved)
+  # - Already approved clean submissions (skipped updates)
   current_kobo_status <- dplyr::bind_rows(
-    updated_statuses,
-    unchanged_statuses
+    flagged_results %>%
+      dplyr::select(
+        "submission_id",
+        "validation_status",
+        "validated_at",
+        "validated_by"
+      ),
+    clean_results %>%
+      dplyr::select(
+        "submission_id",
+        "validation_status",
+        "validated_at",
+        "validated_by"
+      ),
+    current_kobo_status %>%
+      dplyr::filter(.data$submission_id %in% manual_approved_ids) %>%
+      dplyr::select(
+        "submission_id",
+        "validation_status",
+        "validated_at",
+        "validated_by"
+      ),
+    already_approved_clean
   )
 
   # Add current KoboToolbox validation status to validation_flags
