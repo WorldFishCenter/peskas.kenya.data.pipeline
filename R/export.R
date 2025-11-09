@@ -320,6 +320,15 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     provider = conf$storage$google$key,
     options = conf$storage$google$options_coasts
   )
+
+  f_metrics <- get_fishery_metrics_long(data = valid_data)
+
+  upload_parquet_to_cloud(
+    data = f_metrics,
+    prefix = "kenya_fishery_metrics",
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options_coasts
+  )
 }
 
 
@@ -514,17 +523,16 @@ get_individual_metrics <- function(valid_data = NULL) {
       total_fishers = sum(.data$no_of_fishers, na.rm = T),
       aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
       aggregated_catch_price = sum(.data$total_catch_price),
-      median_price_kg = stats::median(.data$price_kg, na.rm = T),
-      mean_trip_catch = stats::median(.data$total_catch_kg, na.rm = T),
-      mean_trip_cost = stats::median(.data$trip_cost, na.rm = T)
+      aggregated_trip_cost = sum(.data$trip_cost, na.rm = T),
+      median_price_kg = stats::median(.data$price_kg, na.rm = T)
     ) |>
     dplyr::ungroup() |>
     dplyr::mutate(
       cpue = .data$aggregated_catch_kg / .data$total_fishers,
       rpue = .data$aggregated_catch_price / .data$total_fishers,
+      costs_per_fisher = .data$aggregated_trip_cost / .data$total_fishers,
       price_kg = .data$median_price_kg,
-      costs = .data$mean_trip_cost,
-      profit = .data$rpue - .data$costs
+      profit = .data$rpue - .data$costs_per_fisher
     ) |>
     dplyr::mutate(
       date = lubridate::floor_date(.data$landing_date, unit = "month"),
@@ -537,7 +545,7 @@ get_individual_metrics <- function(valid_data = NULL) {
       "cpue",
       "rpue",
       "price_kg",
-      "costs",
+      costs = "costs_per_fisher",
       "profit"
     ) %>%
     dplyr::group_by(.data$BMU, .data$date, .data$fisher_id) |>
@@ -638,17 +646,16 @@ get_individual_gear_metrics <- function(valid_data = NULL) {
       total_fishers = sum(.data$no_of_fishers, na.rm = T),
       aggregated_catch_kg = sum(.data$total_catch_kg, na.rm = T),
       aggregated_catch_price = sum(.data$total_catch_price),
-      median_price_kg = stats::median(.data$price_kg, na.rm = T),
-      mean_trip_catch = stats::median(.data$total_catch_kg, na.rm = T),
-      mean_trip_cost = stats::median(.data$trip_cost, na.rm = T)
+      aggregated_trip_cost = sum(.data$trip_cost, na.rm = T),
+      median_price_kg = stats::median(.data$price_kg, na.rm = T)
     ) |>
     dplyr::ungroup() |>
     dplyr::mutate(
       cpue = .data$aggregated_catch_kg / .data$total_fishers,
       rpue = .data$aggregated_catch_price / .data$total_fishers,
+      costs_per_fisher = .data$aggregated_trip_cost / .data$total_fishers,
       price_kg = .data$median_price_kg,
-      costs = .data$mean_trip_cost,
-      profit = .data$rpue - .data$costs
+      profit = .data$rpue - .data$costs_per_fisher
     ) |>
     dplyr::mutate(
       date = lubridate::floor_date(.data$landing_date, unit = "month"),
@@ -662,7 +669,7 @@ get_individual_gear_metrics <- function(valid_data = NULL) {
       "cpue",
       "rpue",
       "price_kg",
-      "costs",
+      costs = "costs_per_fisher",
       "profit"
     ) %>%
     dplyr::group_by(.data$BMU, .data$date, .data$gear, .data$fisher_id) |>

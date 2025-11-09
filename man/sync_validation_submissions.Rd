@@ -14,21 +14,20 @@ Default is logger::DEBUG.}
 None. The function performs status updates and database operations as side effects.
 }
 \description{
-Synchronizes validation statuses between the local system and KoboToolbox by intelligently
-processing validation flags and updating submission statuses only when necessary. This function
-respects manual human approvals and avoids unnecessary API calls.
+Synchronizes validation statuses between the local system and KoboToolbox by processing
+validation flags and updating submission statuses accordingly. This function respects
+manual human approvals and handles both flagged and clean submissions in parallel with rate limiting.
 }
 \details{
 The function follows these steps:
 \enumerate{
 \item Downloads the current validation flags from cloud storage
 \item Sets up parallel processing using the future package (max 4 workers with rate limiting)
-\item Fetches current validation status from KoboToolbox for all submissions
+\item Fetches current validation status from KoboToolbox to identify manual approvals
 \item Identifies manually approved submissions and preserves them (excludes system approvals)
-\item Determines which flagged submissions need updating (excludes manual approvals and already correct)
-\item Determines which clean submissions need updating (only those not already approved)
-\item Updates only the submissions that need status changes
-\item Combines updated and unchanged statuses
+\item Processes flagged submissions (marking as not approved), EXCLUDING manually approved ones
+\item Processes clean submissions (marking as approved)
+\item Combines validation statuses from updates and preserved manual approvals
 \item Adds KoboToolbox validation status to validation flags
 \item Pushes all validation flags with KoboToolbox status to MongoDB for record-keeping
 }
@@ -46,15 +45,19 @@ This function requires proper configuration in the config file, including:
 \section{Manual Approval Preservation}{
 
 The function identifies submissions that have been manually approved by humans (validated_by
-is not empty and not the system username) and preserves these approvals even if automated
-validation would flag them. This ensures human review decisions are respected.
+is not empty and is not the system username) and preserves these approvals even if automated
+validation would flag them. Flagged submissions that were manually approved will NOT be
+marked as "not approved" by this function. This ensures human review decisions are always
+respected and never overwritten by the automated system.
 }
 
 \section{Rate Limiting}{
 
 To avoid overwhelming the KoboToolbox API server (kf.fimskenya.co.ke), the function limits
 parallel workers to 4 and adds a 200ms delay between requests. This provides approximately
-20 requests per second across all workers while maintaining server stability.
+20 requests per second across all workers while maintaining server stability. With this
+configuration, processing 13,000 submissions takes approximately 2-3 hours (including the
+initial status fetch to identify manual approvals).
 }
 
 \examples{

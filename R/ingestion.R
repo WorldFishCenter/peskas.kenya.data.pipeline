@@ -26,27 +26,39 @@ ingest_catch_survey_version <- function(version, kobo_config, storage_config) {
     stop(glue::glue(
       "Number of submission ids not the same as number of records in {version} data"
     ))
+    if (
+      dplyr::n_distinct(purrr::map_dbl(data_raw, ~ .$`_id`)) != length(data_raw)
+    ) {
+      stop(glue::glue(
+        "Number of submission ids not the same as number of records in {version} data"
+      ))
+    }
+
+    logger::log_info(glue::glue(
+      "Converting WCS Fish Catch Survey Kobo data ({version}) to tabular format..."
+    ))
+    logger::log_info(glue::glue(
+      "Converting WCS Fish Catch Survey Kobo data ({version}) to tabular format..."
+    ))
+
+    raw_survey <- data_raw %>%
+      purrr::map(flatten_row) %>%
+      dplyr::bind_rows() %>%
+      dplyr::rename(submission_id = "_id")
+
+    upload_parquet_to_cloud(
+      data = raw_survey,
+      prefix = storage_config$file_prefix,
+      provider = storage_config$provider,
+      options = storage_config$options
+    )
   }
-
-  logger::log_info(glue::glue(
-    "Converting WCS Fish Catch Survey Kobo data ({version}) to tabular format..."
-  ))
-
-  raw_survey <- data_raw %>%
-    purrr::map(flatten_row) %>%
-    dplyr::bind_rows() %>%
-    dplyr::rename(submission_id = "_id")
-
-  upload_parquet_to_cloud(
-    data = raw_survey,
-    prefix = storage_config$file_prefix,
-    provider = storage_config$provider,
-    options = storage_config$options
-  )
 }
 
 #' Download and Process WCS Catch Surveys from Kobotoolbox
 #'
+#' This function retrieves WCS survey data (v1 and v2) from Kobotoolbox,
+#' processes it, and uploads the raw data as Parquet files to Google Cloud Storage.
 #' This function retrieves WCS survey data (v1 and v2) from Kobotoolbox,
 #' processes it, and uploads the raw data as Parquet files to Google Cloud Storage.
 #'
@@ -61,7 +73,9 @@ ingest_catch_survey_version <- function(version, kobo_config, storage_config) {
 #' 3. Checks for uniqueness of submissions.
 #' 4. Converts data to tabular format.
 #' 5. Uploads raw data as Parquet files to Google Cloud Storage.
+#' 5. Uploads raw data as Parquet files to Google Cloud Storage.
 #'
+#' This function processes WCS v1 (eu.kobotoolbox.org) and v2 (kf.kobotoolbox.org) catch surveys.
 #' This function processes WCS v1 (eu.kobotoolbox.org) and v2 (kf.kobotoolbox.org) catch surveys.
 #'
 #' @keywords workflow ingestion
@@ -75,6 +89,7 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
   # Define WCS version configurations
+  # Define WCS version configurations
   version_configs <- list(
     v1 = list(
       kobo = list(
@@ -84,6 +99,7 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
         password = conf$ingestion$wcs$koboform$password
       ),
       storage = list(
+        file_prefix = conf$surveys$wcs$catch$v1$raw$file_prefix,
         file_prefix = conf$surveys$wcs$catch$v1$raw$file_prefix,
         provider = conf$storage$google$key,
         options = conf$storage$google$options
