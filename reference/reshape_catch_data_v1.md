@@ -1,0 +1,64 @@
+# Reshape catch details from wide to long format
+
+Transforms catch data from a wide format (multiple columns per catch) to
+a long format (one row per catch per submission). This function is
+designed to work with KoBo survey data containing multiple catch
+details.
+
+## Usage
+
+``` r
+reshape_catch_data_v1(raw_data = NULL)
+```
+
+## Arguments
+
+- raw_data:
+
+  A data frame containing submission_id and CATCH_DETAILS columns in
+  wide format. The CATCH_DETAILS columns should follow the naming
+  pattern CATCH_DETAILS.N.CATCH_DETAILS/variable where N is the catch
+  number (0-based).
+
+## Value
+
+A data frame in long format with the following columns:
+
+- submission_id:
+
+  Unique identifier for each submission
+
+- n_catch:
+
+  Catch number (1-based indexing)
+
+- species:
+
+  Marine species caught
+
+- total_catch_weight:
+
+  Weight of the catch (numeric)
+
+- price_per_kg:
+
+  Price per kilogram (numeric)
+
+- total_value:
+
+  Total value of the catch (numeric)
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Load your raw KoBo survey data
+raw_data <- read.csv("kobo_survey_data.csv")
+
+# Reshape to long format
+long_data <- reshape_catch_data_v1(raw_data)
+
+# View the reshaped data
+head(long_data)
+} # }
+```

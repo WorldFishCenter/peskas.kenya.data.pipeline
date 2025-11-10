@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,100 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.4.0" id="peskaskenyadatapipeline-440">peskas.kenya.data.pipeline 4.4.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-440"></a></h2>
+<div class="section level3">
+<h3 id="new-features-4-4-0">New features<a class="anchor" aria-label="anchor" href="#new-features-4-4-0"></a></h3>
+<ul><li>
+<strong>KEFS V2 Validation Pipeline</strong>:
+<ul><li>Added <code><a href="../reference/validate_kefs_surveys_v2.html">validate_kefs_surveys_v2()</a></code> function for comprehensive validation of KEFS catch assessment surveys</li>
+<li>Integrated KoboToolbox API validation status querying with <code><a href="../reference/get_validation_status.html">get_validation_status()</a></code> and <code><a href="../reference/update_validation_status.html">update_validation_status()</a></code> functions</li>
+<li>Implemented multi-dimensional validation system with information, trip, catch, and indicator flags</li>
+<li>Added support for manual validation override to preserve human-reviewed approvals while applying automated checks</li>
+<li>Exported new validation helper functions: <code><a href="../reference/get_trips_flags.html">get_trips_flags()</a></code>, <code><a href="../reference/get_catch_flags.html">get_catch_flags()</a></code>, and <code><a href="../reference/get_indicators_flags.html">get_indicators_flags()</a></code>
+</li>
+<li>Added GitHub Actions workflow job <code>validate-kefs-catch-v2</code> for automated validation processing</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancements-4-4-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-4-4-0"></a></h3>
+<ul><li>
+<strong>KEFS Data Preprocessing Improvements</strong>:
+<ul><li>Enhanced <code><a href="../reference/preprocess_kefs_surveys_v2.html">preprocess_kefs_surveys_v2()</a></code> to include <code>submission_date</code> field for tracking when data was submitted</li>
+<li>Added <code>fishing_per_week</code> field extraction and parsing from survey data</li>
+<li>Improved catch outcome handling: automatically sets catch_outcome to “yes” when total_catch_weight &gt; 0 but catch_outcome is NA</li>
+<li>Renamed weight and price columns for clarity:
+<ul><li>
+<code>sample_weight</code> → <code>total_sample_weight</code>
+</li>
+<li>
+<code>catch_weight</code> → <code>total_catch_weight</code>
+</li>
+<li>
+<code>price_kg</code> → <code>total_price_kg</code>
+</li>
+<li>
+<code>catch_price</code> → <code>total_catch_price</code>
+</li>
+</ul></li>
+<li>Enhanced enumerator name standardization integration</li>
+</ul></li>
+<li>
+<strong>Survey Data Reshaping</strong>:
+<ul><li>Updated <code><a href="../reference/reshape_priority_species.html">reshape_priority_species()</a></code> to use more descriptive column name: <code>weight_priority</code> instead of <code>weight_kg</code>
+</li>
+<li>Updated <code><a href="../reference/reshape_overall_sample.html">reshape_overall_sample()</a></code> to use standardized column names: <code>sample_weight</code> and <code>sample_price</code>
+</li>
+</ul></li>
+<li>
+<strong>Configuration Updates</strong>:
+<ul><li>Added <code>KEFS_KOBO_TOKEN</code> environment variable for KoboToolbox API authentication</li>
+<li>Added validation flags file prefixes for both KEFS v1 and v2 in config.yml</li>
+<li>Configured cloud storage paths for validation output files</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-4-4-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-4-4-0"></a></h3>
+<ul><li>
+<strong>Enhanced Function Documentation</strong>:
+<ul><li>Added comprehensive documentation for <code><a href="../reference/validate_kefs_surveys_v2.html">validate_kefs_surveys_v2()</a></code> including detailed workflow description, validation limits, and requirements</li>
+<li>Added documentation for KEFS validation helper functions:
+<ul><li>
+<code><a href="../reference/get_trips_flags.html">get_trips_flags()</a></code>: Documents trip-level validation for horse power, fishers, duration, and revenue with 6 alert codes</li>
+<li>
+<code><a href="../reference/get_catch_flags.html">get_catch_flags()</a></code>: Documents catch-level validation for sample weight inconsistencies with 2 alert codes</li>
+<li>
+<code><a href="../reference/get_indicators_flags.html">get_indicators_flags()</a></code>: Documents composite indicator validation (CPUE, RPUE, price/kg) with 3 alert codes</li>
+</ul></li>
+<li>Added documentation for KoboToolbox integration functions:
+<ul><li>
+<code><a href="../reference/get_validation_status.html">get_validation_status()</a></code>: Retrieves validation status from KoboToolbox for submissions</li>
+<li>
+<code><a href="../reference/update_validation_status.html">update_validation_status()</a></code>: Updates validation status in KoboToolbox</li>
+</ul></li>
+<li>Updated <code><a href="../reference/get_indicators_flags.html">get_indicators_flags()</a></code> documentation to correctly reflect the <code>clean_ids</code> parameter</li>
+<li>All new documentation follows roxygen2 style with comprehensive examples, parameter descriptions, and return value specifications</li>
+</ul></li>
+<li>
+<strong>New man pages added</strong>:
+<ul><li>
+<code>get_catch_flags.Rd</code>, <code>get_indicators_flags.Rd</code>, <code>get_trips_flags.Rd</code>
+</li>
+<li>
+<code>get_validation_status.Rd</code>, <code>update_validation_status.Rd</code>
+</li>
+<li><code>validate_kefs_surveys_v2.Rd</code></li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="namespace-4-4-0">NAMESPACE<a class="anchor" aria-label="anchor" href="#namespace-4-4-0"></a></h3>
+<ul><li>Exported new validation functions: <code>get_trips_flags</code>, <code>get_catch_flags</code>, <code>get_indicators_flags</code>
+</li>
+<li>Exported KoboToolbox integration functions: <code>get_validation_status</code>, <code>update_validation_status</code>
+</li>
+<li>Exported <code>validate_kefs_surveys_v2</code> for KEFS V2 validation workflow</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="4.3.0" id="peskaskenyadatapipeline-430">peskas.kenya.data.pipeline 4.3.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-430"></a></h2>
 <div class="section level3">
@@ -439,7 +533,7 @@
 <h3 id="fixes-0-9-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-0-9-0"></a></h3>
 <ul><li>
 <strong>Documentation Corrections</strong>:
-<ul><li>Updated <code>.Rd</code> documentation for <code><a href="../reference/ingest_landings.html">ingest_landings()</a></code> to clarify that it processes <strong>catch surveys</strong> (not all WCS surveys).</li>
+<ul><li>Updated <code>.Rd</code> documentation for <code>ingest_landings()</code> to clarify that it processes <strong>catch surveys</strong> (not all WCS surveys).</li>
 <li>Added descriptions for new parameters (<code>flag_value</code>) in validation function documentation.</li>
 </ul></li>
 <li>
@@ -585,7 +679,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>
