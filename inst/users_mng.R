@@ -1,6 +1,6 @@
 conf <- read_config()
-db_name <- conf$storage$mongodb$database$dashboard$name
-connection_string <- conf$storage$mongodb$connection_string
+db_name <- conf$storage$mongodb$cluster$dashboard$database
+connection_string <- conf$storage$mongodb$cluster$dashboard$connection_string
 
 # MongoDB User Management Functions - Version 2
 # For adding users from pre-existing credentials CSV file

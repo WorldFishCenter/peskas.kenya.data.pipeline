@@ -13,9 +13,11 @@ default:
         password_kf: !expr Sys.getenv('KOBO_PASSWORD_KF')
     kefs:
       koboform:
-        asset_id: !expr Sys.getenv('KEFS_KOBO_ASSET_ID')
+        asset_id_v1: !expr Sys.getenv('KEFS_KOBO_ASSET_ID_V1')
+        asset_id_v2: !expr Sys.getenv('KEFS_KOBO_ASSET_ID_V2')
         username: !expr Sys.getenv('KEFS_KOBO_USERNAME')
         password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
+        token: !expr Sys.getenv('KEFS_KOBO_TOKEN')
   surveys:
     wcs:
       catch:
@@ -54,19 +56,39 @@ default:
       flags:
         file_prefix: wcs-alert-flags
     kefs:
-      raw:
-        file_prefix: kefs-surveys-raw
-      preprocessed:
-        file_prefix: kefs-surveys-preprocessed
-      validated:
-        file_prefix: kefs-surveys-validated
+      v1:
+        raw:
+          file_prefix: kefs-v1-surveys-raw
+        preprocessed:
+          file_prefix: kefs-v1-surveys-preprocessed
+        validated:
+          file_prefix: kefs-v1-surveys-validated
+        validation:
+          flags:
+            file_prefix: kefs-v1-flags
+      v2:
+        raw:
+          file_prefix: kefs-v2-surveys-raw
+        preprocessed:
+          file_prefix: kefs-v2-surveys-preprocessed
+        validated:
+          file_prefix: kefs-v2-surveys-validated
+        validation:
+          flags:
+            file_prefix: kefs-v2-flags          
   storage:
     mongodb:
-      connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
-      database:
+      cluster:
+        validation:
+          connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING_VALIDATION')
+          database: validation-dev
+          collection:
+            flags: surveys_flags
+            enumerators_stats: enumerators_stats
         pipeline:
-          name: pipeline-dev
-          collection_name:
+          connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
+          database: pipeline-dev
+          collection:
             legacy:
               raw: legacy-raw
               preprocessed: legacy-preprocessed
@@ -80,8 +102,9 @@ default:
               validated: validated
             validation_flags: validation_flags
         dashboard:
-          name: app-dev
-          collection_name:
+          connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
+          database: app-dev
+          collection:
             legacy:
               fishery_metrics: legacy-metrics
               fishery_metrics_monthly: legacy-metrics_monthly
@@ -129,6 +152,7 @@ default:
       tables:
         - BMUs
     airtable:
+      assets: assets
       base_id: !expr Sys.getenv("AIRTABLE_BASE_ID")
       token: !expr Sys.getenv("AIRTABLE_TOKEN")
 
@@ -144,52 +168,21 @@ production:
     google:
       options:
         bucket: kenya-prod
-      options_coasts: 
+      options_coasts:
         bucket: peskas-coasts
     mongodb:
-      database:
+      cluster:
+        validation:
+          database: validation-prod
         pipeline:
-          name: pipeline
+          database: pipeline
         dashboard:
-          name: app
-
-local:
-  inherits: development
-  ingestion:
-      wcs:
-        koboform:
-          asset_id: !expr Sys.getenv('KOBO_ASSET_ID')
-          asset_id_price: !expr Sys.getenv('KOBO_ASSET_ID_PRICE')
-          username: !expr Sys.getenv('KOBO_USERNAME')
-          password: !expr Sys.getenv('KOBO_PASSWORD')
-        koboform_kf:
-          asset_id_kf: !expr Sys.getenv('KOBO_ASSET_ID_KF')
-          asset_id_price_kf: !expr Sys.getenv('KOBO_ASSET_ID_PRICE_KF')
-          username_kf: !expr Sys.getenv('KOBO_USERNAME_KF')
-          password_kf: !expr Sys.getenv('KOBO_PASSWORD_KF')
-      kefs:
-        koboform:
-          asset_id: !expr Sys.getenv('KEFS_KOBO_ASSET_ID')
-          username: !expr Sys.getenv('KEFS_KOBO_USERNAME')
-          password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
-  storage:
-    mongodb:
-      connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
-    google:
-      options:
-        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
-      options_coasts:
-        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+          database: app
   pds_storage:
     google:
       options:
-        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
-  pds:
-    token: !expr Sys.getenv('PDS_TOKEN')
-    secret: !expr Sys.getenv('PDS_SECRET')
-  metadata:
-    google_sheets:
-      sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
-    airtable:
-      base_id: !expr Sys.getenv("AIRTABLE_BASE_ID")
-      token: !expr Sys.getenv("AIRTABLE_TOKEN")
+        bucket: pds-kenya-prod
+
+local:
+  # Local configuration inherits everything from default
+  # Add only local-specific overrides here if needed

@@ -1,3 +1,59 @@
+# peskas.kenya.data.pipeline 4.4.0
+
+## New features
+
+-   **KEFS V2 Validation Pipeline**:
+    -   Added `validate_kefs_surveys_v2()` function for comprehensive validation of KEFS catch assessment surveys
+    -   Integrated KoboToolbox API validation status querying with `get_validation_status()` and `update_validation_status()` functions
+    -   Implemented multi-dimensional validation system with information, trip, catch, and indicator flags
+    -   Added support for manual validation override to preserve human-reviewed approvals while applying automated checks
+    -   Exported new validation helper functions: `get_trips_flags()`, `get_catch_flags()`, and `get_indicators_flags()`
+    -   Added GitHub Actions workflow job `validate-kefs-catch-v2` for automated validation processing
+
+## Enhancements
+
+-   **KEFS Data Preprocessing Improvements**:
+    -   Enhanced `preprocess_kefs_surveys_v2()` to include `submission_date` field for tracking when data was submitted
+    -   Added `fishing_per_week` field extraction and parsing from survey data
+    -   Improved catch outcome handling: automatically sets catch_outcome to "yes" when total_catch_weight > 0 but catch_outcome is NA
+    -   Renamed weight and price columns for clarity:
+        -   `sample_weight` → `total_sample_weight`
+        -   `catch_weight` → `total_catch_weight`
+        -   `price_kg` → `total_price_kg`
+        -   `catch_price` → `total_catch_price`
+    -   Enhanced enumerator name standardization integration
+-   **Survey Data Reshaping**:
+    -   Updated `reshape_priority_species()` to use more descriptive column name: `weight_priority` instead of `weight_kg`
+    -   Updated `reshape_overall_sample()` to use standardized column names: `sample_weight` and `sample_price`
+-   **Configuration Updates**:
+    -   Added `KEFS_KOBO_TOKEN` environment variable for KoboToolbox API authentication
+    -   Added validation flags file prefixes for both KEFS v1 and v2 in config.yml
+    -   Configured cloud storage paths for validation output files
+
+## Documentation
+
+-   **Enhanced Function Documentation**:
+    -   Added comprehensive documentation for `validate_kefs_surveys_v2()` including detailed workflow description, validation limits, and requirements
+    -   Added documentation for KEFS validation helper functions:
+        -   `get_trips_flags()`: Documents trip-level validation for horse power, fishers, duration, and revenue with 6 alert codes
+        -   `get_catch_flags()`: Documents catch-level validation for sample weight inconsistencies with 2 alert codes
+        -   `get_indicators_flags()`: Documents composite indicator validation (CPUE, RPUE, price/kg) with 3 alert codes
+    -   Added documentation for KoboToolbox integration functions:
+        -   `get_validation_status()`: Retrieves validation status from KoboToolbox for submissions
+        -   `update_validation_status()`: Updates validation status in KoboToolbox
+    -   Updated `get_indicators_flags()` documentation to correctly reflect the `clean_ids` parameter
+    -   All new documentation follows roxygen2 style with comprehensive examples, parameter descriptions, and return value specifications
+-   **New man pages added**:
+    -   `get_catch_flags.Rd`, `get_indicators_flags.Rd`, `get_trips_flags.Rd`
+    -   `get_validation_status.Rd`, `update_validation_status.Rd`
+    -   `validate_kefs_surveys_v2.Rd`
+
+## NAMESPACE
+
+-   Exported new validation functions: `get_trips_flags`, `get_catch_flags`, `get_indicators_flags`
+-   Exported KoboToolbox integration functions: `get_validation_status`, `update_validation_status`
+-   Exported `validate_kefs_surveys_v2` for KEFS V2 validation workflow
+
 # peskas.kenya.data.pipeline 4.3.0
 
 ## Configuration

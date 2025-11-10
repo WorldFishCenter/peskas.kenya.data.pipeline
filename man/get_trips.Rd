@@ -10,8 +10,8 @@ get_trips(
   dateFrom = NULL,
   dateTo = NULL,
   imeis = NULL,
-  deviceInfo = FALSE,
-  withLastSeen = FALSE,
+  deviceInfo = TRUE,
+  withLastSeen = TRUE,
   tags = NULL
 )
 }

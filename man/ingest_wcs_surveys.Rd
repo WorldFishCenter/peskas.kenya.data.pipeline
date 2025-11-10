@@ -15,6 +15,8 @@ No return value. Function downloads data, processes it, and uploads to Google Cl
 \description{
 This function retrieves WCS survey data (v1 and v2) from Kobotoolbox,
 processes it, and uploads the raw data as Parquet files to Google Cloud Storage.
+This function retrieves WCS survey data (v1 and v2) from Kobotoolbox,
+processes it, and uploads the raw data as Parquet files to Google Cloud Storage.
 }
 \details{
 The function performs the following steps:
@@ -24,8 +26,10 @@ The function performs the following steps:
 \item Checks for uniqueness of submissions.
 \item Converts data to tabular format.
 \item Uploads raw data as Parquet files to Google Cloud Storage.
+\item Uploads raw data as Parquet files to Google Cloud Storage.
 }
 
+This function processes WCS v1 (eu.kobotoolbox.org) and v2 (kf.kobotoolbox.org) catch surveys.
 This function processes WCS v1 (eu.kobotoolbox.org) and v2 (kf.kobotoolbox.org) catch surveys.
 }
 \examples{

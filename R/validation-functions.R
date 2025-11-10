@@ -12,11 +12,12 @@
 #' @keywords validation
 #' @export
 alert_outlier <- function(
-    x,
-    no_alert_value = NA_real_,
-    alert_if_larger = no_alert_value,
-    alert_if_smaller = no_alert_value,
-    ...) {
+  x,
+  no_alert_value = NA_real_,
+  alert_if_larger = no_alert_value,
+  alert_if_smaller = no_alert_value,
+  ...
+) {
   algo_args <- list(...)
 
   # Helper function to check if everything is NA or zero
@@ -42,7 +43,9 @@ alert_outlier <- function(
   bounds <- univOutl::LocScaleB(x, ...) %>%
     magrittr::extract2("bounds")
 
-  if (isTRUE(algo_args$logt)) bounds <- exp(bounds) - 1
+  if (isTRUE(algo_args$logt)) {
+    bounds <- exp(bounds) - 1
+  }
 
   dplyr::case_when(
     x < bounds[1] ~ alert_if_smaller,
@@ -79,7 +82,11 @@ validate_dates <- function(data = NULL, flag_value = NULL) {
       submission_id = .data$submission_id,
       catch_id = .data$catch_id,
       landing_date = .data$landing_date,
-      alert_date = ifelse(.data$landing_date < "1990-01-01", flag_value, NA_real_)
+      alert_date = ifelse(
+        .data$landing_date < "1990-01-01",
+        flag_value,
+        NA_real_
+      )
     ) %>%
     dplyr::mutate(
       landing_date = dplyr::case_when(
@@ -121,10 +128,18 @@ validate_nfishers <- function(data = NULL, k = NULL, flag_value = NULL) {
       .data$no_of_fishers,
       alert_n_fishers = alert_outlier(
         x = .data$no_of_fishers,
-        alert_if_larger = flag_value, logt = TRUE, k = k
+        alert_if_larger = flag_value,
+        logt = TRUE,
+        k = k
       )
     ) %>%
-    dplyr::mutate(no_of_fishers = ifelse(is.na(.data$alert_n_fishers), .data$no_of_fishers, NA_real_))
+    dplyr::mutate(
+      no_of_fishers = ifelse(
+        is.na(.data$alert_n_fishers),
+        .data$no_of_fishers,
+        NA_real_
+      )
+    )
 }
 
 #' Validate Number of Boats
@@ -159,10 +174,14 @@ validate_nboats <- function(data = NULL, k = NULL, flag_value = NULL) {
       .data$n_boats,
       alert_n_boats = alert_outlier(
         x = .data$n_boats,
-        alert_if_larger = flag_value, logt = TRUE, k = k
+        alert_if_larger = flag_value,
+        logt = TRUE,
+        k = k
       )
     ) %>%
-    dplyr::mutate(n_boats = ifelse(is.na(.data$alert_n_boats), .data$n_boats, NA_real_))
+    dplyr::mutate(
+      n_boats = ifelse(is.na(.data$alert_n_boats), .data$n_boats, NA_real_)
+    )
 }
 
 
@@ -195,10 +214,12 @@ get_catch_bounds <- function(data = NULL, k = NULL) {
     dplyr::filter(!.data$fish_category == "0") %>%
     split(interaction(.$gear, .$fish_category)) %>%
     purrr::discard(~ nrow(.) == 0) %>%
-    purrr::map(~ {
-      univOutl::LocScaleB(.x[["catch_kg"]], logt = TRUE, k = k) %>%
-        magrittr::extract2("bounds")
-    }) %>%
+    purrr::map(
+      ~ {
+        univOutl::LocScaleB(.x[["catch_kg"]], logt = TRUE, k = k) %>%
+          magrittr::extract2("bounds")
+      }
+    ) %>%
     dplyr::bind_rows(.id = "gear_catch") %>%
     dplyr::mutate(upper.up = exp(.data$upper.up)) %>%
     tidyr::separate(col = "gear_catch", into = c("gear", "fish_category")) %>%
@@ -232,16 +253,25 @@ get_total_catch_bounds <- function(data = NULL, k = NULL) {
     dplyr::distinct() |>
     dplyr::select(-"submission_id") %>%
     # Create a grouping identifier combining landing_site and gear
-    dplyr::mutate(group_id = paste(.data$landing_site, .data$gear, sep = ".")) %>%
+    dplyr::mutate(
+      group_id = paste(.data$landing_site, .data$gear, sep = ".")
+    ) %>%
     split(.$group_id) |>
     purrr::discard(~ nrow(.) == 0) |>
-    purrr::map(~ {
-      univOutl::LocScaleB(.x[["total_catch_kg"]], logt = TRUE, k = k) %>%
-        magrittr::extract2("bounds")
-    }) %>%
+    purrr::map(
+      ~ {
+        univOutl::LocScaleB(.x[["total_catch_kg"]], logt = TRUE, k = k) %>%
+          magrittr::extract2("bounds")
+      }
+    ) %>%
     dplyr::bind_rows(.id = "group_id") |>
     # Split the group_id back into landing_site and gear
-    tidyr::separate(.data$group_id, into = c("landing_site", "gear"), sep = "\\.", remove = TRUE) |>
+    tidyr::separate(
+      .data$group_id,
+      into = c("landing_site", "gear"),
+      sep = "\\.",
+      remove = TRUE
+    ) |>
     dplyr::mutate(upper.up = exp(.data$upper.up)) |>
     dplyr::select(-"lower.low")
 }
@@ -268,11 +298,21 @@ validate_catch <- function(data = NULL, k = NULL, flag_value = NULL) {
 
   # Join bounds and flag outliers
   data %>%
-    dplyr::select("submission_id", "catch_id", "gear", "fish_category", "catch_kg") %>%
+    dplyr::select(
+      "submission_id",
+      "catch_id",
+      "gear",
+      "fish_category",
+      "catch_kg"
+    ) %>%
     dplyr::left_join(bounds, by = c("gear", "fish_category")) %>%
     dplyr::rowwise() %>%
     dplyr::mutate(
-      alert_catch = ifelse(.data$catch_kg >= .data$upper.up, flag_value, NA_real_),
+      alert_catch = ifelse(
+        .data$catch_kg >= .data$upper.up,
+        flag_value,
+        NA_real_
+      ),
       # Optionally remove outliers from the dataset by setting them to NA
       catch_kg = ifelse(is.na(.data$alert_catch), .data$catch_kg, NA_real_)
     ) %>%
@@ -308,8 +348,16 @@ validate_total_catch <- function(data = NULL, k = NULL, flag_value = NULL) {
     dplyr::left_join(bounds, by = c("landing_site", "gear")) %>%
     dplyr::rowwise() %>%
     dplyr::mutate(
-      alert_catch = ifelse(.data$total_catch_kg >= .data$upper.up, flag_value, NA_real_),
-      total_catch_kg = ifelse(is.na(.data$alert_catch), .data$total_catch_kg, NA_real_)
+      alert_catch = ifelse(
+        .data$total_catch_kg >= .data$upper.up,
+        flag_value,
+        NA_real_
+      ),
+      total_catch_kg = ifelse(
+        is.na(.data$alert_catch),
+        .data$total_catch_kg,
+        NA_real_
+      )
     ) %>%
     dplyr::ungroup() %>%
     dplyr::select("submission_id", "total_catch_kg", "alert_catch")
@@ -345,7 +393,11 @@ validate_total_catch <- function(data = NULL, k = NULL, flag_value = NULL) {
 #' validate_fishers_catch(data, max_kg = 100, flag_value = 5)
 #' }
 #' @export
-validate_fishers_catch <- function(data = NULL, max_kg = NULL, flag_value = NULL) {
+validate_fishers_catch <- function(
+  data = NULL,
+  max_kg = NULL,
+  flag_value = NULL
+) {
   data %>%
     dplyr::select("submission_id", "no_of_fishers", "total_catch_kg") %>%
     dplyr::distinct() %>%
@@ -354,7 +406,11 @@ validate_fishers_catch <- function(data = NULL, max_kg = NULL, flag_value = NULL
         .data$no_of_fishers == 1 & .data$total_catch_kg >= max_kg ~ flag_value,
         TRUE ~ NA_real_
       ),
-      total_catch_kg = ifelse(is.na(.data$alert_fishers_catch), .data$total_catch_kg, NA_real_)
+      total_catch_kg = ifelse(
+        is.na(.data$alert_fishers_catch),
+        .data$total_catch_kg,
+        NA_real_
+      )
     ) %>%
     dplyr::ungroup() %>%
     dplyr::select("submission_id", "total_catch_kg", "alert_fishers_catch")
@@ -422,7 +478,10 @@ impute_price <- function(price_table = NULL) {
     dplyr::mutate(
       median_ksh_kg_imputed = dplyr::case_when(
         !is.na(.data$median_ksh_kg_imputed) ~ .data$median_ksh_kg_imputed,
-        is.na(.data$size) ~ stats::median(.data$median_ksh_kg_imputed[size %in% c("small", "large")], na.rm = TRUE),
+        is.na(.data$size) ~ stats::median(
+          .data$median_ksh_kg_imputed[size %in% c("small", "large")],
+          na.rm = TRUE
+        ),
         TRUE ~ .data$median_ksh_kg_imputed
       )
     ) %>%
@@ -445,11 +504,12 @@ impute_price <- function(price_table = NULL) {
 #' @keywords validation
 #' @export
 alert_outlier_iqr <- function(
-    x,
-    no_alert_value = NA_real_,
-    alert_if_larger = no_alert_value,
-    alert_if_smaller = no_alert_value,
-    multiplier = 1.5) {
+  x,
+  no_alert_value = NA_real_,
+  alert_if_larger = no_alert_value,
+  alert_if_smaller = no_alert_value,
+  multiplier = 1.5
+) {
   # Helper function to check if everything is NA or zero
   all_na_or_zero <- function(x) {
     isTRUE(all(is.na(x) | x == 0))
@@ -593,14 +653,24 @@ get_total_catch_bounds_iqr <- function(data = NULL, multiplier = 1.5) {
 #'
 #' @keywords validation
 #' @export
-validate_catch_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
+validate_catch_iqr <- function(
+  data = NULL,
+  multiplier = 1.5,
+  flag_value = NULL
+) {
   # Check for NULL or empty data
   if (is.null(data) || nrow(data) == 0) {
     stop("Input data is NULL or empty")
   }
 
   # Check for required columns
-  required_cols <- c("submission_id", "catch_id", "gear", "fish_category", "catch_kg")
+  required_cols <- c(
+    "submission_id",
+    "catch_id",
+    "gear",
+    "fish_category",
+    "catch_kg"
+  )
   if (!all(required_cols %in% names(data))) {
     missing_cols <- setdiff(required_cols, names(data))
     stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
@@ -638,7 +708,11 @@ validate_catch_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL)
 #'
 #' @keywords validation
 #' @export
-validate_total_catch_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
+validate_total_catch_iqr <- function(
+  data = NULL,
+  multiplier = 1.5,
+  flag_value = NULL
+) {
   # Check for NULL or empty data
   if (is.null(data) || nrow(data) == 0) {
     stop("Input data is NULL or empty")
@@ -736,7 +810,11 @@ check_outliers_iqr <- function(x, multiplier = 1.5) {
 #' validate_nfishers_iqr(data, multiplier = 1.5, flag_value = 7)
 #' }
 #' @export
-validate_nfishers_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
+validate_nfishers_iqr <- function(
+  data = NULL,
+  multiplier = 1.5,
+  flag_value = NULL
+) {
   # Check for NULL or empty data
   if (is.null(data) || nrow(data) == 0) {
     stop("Input data is NULL or empty")
@@ -783,7 +861,11 @@ validate_nfishers_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NU
 #' validate_nboats_iqr(data, multiplier = 1.5, flag_value = 8)
 #' }
 #' @export
-validate_nboats_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL) {
+validate_nboats_iqr <- function(
+  data = NULL,
+  multiplier = 1.5,
+  flag_value = NULL
+) {
   # Check for NULL or empty data
   if (is.null(data) || nrow(data) == 0) {
     stop("Input data is NULL or empty")
@@ -814,5 +896,626 @@ validate_nboats_iqr <- function(data = NULL, multiplier = 1.5, flag_value = NULL
         NA_real_,
         NA_real_
       )
+    )
+}
+
+
+#' Get Validation Status from KoboToolbox
+#'
+#' Retrieves the validation status for a specific submission in KoboToolbox.
+#' The function handles NULL responses and returns a consistent tibble structure
+#' regardless of the API response.
+#'
+#' @param submission_id Character string. The ID of the submission to check.
+#' @param asset_id Character string. The asset ID from KoboToolbox.
+#' @param token Character string. The authorization token for KoboToolbox API.
+#' @param debug Logical. If TRUE, prints the request object. Default is FALSE.
+#'
+#' @return A tibble with one row containing:
+#'   \item{submission_id}{The ID of the checked submission}
+#'   \item{validation_status}{The validation status (e.g., "validation_status_approved" or "not_validated")}
+#'   \item{validated_at}{Timestamp of validation as POSIXct}
+#'   \item{validated_by}{Username of the validator}
+#'
+#' @keywords validation
+#' @examples
+#' \dontrun{
+#' # Single submission
+#' get_validation_status(
+#'   submission_id = "1234567",
+#'   asset_id = "your asset id",
+#'   token = "Token YOUR_TOKEN_HERE"
+#' )
+#'
+#' # Multiple submissions using purrr
+#' submission_ids <- c("1234567", "154267")
+#' submission_ids %>%
+#'   purrr::map_dfr(get_validation_status,
+#'     asset_id = "your asset id",
+#'     token = "Token YOUR_TOKEN_HERE"
+#'   )
+#' }
+#'
+#' @keywords workflow validation
+#' @export
+get_validation_status <- function(
+  submission_id = NULL,
+  asset_id = NULL,
+  token = NULL,
+  debug = FALSE
+) {
+  base_url <- paste0(
+    "https://kf.fimskenya.co.ke/api/v2/assets/",
+    asset_id,
+    "/data/"
+  )
+  url <- paste0(base_url, submission_id, "/validation_status/")
+
+  # Add "Token " prefix to token if it doesn't already have it
+  if (!grepl("^Token ", token)) {
+    token <- paste("Token", token)
+  }
+
+  req <- httr2::request(url) %>%
+    httr2::req_headers(
+      Authorization = token
+    ) %>%
+    httr2::req_method("GET")
+
+  if (debug) {
+    print(req)
+  }
+
+  tryCatch(
+    {
+      response <- httr2::req_perform(req)
+      if (httr2::resp_status(response) == 200) {
+        validation_data <- httr2::resp_body_json(response)
+
+        # Handle NULL validation data
+        timestamp <- if (
+          !is.null(validation_data) && !is.null(validation_data$timestamp)
+        ) {
+          lubridate::as_datetime(validation_data$timestamp)
+        } else {
+          lubridate::as_datetime(NA)
+        }
+
+        status <- if (
+          !is.null(validation_data) && !is.null(validation_data$uid)
+        ) {
+          validation_data$uid
+        } else {
+          "not_validated"
+        }
+
+        validator <- if (
+          !is.null(validation_data) && !is.null(validation_data$by_whom)
+        ) {
+          validation_data$by_whom
+        } else {
+          NA_character_
+        }
+
+        dplyr::tibble(
+          submission_id = submission_id,
+          validation_status = status,
+          validated_at = timestamp,
+          validated_by = validator
+        )
+      } else {
+        dplyr::tibble(
+          submission_id = submission_id,
+          validation_status = "not_validated",
+          validated_at = lubridate::as_datetime(NA),
+          validated_by = NA_character_
+        )
+      }
+    },
+    error = function(e) {
+      if (debug) {
+        cat("Error:", as.character(e), "\n")
+      }
+
+      dplyr::tibble(
+        submission_id = submission_id,
+        validation_status = "not_validated",
+        validated_at = lubridate::as_datetime(NA),
+        validated_by = NA_character_
+      )
+    }
+  )
+}
+#' Update Validation Status in KoboToolbox
+#'
+#' Updates the validation status for a specific submission in KoboToolbox.
+#' The function allows setting the status to approved, not approved, or on hold.
+#'
+#' @param submission_id Character string. The ID of the submission to update.
+#' @param asset_id Character string. The asset ID from KoboToolbox.
+#' @param token Character string. The authorization token for KoboToolbox API.
+#' @param status Character string. The validation status to set. Must be one of:
+#'        "validation_status_approved", "validation_status_not_approved", or
+#'        "validation_status_on_hold".
+#' @param debug Logical. If TRUE, prints the request object and response. Default is FALSE.
+#'
+#' @return A tibble with one row containing:
+#'   \item{submission_id}{The ID of the updated submission}
+#'   \item{validation_status}{The new validation status}
+#'   \item{validated_at}{Timestamp of validation as POSIXct}
+#'   \item{validated_by}{Username of the validator}
+#'   \item{update_success}{Logical indicating if the update was successful}
+#'
+#' @keywords validation
+#' @examples
+#' \dontrun{
+#' # Update a single submission
+#' update_validation_status(
+#'   submission_id = "1234567",
+#'   asset_id = "your asset id",
+#'   token = "Token YOUR_TOKEN_HERE",
+#'   status = "validation_status_approved"
+#' )
+#'
+#' # Update multiple submissions using purrr
+#' submission_ids <- c("1234567", "154267")
+#' submission_ids %>%
+#'   purrr::map_dfr(update_validation_status,
+#'     asset_id = "your asset id",
+#'     token = "Token YOUR_TOKEN_HERE",
+#'     status = "validation_status_approved"
+#'   )
+#' }
+#'
+#' @keywords workflow validation
+#' @export
+update_validation_status <- function(
+  submission_id = NULL,
+  asset_id = NULL,
+  token = NULL,
+  status = "validation_status_approved",
+  debug = FALSE
+) {
+  # Validate status
+  valid_statuses <- c(
+    "validation_status_approved",
+    "validation_status_not_approved",
+    "validation_status_on_hold"
+  )
+
+  if (!status %in% valid_statuses) {
+    stop("Status must be one of: ", paste(valid_statuses, collapse = ", "))
+  }
+
+  # Construct the URL
+  base_url <- paste0(
+    "https://kf.fimskenya.co.ke/api/v2/assets/",
+    asset_id,
+    "/data/"
+  )
+  url <- paste0(base_url, submission_id, "/validation_status/")
+
+  # Set up request body
+  body <- list(
+    "validation_status.uid" = status
+  )
+
+  # Add "Token " prefix to token if it doesn't already have it
+  if (!grepl("^Token ", token)) {
+    token <- paste("Token", token)
+  }
+
+  # Set up request
+  req <- httr2::request(url) %>%
+    httr2::req_headers(
+      Authorization = token,
+      "Content-Type" = "application/json"
+    ) %>%
+    httr2::req_method("PATCH") %>%
+    httr2::req_body_json(body)
+
+  if (debug) {
+    print(req)
+    print(body)
+  }
+
+  tryCatch(
+    {
+      response <- httr2::req_perform(req)
+
+      if (debug) {
+        cat("Response status:", httr2::resp_status(response), "\n")
+        cat("Response body:", httr2::resp_body_string(response), "\n")
+      }
+
+      if (httr2::resp_status(response) %in% c(200, 201, 204)) {
+        # If update was successful, get the current validation status
+        updated_data <- get_validation_status(
+          submission_id = submission_id,
+          asset_id = asset_id,
+          token = token,
+          debug = debug
+        )
+
+        # Add success indicator
+        updated_data %>%
+          dplyr::mutate(update_success = TRUE)
+      } else {
+        dplyr::tibble(
+          submission_id = submission_id,
+          validation_status = NA_character_,
+          validated_at = lubridate::as_datetime(NA),
+          validated_by = NA_character_,
+          update_success = FALSE
+        )
+      }
+    },
+    error = function(e) {
+      if (debug) {
+        cat("Error:", as.character(e), "\n")
+      }
+
+      dplyr::tibble(
+        submission_id = submission_id,
+        validation_status = NA_character_,
+        validated_at = lubridate::as_datetime(NA),
+        validated_by = NA_character_,
+        update_success = FALSE
+      )
+    }
+  )
+}
+
+
+#' Generate Trip-Level Validation Flags
+#'
+#' This function validates trip-level characteristics from KEFS survey data and generates
+#' alert flags for anomalous values. It checks for unrealistic or inconsistent values in
+#' horse power, number of fishers, trip duration, and total catch price.
+#'
+#' @param dat A data frame containing KEFS survey trip data with columns:
+#'   \itemize{
+#'     \item submission_id: Unique identifier for the submission
+#'     \item hp: Horse power of the boat
+#'     \item no_of_fishers: Number of fishers on the trip
+#'     \item trip_duration: Duration of the trip in hours
+#'     \item catch_outcome: Whether catch was recorded ("yes" or "no")
+#'     \item total_catch_price: Total price of catch in Kenyan Shillings
+#'     \item total_catch_weight: Total weight of catch in kilograms
+#'     \item mesh_size: Mesh size used (if applicable)
+#'   }
+#' @param limits A list containing threshold values for validation:
+#'   \itemize{
+#'     \item max_hp: Maximum acceptable horse power
+#'     \item max_n_fishers: Maximum acceptable number of fishers
+#'     \item max_trip_duration: Maximum acceptable trip duration in hours
+#'     \item max_revenue: Maximum acceptable revenue in Kenyan Shillings
+#'   }
+#'
+#' @return A data frame with columns:
+#'   \itemize{
+#'     \item submission_id: The original submission identifier
+#'     \item alert_flag_trip: Comma-separated string of alert codes (NA if no alerts):
+#'       \itemize{
+#'         \item "1": Horse power is <= 0 or exceeds maximum
+#'         \item "2": Number of fishers is <= 0 or exceeds maximum
+#'         \item "3": Trip duration is <= 0 or exceeds maximum
+#'         \item "4.1": Catch outcome is "yes" but total catch price is <= 0
+#'         \item "4.2": Catch outcome is "no" but total catch price is >= 0
+#'         \item "4.3": Total catch price exceeds maximum revenue limit
+#'       }
+#'   }
+#'
+#' @keywords validation
+#' @examples
+#' \dontrun{
+#' trip_limits <- list(
+#'   max_hp = 150,
+#'   max_n_fishers = 100,
+#'   max_trip_duration = 96,
+#'   max_revenue = 387600
+#' )
+#' trip_flags <- get_trips_flags(dat = survey_data, limits = trip_limits)
+#' }
+#' @export
+get_trips_flags <- function(dat = NULL, limits = NULL) {
+  dat |>
+    dplyr::select(
+      "submission_id":"mesh_size",
+      "catch_outcome",
+      "total_catch_price",
+      "total_catch_weight"
+    ) |>
+    dplyr::distinct() |>
+    dplyr::mutate(
+      alert_hp_anomalous = dplyr::case_when(
+        .data$hp <= 0 | .data$hp > limits$max_hp ~ "1",
+        TRUE ~ NA_character_
+      ),
+      alert_n_fishers = dplyr::case_when(
+        .data$no_of_fishers <= 0 |
+          .data$no_of_fishers > limits$max_n_fishers ~ "2",
+        TRUE ~ NA_character_
+      ),
+      alert_trip_duration = dplyr::case_when(
+        .data$trip_duration <= 0 |
+          .data$trip_duration > limits$max_trip_duration ~ "3",
+        TRUE ~ NA_character_
+      ),
+      alert_tot_catch_price = dplyr::case_when(
+        .data$catch_outcome == "yes" & .data$total_catch_price <= 0 ~ "4.1",
+        .data$catch_outcome == "no" & .data$total_catch_price >= 0 ~ "4.2",
+        .data$total_catch_price > limits$max_revenue ~ "4.3",
+        TRUE ~ NA_character_
+      )
+    ) |>
+    dplyr::select(
+      "submission_id",
+      dplyr::starts_with("alert_")
+    ) |>
+    dplyr::mutate(
+      alert_flag = paste(
+        .data$alert_hp_anomalous,
+        .data$alert_n_fishers,
+        .data$alert_trip_duration,
+        .data$alert_tot_catch_price,
+        sep = ","
+      ) |>
+        stringr::str_remove_all("NA,") |>
+        stringr::str_remove_all(",NA") |>
+        stringr::str_remove_all("^NA$")
+    ) |>
+    dplyr::mutate(
+      alert_flag = ifelse(
+        .data$alert_flag == "",
+        NA_character_,
+        .data$alert_flag
+      )
+    ) |>
+    dplyr::group_by(.data$submission_id) %>%
+    # Summarize to get values
+    dplyr::summarise(
+      alert_flag_trip = if (all(is.na(.data$alert_flag))) {
+        NA_character_
+      } else {
+        paste(.data$alert_flag[!is.na(.data$alert_flag)], collapse = ", ")
+      }
+    )
+}
+
+#' Generate Catch-Level Validation Flags
+#'
+#' This function validates catch-level data from KEFS surveys and generates alert flags
+#' for inconsistencies in sample weights relative to total catch weights. It focuses on
+#' submissions where catch outcome was "yes" and checks for logical inconsistencies in
+#' the relationship between sample weights and total weights.
+#'
+#' @param dat A data frame containing KEFS survey catch data with columns:
+#'   \itemize{
+#'     \item submission_id: Unique identifier for the submission
+#'     \item catch_outcome: Whether catch was recorded ("yes" or "no")
+#'     \item total_sample_weight: Total weight of all samples in kilograms
+#'     \item total_catch_weight: Total weight of the entire catch in kilograms
+#'     \item sample_weight: Weight of individual sample in kilograms
+#'     \item sample_price: Price of the sample
+#'   }
+#'
+#' @return A data frame with columns:
+#'   \itemize{
+#'     \item submission_id: The original submission identifier
+#'     \item alert_flag_catch: Comma-separated string of alert codes (NA if no alerts):
+#'       \itemize{
+#'         \item "5.1": Total sample weight exceeds total catch weight
+#'         \item "5.2": Individual sample weight exceeds either total sample weight
+#'                      or total catch weight
+#'       }
+#'   }
+#'
+#' @details
+#' The function only processes submissions where catch_outcome is "yes". It identifies
+#' two types of weight inconsistencies:
+#' \enumerate{
+#'   \item The sum of all samples exceeds the total reported catch
+#'   \item An individual sample weighs more than the total it's supposed to be part of
+#' }
+#'
+#' @keywords validation
+#' @examples
+#' \dontrun{
+#' catch_flags <- get_catch_flags(dat = survey_data)
+#' }
+#' @export
+get_catch_flags <- function(dat = NULL) {
+  dat |>
+    dplyr::filter(
+      .data$catch_outcome == "yes"
+    ) |>
+    dplyr::select(c(
+      "submission_id",
+      "catch_outcome":"sample_price"
+    )) |>
+    dplyr::distinct() |>
+    dplyr::mutate(
+      alert_total_sample = dplyr::case_when(
+        .data$total_sample_weight > .data$total_catch_weight ~ "5.1",
+        TRUE ~ NA_character_
+      ),
+      alert_sample = dplyr::case_when(
+        .data$sample_weight > .data$total_sample_weight |
+          .data$sample_weight > .data$total_catch_weight ~ "5.2",
+        TRUE ~ NA_character_
+      )
+    ) |>
+    dplyr::select(
+      "submission_id",
+      dplyr::starts_with("alert_")
+    ) |>
+    dplyr::mutate(
+      alert_flag = paste(
+        .data$alert_total_sample,
+        .data$alert_sample,
+        sep = ","
+      ) |>
+        stringr::str_remove_all("NA,") |>
+        stringr::str_remove_all(",NA") |>
+        stringr::str_remove_all("^NA$")
+    ) |>
+    dplyr::mutate(
+      alert_flag = ifelse(
+        .data$alert_flag == "",
+        NA_character_,
+        .data$alert_flag
+      )
+    ) |>
+    dplyr::group_by(.data$submission_id) %>%
+    # Summarize to get values
+    dplyr::summarise(
+      alert_flag_catch = if (all(is.na(.data$alert_flag))) {
+        NA_character_
+      } else {
+        paste(.data$alert_flag[!is.na(.data$alert_flag)], collapse = ", ")
+      }
+    )
+}
+
+#' Generate Composite Indicator Validation Flags
+#'
+#' This function validates derived fisheries indicators (CPUE, RPUE, and price per kg)
+#' from KEFS survey data. It calculates these performance metrics and flags values that
+#' exceed specified maximum thresholds. This validation is applied only to submissions
+#' that have passed previous validation checks.
+#'
+#' @param dat A data frame containing KEFS survey data with columns:
+#'   \itemize{
+#'     \item submission_id: Unique identifier for the submission
+#'     \item no_of_fishers: Number of fishers on the trip
+#'     \item trip_duration: Duration of the trip in hours
+#'     \item total_catch_weight: Total weight of catch in kilograms
+#'     \item total_catch_price: Total price of catch in Kenyan Shillings
+#'   }
+#' @param limits A list containing threshold values for validation:
+#'   \itemize{
+#'     \item max_cpue: Maximum acceptable catch per unit effort (kg/fisher/hour)
+#'     \item max_rpue: Maximum acceptable revenue per unit effort (KSH/fisher/hour)
+#'     \item max_price_kg: Maximum acceptable price per kilogram (KSH/kg)
+#'   }
+#' @param clean_ids A vector of submission IDs that have passed previous validation checks.
+#'   Only these submissions will be evaluated for indicator-based anomalies.
+#'
+#' @return A data frame with columns:
+#'   \itemize{
+#'     \item submission_id: The original submission identifier
+#'     \item alert_flag_indicators: Comma-separated string of alert codes (NA if no alerts):
+#'       \itemize{
+#'         \item "6.1": CPUE (catch per unit effort) exceeds maximum
+#'         \item "6.2": RPUE (revenue per unit effort) exceeds maximum
+#'         \item "6.3": Price per kilogram exceeds maximum
+#'       }
+#'   }
+#'
+#' @details
+#' The function calculates three key fisheries performance indicators:
+#' \enumerate{
+#'   \item CPUE (Catch Per Unit Effort): total_catch_weight / no_of_fishers / trip_duration
+#'   \item RPUE (Revenue Per Unit Effort): total_catch_price / no_of_fishers / trip_duration
+#'   \item Price per kg: total_catch_price / total_catch_weight
+#' }
+#'
+#' These indicators help identify submissions with unrealistically high productivity or
+#' pricing that may indicate data entry errors or exceptional circumstances requiring review.
+#'
+#' This function is typically called after trip-level and catch-level validations have been
+#' performed, applying additional scrutiny only to submissions that have already been
+#' determined to be generally valid.
+#'
+#' @keywords validation
+#' @examples
+#' \dontrun{
+#' # Get IDs that passed previous validation
+#' clean_ids <- dplyr::full_join(trip_flags, catch_flags, by = "submission_id") |>
+#'   dplyr::filter(is.na(alert_flag_trip) & is.na(alert_flag_catch)) |>
+#'   dplyr::pull(submission_id) |>
+#'   unique()
+#'
+#' indicator_limits <- list(
+#'   max_cpue = 20,
+#'   max_rpue = 3876,
+#'   max_price_kg = 3876
+#' )
+#' indicator_flags <- get_indicators_flags(
+#'   dat = survey_data,
+#'   limits = indicator_limits,
+#'   clean_ids = clean_ids
+#' )
+#' }
+#' @export
+get_indicators_flags <- function(dat = NULL, limits = NULL, clean_ids = NULL) {
+  dat |>
+    dplyr::filter(.data$submission_id %in% clean_ids) |>
+    dplyr::select(
+      "submission_id",
+      "no_of_fishers",
+      "trip_duration",
+      "total_catch_weight",
+      "total_catch_price"
+    ) |>
+    dplyr::distinct() |>
+    dplyr::transmute(
+      submission_id = .data$submission_id,
+      no_of_fishers,
+      .data$trip_duration,
+      .data$total_catch_weight,
+      price_kg = .data$total_catch_price / .data$total_catch_weight,
+      cpue = .data$total_catch_weight /
+        .data$no_of_fishers /
+        .data$trip_duration,
+      rpue = .data$total_catch_price /
+        .data$no_of_fishers /
+        .data$trip_duration,
+    ) |>
+    dplyr::mutate(
+      alert_cpue = dplyr::case_when(
+        .data$cpue > limits$max_cpue ~ "6.1",
+        TRUE ~ NA_character_
+      ),
+      alert_rpue = dplyr::case_when(
+        .data$rpue > limits$max_rpue ~ "6.2",
+        TRUE ~ NA_character_
+      ),
+      alert_price_kg = dplyr::case_when(
+        .data$price_kg > limits$max_price_kg ~ "6.3",
+        TRUE ~ NA_character_
+      )
+    ) |>
+    dplyr::select(
+      "submission_id",
+      dplyr::starts_with("alert_")
+    ) |>
+    dplyr::mutate(
+      alert_flag = paste(
+        .data$alert_cpue,
+        .data$alert_rpue,
+        .data$alert_price_kg,
+        sep = ","
+      ) |>
+        stringr::str_remove_all("NA,") |>
+        stringr::str_remove_all(",NA") |>
+        stringr::str_remove_all("^NA$")
+    ) |>
+    dplyr::mutate(
+      alert_flag = ifelse(
+        .data$alert_flag == "",
+        NA_character_,
+        .data$alert_flag
+      )
+    ) |>
+    dplyr::group_by(.data$submission_id) %>%
+    # Summarize to get values
+    dplyr::summarise(
+      alert_flag_indicators = if (all(is.na(.data$alert_flag))) {
+        NA_character_
+      } else {
+        paste(.data$alert_flag[!is.na(.data$alert_flag)], collapse = ", ")
+      }
     )
 }

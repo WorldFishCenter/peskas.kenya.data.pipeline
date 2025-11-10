@@ -541,8 +541,8 @@ get_trips <- function(
   dateFrom = NULL,
   dateTo = NULL,
   imeis = NULL,
-  deviceInfo = FALSE,
-  withLastSeen = FALSE,
+  deviceInfo = TRUE,
+  withLastSeen = TRUE,
   tags = NULL
 ) {
   # Base URL
