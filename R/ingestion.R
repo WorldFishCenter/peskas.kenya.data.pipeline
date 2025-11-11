@@ -19,40 +19,41 @@ ingest_catch_survey_version <- function(version, kobo_config, storage_config) {
     format = "json"
   )
 
+  logger::log_info(glue::glue(
+    "Checking uniqueness of {length(data_raw)} submissions for {version}..."
+  ))
+
   # Check that submissions are unique in case there is overlap in the pagination
-  if (
-    dplyr::n_distinct(purrr::map_dbl(data_raw, ~ .$`_id`)) != length(data_raw)
-  ) {
+  unique_ids <- dplyr::n_distinct(purrr::map_dbl(data_raw, ~ .$`_id`))
+  if (unique_ids != length(data_raw)) {
     stop(glue::glue(
-      "Number of submission ids not the same as number of records in {version} data"
+      "Number of submission ids ({unique_ids}) not the same as number of records ({length(data_raw)}) in {version} data"
     ))
-    if (
-      dplyr::n_distinct(purrr::map_dbl(data_raw, ~ .$`_id`)) != length(data_raw)
-    ) {
-      stop(glue::glue(
-        "Number of submission ids not the same as number of records in {version} data"
-      ))
-    }
-
-    logger::log_info(glue::glue(
-      "Converting WCS Fish Catch Survey Kobo data ({version}) to tabular format..."
-    ))
-    logger::log_info(glue::glue(
-      "Converting WCS Fish Catch Survey Kobo data ({version}) to tabular format..."
-    ))
-
-    raw_survey <- data_raw %>%
-      purrr::map(flatten_row) %>%
-      dplyr::bind_rows() %>%
-      dplyr::rename(submission_id = "_id")
-
-    upload_parquet_to_cloud(
-      data = raw_survey,
-      prefix = storage_config$file_prefix,
-      provider = storage_config$provider,
-      options = storage_config$options
-    )
   }
+
+  logger::log_info(glue::glue(
+    "Converting {version} Kobo data to tabular format..."
+  ))
+
+  raw_survey <- data_raw %>%
+    purrr::map(flatten_row) %>%
+    dplyr::bind_rows() %>%
+    dplyr::rename(submission_id = "_id")
+
+  logger::log_info(glue::glue(
+    "Converted {nrow(raw_survey)} rows with {ncol(raw_survey)} columns for {version}"
+  ))
+
+  upload_parquet_to_cloud(
+    data = raw_survey,
+    prefix = storage_config$file_prefix,
+    provider = storage_config$provider,
+    options = storage_config$options
+  )
+
+  logger::log_info(glue::glue(
+    "Successfully completed ingestion for {version}"
+  ))
 }
 
 #' Download and Process WCS Catch Surveys from Kobotoolbox
@@ -99,7 +100,6 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
         password = conf$ingestion$wcs$koboform$password
       ),
       storage = list(
-        file_prefix = conf$surveys$wcs$catch$v1$raw$file_prefix,
         file_prefix = conf$surveys$wcs$catch$v1$raw$file_prefix,
         provider = conf$storage$google$key,
         options = conf$storage$google$options
@@ -165,7 +165,7 @@ ingest_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
 
   # Define KEFS configuration
   kefs_config <- list(
-    kefs = list(
+    v1 = list(
       kobo = list(
         url = "kf.fimskenya.co.ke",
         asset_id = conf$ingestion$kefs$koboform$asset_id_v1,
@@ -225,7 +225,7 @@ ingest_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
 
   # Define KEFS configuration
   kefs_config <- list(
-    kefs = list(
+    v2 = list(
       kobo = list(
         url = "kf.fimskenya.co.ke",
         asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
