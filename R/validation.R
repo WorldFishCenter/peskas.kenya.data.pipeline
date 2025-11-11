@@ -336,7 +336,7 @@ validate_kefs_surveys_v2 <- function() {
   # Max 4 workers to avoid overwhelming the server
   future::plan(
     strategy = future::multisession,
-    workes = future::availableCores() - 2
+    workers = future::availableCores() - 2
   )
 
   # Get validation status from KoboToolbox for existing submissions
