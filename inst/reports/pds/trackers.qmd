@@ -74,7 +74,7 @@ editor: visual
 
 ## Executive Summary {.highlight-box}
 
-This study presents comprehensive vessel monitoring analysis from Kenya's small-scale fisheries using 150 solar-powered Pelagic Data Systems (PDS) deployed across 28 Beach Management Units in five coastal counties. Analysis of **46,625 high-resolution tracking records** reveals critical patterns: **fishing hotspots** concentrated in near-shore areas (1-3km), **seasonal trends** in effort distribution, **resource conflict zones** with high vessel overlap, and **vessel activity coefficients** showing fleet utilization patterns. These findings provide essential evidence for marine spatial planning, adaptive management, and inclusive governance within Kenya's Blue Economy framework.
+This study presents comprehensive vessel monitoring analysis from Kenya's small-scale fisheries using 150 solar-powered Pelagic Data Systems (PDS) deployed across 28 Beach Management Units in five coastal counties. Analysis of **high-resolution tracking records** reveals critical patterns: **fishing hotspots** concentrated in near-shore areas (1-3km), **seasonal trends** in effort distribution, **vessel interaction zones** showing resource sharing patterns, and **vessel activity coefficients** indicating fleet utilization patterns. These findings provide essential evidence for marine spatial planning, adaptive management, and inclusive governance within Kenya's Blue Economy framework.
 
 ```{r setup}
 #| include: false
@@ -131,10 +131,10 @@ theme_set(theme_modern())
 ```
 
 ```{r data-load}
-# Load vessel tracking data
-tracks_binned <- arrow::read_parquet("tracks_binned_07-11.parquet")
-#tracks_binned <- arrow::read_parquet("inst/reports/pds/tracks_binned_28-08.parquet")
-
+# Load vessel tracking data (updated with latest trips)
+tracks_binned <- 
+arrow::read_parquet("tracks_binned_07-11.parquet") %>%
+dplyr::filter(lng > 38.18)
 # Calculate distance from coastline for accurate spatial analysis
 
 library(sf)
@@ -436,10 +436,10 @@ leaflet(fishing_hotspots, height = "700px") %>%
     data = top_hotspots,
     lng = ~lng_grid,
     lat = ~lat_grid,
-    radius = ~ sqrt(intensity_score / 10),
+    radius = ~ intensity_score,
     color = "red",
     fillOpacity = 0,
-    weight = 2,
+    weight = 5,
     popup = ~ paste(
       "<b>TOP HOTSPOT</b><br>",
       "Fishing Hours:",
@@ -489,56 +489,49 @@ The interactive map above reveals several critical patterns in Kenya's small-sca
 -   Average vessels per hotspot: **`r round(mean(top_hotspots$unique_vessels), 1)`**
 :::
 
-## Resource Conflict Analysis & Vessel Interactions
+## Vessel Interactions & Resource Sharing Analysis
 
-Small-scale fisheries often experience resource conflicts when multiple vessels compete for access to the same fishing areas. Understanding these interaction patterns is crucial for conflict resolution and sustainable management.
+Small-scale fisheries are characterized by multiple vessels sharing the same fishing grounds. Understanding these interaction patterns is crucial for promoting cooperation and sustainable management.
 
-This analysis identifies **potential conflict zones** by detecting areas where multiple vessels operate simultaneously. While co-location doesn't always indicate conflict (vessels may be cooperating or following schools of fish), areas with persistent multi-vessel presence warrant attention from managers.
+This analysis identifies **vessel interaction zones** by detecting areas where multiple vessels operate simultaneously. While co-location doesn't necessarily indicate conflict—vessels may be cooperating, sharing information about fish schools, or benefiting from traditional knowledge of productive areas—areas with persistent multi-vessel presence are important for understanding resource sharing dynamics.
 
-**Conflict risk levels** are determined by the average number of vessels present and the frequency of multi-vessel events. High-risk zones may benefit from access agreements, temporal restrictions, or enhanced communication systems among fishers.
+**Interaction intensity levels** are determined by the average number of vessels present and the frequency of multi-vessel events. High-intensity zones may benefit from enhanced communication systems, cooperative management arrangements, or community-based access agreements among fishers.
 
-```{r conflict-zones}
-# Identify resource conflict zones based on simultaneous vessel presence
-conflict_analysis <- tracks_processed %>%
+```{r vessel-interactions}
+# Simple approach: Find where vessels interact (2+ vessels in same location)
+vessel_interactions <- tracks_processed %>%
   group_by(date, hour, lat_grid, lng_grid) %>%
   summarise(
     n_vessels = n_distinct(boat),
-    n_records = n(),
     .groups = "drop"
   ) %>%
-  filter(n_vessels > 1) # Only areas with multiple vessels
+  filter(n_vessels >= 2)
 
-# Aggregate conflict intensity
-conflict_zones <- conflict_analysis %>%
+# Summarize by location
+interaction_zones <- vessel_interactions %>%
   group_by(lat_grid, lng_grid) %>%
   summarise(
-    conflict_events = n(),
+    total_events = n(),
     avg_vessels = mean(n_vessels),
     max_vessels = max(n_vessels),
     total_vessel_hours = sum(n_vessels),
     .groups = "drop"
-  ) %>%
-  mutate(
-    conflict_intensity = case_when(
-      avg_vessels > 3 | max_vessels > 5 ~ "High Conflict Risk",
-      avg_vessels > 2 | max_vessels > 3 ~ "Moderate Conflict Risk",
-      avg_vessels > 1.5 ~ "Low Conflict Risk",
-      TRUE ~ "Minimal Risk"
-    )
   )
 
+# Summary
+cat("\n=== Vessel Interaction Summary ===\n")
+cat("Zones with interactions:", nrow(interaction_zones), "\n")
+cat("Total interaction events:", sum(interaction_zones$total_events), "\n")
+cat("Max vessels in one spot:", max(interaction_zones$max_vessels), "\n\n")
 
-# Create conflict zone map
-conflict_colors <- colorFactor(
-  palette = c("#4CAF50", "#FF9800", "#F44336"),
-  levels = c(
-    "Low Conflict Risk",
-    "Moderate Conflict Risk",
-    "High Conflict Risk"
-  )
+# Create simple gradient map (yellow to dark red)
+pal_interaction <- colorNumeric(
+  palette = colorRampPalette(c("#FFFFCC", "#FFEDA0", "#FED976", "#FEB24C",
+                                "#FD8D3C", "#FC4E2A", "#E31A1C", "#BD0026"))(100),
+  domain = interaction_zones$total_vessel_hours
 )
 
-leaflet(conflict_zones) %>%
+leaflet(interaction_zones, height = "700px") %>%
   addProviderTiles(providers$CartoDB.DarkMatter) %>%
   setView(
     lng = mean(range(tracks_processed$lng, na.rm = TRUE)),
@@ -548,86 +541,101 @@ leaflet(conflict_zones) %>%
   addCircles(
     lng = ~lng_grid,
     lat = ~lat_grid,
-    radius = ~ sqrt(total_vessel_hours) * 100,
-    fillColor = ~ conflict_colors(conflict_intensity),
+    radius = ~ total_vessel_hours * 100,
+    fillColor = ~ pal_interaction(total_vessel_hours),
     fillOpacity = 0.7,
     weight = 1,
-    color = "white",
+    color = "#FFFFFF",
     popup = ~ paste(
-      "<b>Conflict Zone Analysis</b><br>",
-      "<b>Risk Level:</b>",
-      conflict_intensity,
-      "<br>",
-      "<b>Location:</b>",
-      round(lat_grid, 3),
-      ",",
-      round(lng_grid, 3),
-      "<br>",
-      "<b>Conflict Events:</b>",
-      conflict_events,
-      "<br>",
-      "<b>Avg Vessels Present:</b>",
-      round(avg_vessels, 1),
-      "<br>",
-      "<b>Max Vessels Observed:</b>",
-      max_vessels,
-      "<br>",
-      "<b>Total Vessel-Hours:</b>",
-      total_vessel_hours
+      "<b>Interaction Zone</b><br>",
+      "<b>Location:</b>", round(lat_grid, 3), ",", round(lng_grid, 3), "<br>",
+      "<b>Times vessels met here:</b>", total_events, "<br>",
+      "<b>Average vessels:</b>", round(avg_vessels, 1), "<br>",
+      "<b>Peak vessels:</b>", max_vessels, "<br>",
+      "<b>Total vessel-hours:</b>", total_vessel_hours
     ),
-    label = ~ as.character(conflict_intensity) # Fixed: convert to character
+    label = ~ paste(total_vessel_hours, "vessel-hours")
   ) %>%
   addLegend(
     position = "bottomright",
-    pal = conflict_colors,
-    values = conflict_zones$conflict_intensity, # Fixed: explicit reference
-    title = "Conflict Risk Level",
+    pal = pal_interaction,
+    values = ~total_vessel_hours,
+    title = "Interaction<br>Intensity",
+    labFormat = labelFormat(suffix = " vessel-hrs"),
     opacity = 0.8
   ) %>%
   addControl(
     html = "<div style='background: rgba(255,255,255,0.9); padding: 10px; border-radius: 5px; color: black;'>
-            <h4>Resource Conflict Zones</h4>
-            <p>Areas with multiple vessel overlap</p>
-            <p>Size = Total vessel-hours</p>
+            <h4>Vessel Interaction Zones</h4>
+            <p><strong>Darker red</strong> = More vessel activity</p>
+            <p><strong>Circle size</strong> = Total vessel-hours</p>
+            <p>Click for details</p>
             </div>",
     position = "topright"
   )
 
-# Temporal pattern of conflicts
-conflict_temporal <- conflict_analysis %>%
-  group_by(date) %>%
-  summarise(
-    daily_conflicts = n(),
-    vessels_involved = sum(n_vessels),
-    .groups = "drop"
-  )
+# # Top 10 zones
+# top_zones <- interaction_zones %>%
+#   arrange(desc(total_vessel_hours)) %>%
+#   head(10) %>%
+#   mutate(zone_id = paste0("Zone ", row_number()))
 
-highchart() %>%
-  hc_add_series(
-    data = conflict_temporal,
-    type = "line",
-    hcaes(x = date, y = daily_conflicts),
-    name = "Conflict Events",
-    color = "#F44336"
-  ) %>%
-  hc_title(text = "Temporal Pattern of Resource Conflicts") %>%
-  hc_subtitle(text = "Daily occurrence of multi-vessel overlap events") %>%
-  hc_xAxis(type = "datetime", title = list(text = "Date")) %>%
-  hc_yAxis(title = list(text = "Number of Conflict Events"))
+# highchart() %>%
+#   hc_add_series(
+#     data = top_zones,
+#     type = "bar",
+#     hcaes(x = zone_id, y = total_vessel_hours),
+#     name = "Vessel-Hours",
+#     color = "#E31A1C"
+#   ) %>%
+#   hc_title(text = "Top 10 Vessel Interaction Hotspots") %>%
+#   hc_subtitle(text = "Areas with most vessel overlap") %>%
+#   hc_xAxis(title = list(text = ""), categories = top_zones$zone_id) %>%
+#   hc_yAxis(title = list(text = "Total Vessel-Hours")) %>%
+#   hc_tooltip(pointFormat = "<b>{point.y}</b> vessel-hours")
+
+# Daily pattern
+# daily_interactions <- vessel_interactions %>%
+#   group_by(date) %>%
+#   summarise(
+#     daily_events = n(),
+#     .groups = "drop"
+#   )
+
+# highchart() %>%
+#   hc_add_series(
+#     data = daily_interactions,
+#     type = "area",
+#     hcaes(x = date, y = daily_events),
+#     name = "Interactions",
+#     color = "#2E86AB",
+#     fillOpacity = 0.3
+#   ) %>%
+#   hc_title(text = "Daily Vessel Interactions Over Time") %>%
+#   hc_subtitle(text = "How often vessels share the same fishing areas") %>%
+#   hc_xAxis(type = "datetime", title = list(text = "Date")) %>%
+#   hc_yAxis(title = list(text = "Number of Interaction Events"))
 ```
 
-The conflict zone map uses a **dark background** to highlight areas of vessel overlap, with **circle size** representing the total vessel-hours of potential conflict. **Colors** indicate risk levels: green for low risk, orange for moderate, and red for high-risk zones.
+The **interaction zone map** uses a simple color gradient from **light yellow (low interaction)** to **dark red (high interaction)** based on total vessel-hours in each area. **Circle size** also represents intensity - larger circles indicate areas where vessels frequently overlap. This continuous gradient makes it easy to identify hotspots at a glance.
 
-The temporal conflict chart shows **daily patterns** in multi-vessel events, revealing periods of higher competition intensity. **Peaks** may correspond to favorable fishing conditions, seasonal migrations, or market demands that draw multiple vessels to the same areas.
+The **Top 10 Hotspots chart** highlights the specific areas with the most vessel activity, helping to pinpoint priority zones for management attention. These hotspots represent areas where vessel interactions are most frequent and intense.
 
-**Management implications:** - **High-risk zones** require priority attention for conflict prevention - **Temporal patterns** can inform timing of interventions or restrictions - **Communication systems** between vessels could reduce conflicts in shared areas - **Access agreements** among user groups may help manage competition
+The **daily interaction chart** shows temporal patterns - when vessel interactions peak throughout the monitoring period. Peaks may indicate favorable fishing seasons, environmental conditions, or market-driven fishing effort.
 
-::: conflict-warning
-### ⚠️ **Resource Conflict Analysis**
+**Management implications:**
+- **Hotspot areas** may benefit from community-based management or cooperative arrangements
+- **Temporal patterns** can inform timing of fisher consultations and resource assessments
+- **Communication systems** between vessels could enhance cooperation and information sharing
+- **Shared areas** present opportunities for co-management agreements among user groups
 
--   **`r round(sum(conflict_zones$conflict_events))`** total conflict events recorded
--   Maximum **`r max(conflict_zones$max_vessels)`** vessels observed in single grid cell
--   **`r round(mean(conflict_zones$avg_vessels[conflict_zones$conflict_intensity == "High Conflict Risk"]), 1)`** average vessels in high-risk zones
+::: key-finding
+### 🤝 **Vessel Interaction Summary**
+
+-   **`r nrow(interaction_zones)`** areas where vessels interact
+-   **`r sum(interaction_zones$total_events)`** total interaction events recorded
+-   Maximum **`r max(interaction_zones$max_vessels)`** vessels observed together in one location
+-   Average **`r round(mean(interaction_zones$avg_vessels), 1)`** vessels per interaction event
 :::
 
 ## Seasonal Trends & Temporal Patterns
@@ -702,7 +710,7 @@ apex(
   ax_colors("#3A86C7") %>%
   ax_fill(type = "gradient") %>%
   ax_xaxis(
-    title = list(text = "Hour of Day"),
+    title = list(text = "Hour of Day (24-hour format)"),
     min = 0,
     max = 23
   ) %>%
@@ -1055,11 +1063,11 @@ plot_ly(
 
 Regional fishing zone preferences reflect both resource availability and vessel capabilities. Regions with higher offshore percentages typically have better-equipped vessels and target pelagic species.
 
-### Regional Conflict and Activity Analysis
+### Regional Vessel Interaction and Activity Analysis
 
 ```{r reg-confl}
-# Regional conflict analysis
-regional_conflicts <- conflict_analysis %>%
+# Regional vessel interaction analysis
+regional_conflicts <- vessel_interactions %>%
   left_join(
     tracks_processed %>%
       select(date, hour, lat_grid, lng_grid, region) %>%
@@ -1237,7 +1245,7 @@ reactable(
       }
     ),
     total_conflicts = colDef(
-      name = "Conflicts",
+      name = "Interactions",
       width = 90,
       align = "center",
       style = function(value) {
@@ -1245,16 +1253,16 @@ reactable(
           return(list(color = "#999"))
         }
         if (value > 20) {
-          list(color = "#d32f2f", fontWeight = 500)
+          list(color = "#2e7d32", fontWeight = 500)
         } else if (value > 10) {
-          list(color = "#ff9800")
+          list(color = "#388e3c")
         } else {
-          list(color = "#4caf50")
+          list(color = "#66bb6a")
         }
       }
     ),
     avg_vessels_per_conflict = colDef(
-      name = "Avg Vessels/Conflict",
+      name = "Avg Vessels/Event",
       width = 150,
       align = "center",
       format = colFormat(digits = 1)
@@ -1786,7 +1794,7 @@ plot_ly(
 
 **Operational Patterns:** - **`r regional_metrics$region[which.max(regional_metrics$avg_range)]`** vessels operate furthest offshore (avg **`r round(max(regional_metrics$avg_range), 1)` km**) - **`r regional_metrics$region[which.max(regional_metrics$inshore_pct)]`** has strongest inshore preference (**`r round(max(regional_metrics$inshore_pct), 1)`%** of effort) - Highest vessel activity: **`r regional_vac$region[which.max(regional_vac$avg_vac)]`** with VAC of **`r round(max(regional_vac$avg_vac), 2)` trips/week**
 
-**Resource Competition:** - Most conflicts: **`r if(nrow(regional_conflicts) > 0) regional_conflicts$region[which.max(regional_conflicts$total_conflicts)] else "N/A"`** with **`r if(nrow(regional_conflicts) > 0) max(regional_conflicts$total_conflicts) else 0`** events - Highest conflict intensity: **`r if(nrow(regional_conflicts) > 0) regional_conflicts$region[which.max(regional_conflicts$avg_vessels_per_conflict)] else "N/A"`** averaging **`r if(nrow(regional_conflicts) > 0) round(max(regional_conflicts$avg_vessels_per_conflict), 1) else 0`** vessels per conflict
+**Vessel Interactions:** - Most interaction events: **`r if(nrow(regional_conflicts) > 0) regional_conflicts$region[which.max(regional_conflicts$total_conflicts)] else "N/A"`** with **`r if(nrow(regional_conflicts) > 0) max(regional_conflicts$total_conflicts) else 0`** events - Highest interaction intensity: **`r if(nrow(regional_conflicts) > 0) regional_conflicts$region[which.max(regional_conflicts$avg_vessels_per_conflict)] else "N/A"`** averaging **`r if(nrow(regional_conflicts) > 0) round(max(regional_conflicts$avg_vessels_per_conflict), 1) else 0`** vessels per interaction event
 :::
 
 ## Methodology
@@ -1862,24 +1870,37 @@ Intensity Score = Fishing Hours × √(Unique Vessels)
 -   **Moderate Hotspot**: 70-85th percentile
 -   **Regular Activity**: Below 70th percentile
 
-### Resource Conflict Analysis
+### Vessel Interaction Analysis
 
-#### Conflict Event Definition
+#### Interaction Event Definition
 
-A conflict event occurs when: - Multiple vessels (≥2) are present in the same grid cell - During the same hour - On the same date
+A vessel interaction event occurs when: - Multiple vessels (≥2) are present in the same grid cell - During the same hour - On the same date
 
-#### Conflict Risk Levels
+This co-location may indicate cooperative fishing, information sharing, or competition for resources.
 
--   High Risk: Average vessels \>3 OR Maximum vessels \>5
--   Moderate Risk: Average vessels \>2 OR Maximum vessels \>3
--   Low Risk: Average vessels \>1.5
--   Minimal Risk: Average vessels ≤1.5
+#### Interaction Intensity Measurement
 
-#### Conflict Metrics
+Interaction intensity is measured using **total vessel-hours** for each location:
 
--   **Conflict Events**: Total occurrences of multi-vessel overlap
--   **Average Vessels per Conflict**: Mean number of vessels involved
--   **Total Vessel-Hours**: Sum of vessels × hours for conflict intensity
+**Total Vessel-Hours = Sum of all vessels present across all interaction events at that location**
+
+For example, if 3 vessels meet at a location 5 times, that's 15 vessel-hours for that zone.
+
+#### Visualization Approach
+
+Rather than categorizing interactions into discrete levels, we use a **continuous color gradient**:
+- Light yellow indicates low interaction intensity (few vessel-hours)
+- Dark red indicates high interaction intensity (many vessel-hours)
+- Circle size on the map is proportional to the square root of vessel-hours for better visual scaling
+
+This continuous scale provides a more accurate representation of interaction patterns without imposing arbitrary classification boundaries.
+
+#### Interaction Metrics
+
+-   **Interaction Events**: Total occurrences of multi-vessel overlap at a location
+-   **Average Vessels per Event**: Mean number of vessels co-located
+-   **Max Vessels Observed**: Peak simultaneous vessel count at the location
+-   **Total Vessel-Hours**: Cumulative measure combining event frequency and vessel density
 
 ### Trip Characteristics
 
@@ -1931,7 +1952,7 @@ Based on trip patterns, likely gear types are inferred:
 -   **Fleet Size**: Number of unique vessels per region
 -   **Effort Distribution**: Percentage of fishing time in each zone
 -   **Operational Characteristics**: Average trip duration and range
--   **Conflict Intensity**: Average vessels per conflict event
+-   **Interaction Intensity**: Average vessels per interaction event
 
 #### Zone Preferences
 
@@ -1949,7 +1970,7 @@ Percentage of fishing time spent in each distance zone, revealing regional fishi
 
 -   Speed thresholds for activity classification based on typical SSF vessel capabilities
 -   Grid cell size balances spatial resolution with privacy concerns
--   Conflict analysis assumes co-location indicates resource competition
+-   Vessel interaction analysis identifies co-location patterns, which may indicate cooperation, information sharing, or resource competition
 
 #### Interpretation Caveats
 
