@@ -94,7 +94,11 @@ process_fishing_tracks <- function(
 
   # Step 3: Curate data
   message("Curating GPS data...")
-  gps_curated <- GPSMonitoring::GPS.curation(gps_data, extent = pol.extent, exclude = exclude)
+  gps_curated <- GPSMonitoring::GPS.curation(
+    gps_data,
+    extent = pol.extent,
+    exclude = exclude
+  )
 
   # Step 4: Process trajectories with proper speed calculation
   message("Processing trajectories...")
@@ -211,7 +215,10 @@ create_extent_polygon <- function(gps_data) {
     ncol = 2,
     byrow = TRUE
   )
-  sf::st_sf(id = 1, geometry = sf::st_sfc(sf::st_polygon(list(emprise)), crs = 4326))
+  sf::st_sf(
+    id = 1,
+    geometry = sf::st_sfc(sf::st_polygon(list(emprise)), crs = 4326)
+  )
 }
 
 #' Calculate vessel speeds from GPS positions
@@ -246,7 +253,11 @@ process_trajectories_with_speed <- function(
     )
 
     # Convert back to sf and calculate proper distances
-    gps_processed <- sf::st_as_sf(gps_redis, coords = c("x", "y"), crs = 4326) %>%
+    gps_processed <- sf::st_as_sf(
+      gps_redis,
+      coords = c("x", "y"),
+      crs = 4326
+    ) %>%
       dplyr::arrange(no_trajet, date) %>%
       dplyr::group_by(no_trajet) %>%
       dplyr::mutate(
@@ -465,3 +476,85 @@ visualize_fishing_track <- function(processed_data, track_id = NULL) {
 
   return(p)
 }
+
+
+ports <- data.frame(
+  BMU = c(
+    "Bureni",
+    "Chale",
+    "Gazi",
+    "Jimbo",
+    "Kanamai",
+    "Kenyatta",
+    "Kibuyuni",
+    "Kijangwani",
+    "Kuruwitu",
+    "Marina",
+    "Mgwani",
+    "Mkwiro",
+    "Msumarini",
+    "Mtwapa",
+    "Mvuleni",
+    "Mwaepe",
+    "Mwanyaza",
+    "Nyali",
+    "Reef",
+    "Shimoni",
+    "Tradewinds",
+    "Vanga",
+    "Vipingo",
+    "Wasini"
+  ),
+  lat = c(
+    -3.83217,
+    -4.437990256,
+    -4.428604,
+    -4.674807,
+    -3.928567972,
+    -4.005982386,
+    -4.638997,
+    -3.780836113,
+    -3.792731815,
+    -3.9601083,
+    -4.3833826,
+    -4.6621,
+    -3.873126543,
+    -3.95076,
+    -4.358683442,
+    -4.343164,
+    -4.369472,
+    -4.0524885,
+    -4.030643153,
+    -4.647653,
+    -4.304135,
+    -4.662195,
+    -3.814323429,
+    -4.657433
+  ),
+  lon = c(
+    39.825659,
+    39.53588791,
+    39.511569,
+    39.215278,
+    39.78030992,
+    39.72705319,
+    39.341125,
+    39.84024926,
+    39.83678678,
+    39.7560211,
+    39.5531845,
+    39.395194,
+    39.80664847,
+    39.745094,
+    39.56181226,
+    39.566298,
+    39.558043,
+    39.70611691,
+    39.72067205,
+    39.380669,
+    39.58267,
+    39.228392,
+    39.83032521,
+    39.364912
+  )
+)

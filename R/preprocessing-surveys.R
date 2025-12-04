@@ -1121,7 +1121,8 @@ apply_gear_mapping_v2 <- function() {
               "nyavu",
               "trammel_net_1",
               "scoopnet_&_castnet",
-              "trammel_net"
+              "trammel_net",
+              "nets",
             ) ~
             "Nets",
           .data$gear %in% c("handline") ~ "Handline",
