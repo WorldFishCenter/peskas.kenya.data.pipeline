@@ -1122,7 +1122,7 @@ apply_gear_mapping_v2 <- function() {
               "trammel_net_1",
               "scoopnet_&_castnet",
               "trammel_net",
-              "nets",
+              "nets"
             ) ~
             "Nets",
           .data$gear %in% c("handline") ~ "Handline",
