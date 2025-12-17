@@ -193,8 +193,7 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call validate_kefs_surveys_v2()
         run: Rscript -e 'peskas.kenya.data.pipeline::validate_kefs_surveys_v2()'
-      - name: Call sync_validation_submissions()
-        run: Rscript --vanilla -e 'peskas.kenya.data.pipeline::sync_validation_submissions()'
+
 
   # Note: KEFS v1 validation and export jobs will be added here
   # as those pipeline stages are developed

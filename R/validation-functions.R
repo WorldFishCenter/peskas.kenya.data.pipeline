@@ -945,7 +945,7 @@ get_validation_status <- function(
   debug = FALSE
 ) {
   base_url <- paste0(
-    "https://kf.fimskenya.co.ke/api/v2/assets/",
+    "https://eu.kobotoolbox.org/api/v2/assets/",
     asset_id,
     "/data/"
   )
@@ -1001,27 +1001,30 @@ get_validation_status <- function(
           submission_id = submission_id,
           validation_status = status,
           validated_at = timestamp,
-          validated_by = validator
+          validated_by = validator,
+          fetch_error = FALSE
         )
       } else {
         dplyr::tibble(
           submission_id = submission_id,
           validation_status = "not_validated",
           validated_at = lubridate::as_datetime(NA),
-          validated_by = NA_character_
+          validated_by = NA_character_,
+          fetch_error = FALSE
         )
       }
     },
     error = function(e) {
       if (debug) {
-        cat("Error:", as.character(e), "\n")
+        cat("Error:", conditionMessage(e), "\n")
       }
 
       dplyr::tibble(
         submission_id = submission_id,
-        validation_status = "not_validated",
+        validation_status = NA_character_,
         validated_at = lubridate::as_datetime(NA),
-        validated_by = NA_character_
+        validated_by = NA_character_,
+        fetch_error = TRUE
       )
     }
   )

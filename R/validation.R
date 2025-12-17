@@ -347,44 +347,15 @@ validate_kefs_surveys_v2 <- function() {
     "Querying validation status from kefs asset for {length(submission_ids)} submissions"
   )
 
-  # Enable progress reporting
-  progressr::handlers(progressr::handler_progress(
-    format = "[:bar] :current/:total (:percent) eta: :eta"
-  ))
+  validation_statuses <- submission_ids %>%
+    furrr::future_map_dfr(
+      get_validation_status,
+      asset_id = conf$ingestion$`kobo-adnap`$asset_id,
+      token = conf$ingestion$`kobo-lurio`$token,
+      .options = furrr::furrr_options(seed = TRUE)
+    )
 
-  validation_results <- progressr::with_progress({
-    p <- progressr::progressor(along = submission_ids)
-
-    submission_ids %>%
-      furrr::future_map_dfr(
-        function(id) {
-          result <- get_validation_status(
-            submission_id = id,
-            asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
-            token = conf$ingestion$kefs$koboform$token
-          )
-          p()
-          result
-        },
-        .options = furrr::furrr_options(seed = TRUE)
-      )
-  })
-
-  # Extract manually approved IDs (exclude system-approved)
-  # Only human-reviewed approvals should override automatic validation flags
-  manual_approved_ids <- validation_results %>%
-    dplyr::filter(
-      .data$validation_status == "validation_status_approved" &
-        !is.na(.data$validated_by) &
-        .data$validated_by != "" &
-        .data$validated_by != conf$ingestion$kefs$koboform$username # Exclude system approvals
-    ) %>%
-    dplyr::pull(.data$submission_id) %>%
-    unique()
-
-  logger::log_info(
-    "Found {length(manual_approved_ids)} manually approved submissions in KoboToolbox"
-  )
+  future::plan(strategy = future::sequential)
 
   info_flags <-
     preprocessed_surveys |>
@@ -457,14 +428,6 @@ validate_kefs_surveys_v2 <- function() {
       na.rm = TRUE
     ) |>
     dplyr::mutate(alert_flag = dplyr::na_if(.data$alert_flag, "")) |>
-    # Respect manual approvals: clear flags for manually approved submissions
-    dplyr::mutate(
-      alert_flag = dplyr::if_else(
-        .data$submission_id %in% manual_approved_ids,
-        NA_character_,
-        .data$alert_flag
-      )
-    ) |>
     dplyr::left_join(
       preprocessed_surveys |>
         dplyr::select(
@@ -475,17 +438,6 @@ validate_kefs_surveys_v2 <- function() {
     ) |>
     dplyr::distinct()
 
-  # Log how many manually approved submissions had flags cleared
-  cleared_flags <- flags_combined %>%
-    dplyr::filter(.data$submission_id %in% manual_approved_ids) %>%
-    nrow()
-
-  if (cleared_flags > 0) {
-    logger::log_info(
-      "Cleared validation flags for {cleared_flags} manually approved submissions"
-    )
-  }
-
   valid_data <-
     preprocessed_surveys |>
     dplyr::semi_join(
@@ -495,21 +447,21 @@ validate_kefs_surveys_v2 <- function() {
     dplyr::distinct()
 
   upload_parquet_to_cloud(
-    data = flags_combined,
-    prefix = conf$surveys$kefs$v2$validation$flags$file_prefix,
-    provider = conf$storage$google$key,
-    options = conf$storage$google$options
-  )
-
-  upload_parquet_to_cloud(
     data = valid_data,
     prefix = conf$surveys$kefs$v2$validated$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
+  export_validation_flags(
+    conf = conf,
+    asset_id = "v2",
+    all_flags = flags_combined,
+    validation_statuses = validation_statuses
+  )
 
   invisible(NULL)
 }
+
 
 #' Synchronize Validation Statuses with KoboToolbox
 #'
@@ -843,4 +795,151 @@ process_submissions_parallel <- function(
 
     results
   })
+}
+
+
+#' Export Validation Flags to MongoDB
+#'
+#' @description
+#' Exports validation flags directly to MongoDB without updating KoboToolbox validation
+#' statuses. This function replaces the workflow of `sync_validation_submissions()` to
+#' avoid slow API updates to KoboToolbox. Instead, it uses KoboToolbox validation status
+#' queries only to identify manually edited validations by human reviewers.
+#'
+#' @details
+#' The function performs the following steps:
+#' \enumerate{
+#'   \item Joins validation flags with KoboToolbox validation statuses
+#'   \item Identifies manual human approvals (excluding system username)
+#'   \item Preserves manual human decisions while updating system-generated statuses
+#'   \item Creates both wide and long format datasets for different reporting needs
+#'   \item Pushes results directly to MongoDB collections
+#' }
+#'
+#' \strong{Key Differences from sync_validation_submissions():}
+#' \itemize{
+#'   \item Does NOT update validation statuses in KoboToolbox (avoids slow API calls)
+#'   \item Uses `validation_statuses` parameter obtained via `get_validation_status()`
+#'   \item Stores final validation state only in MongoDB
+#'   \item Respects manual human approvals by preserving their validation status
+#'   \item System-generated validations are updated based on current flags
+#' }
+#'
+#' \strong{Validation Status Logic:}
+#' \itemize{
+#'   \item If submission has flags AND validated_by is system username: set to "not_approved"
+#'   \item If submission has no flags AND validated_by is system username: set to "approved"
+#'   \item If validated_by is NOT system username: preserve existing status (manual approval)
+#' }
+#'
+#' @param conf Configuration object from `read_config()` containing MongoDB connection
+#'   parameters and survey-specific settings
+#' @param asset_id Character string specifying which survey to process. Must be one of
+#'   "adnap" or "lurio". Determines which configuration to use from
+#'   `conf$ingestion$kobo-{asset_id}`. Default is "adnap".
+#' @param all_flags Data frame containing all validation flags with columns:
+#'   `submission_id`, `submitted_by`, `submission_date`, `alert_flag`
+#' @param validation_statuses Data frame from `get_validation_status()` with columns:
+#'   `submission_id`, `validation_status`, `validated_by`, `validation_date`
+#'
+#' @return Invisible NULL. The function pushes data to MongoDB as a side effect.
+#'
+#' @section MongoDB Collections:
+#' The function pushes to two MongoDB collections:
+#' \describe{
+#'   \item{flags-{asset_id}}{Wide format with one row per submission including
+#'     validation status and flags}
+#'   \item{enumerators_stats-{asset_id}}{Long format with one row per flag per
+#'     submission for enumerator statistics}
+#' }
+#'
+#' @note
+#' This function is called internally by `validate_surveys_adnap()` and should not
+#' typically be called directly. It requires:
+#' \itemize{
+#'   \item Valid configuration with MongoDB connection string
+#'   \item Survey-specific configuration under `conf$ingestion$kobo-{asset_id}`
+#'   \item System username configured to identify automated vs. manual validations
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Called internally by validate_surveys_adnap()
+#' export_validation_flags(
+#'   conf = conf,
+#'   asset_id = "v1",
+#'   all_flags = flags_combined,
+#'   validation_statuses = validation_statuses
+#' )
+#' }
+#'
+#' @seealso
+#' \itemize{
+#'   \item \code{\link[=validate_surveys_adnap]{validate_surveys_adnap()}} for the main validation workflow
+#'   \item \code{\link[=get_validation_status]{get_validation_status()}} for fetching KoboToolbox validation status
+#'   \item \code{\link[=sync_validation_submissions]{sync_validation_submissions()}} for the deprecated approach that updates KoboToolbox
+#'   \item \code{\link[=mdb_collection_push]{mdb_collection_push()}} for MongoDB operations
+#' }
+#'
+#' @keywords validation workflow
+#' @export
+export_validation_flags <- function(
+  conf = NULL,
+  asset_id = c("v1", "v2"),
+  all_flags = NULL,
+  validation_statuses = NULL
+) {
+  asset_id <- match.arg(asset_id)
+  config_key <- paste0("asset_id_", asset_id)
+
+  # Get the survey-specific config
+  survey_conf <- conf$ingestion$kefs$koboform
+
+  validation_flags_with_kobo_status <-
+    all_flags |>
+    dplyr::full_join(validation_statuses, by = "submission_id") |>
+    dplyr::mutate(
+      validation_status = dplyr::case_when(
+        # Preserve existing status if validated by someone else (not pipeline account user and not NA)
+        !is.na(.data$validated_by) &
+          .data$validated_by != survey_conf$username ~ .data$validation_status,
+        # Apply new status only if validated_by is NA or matches kobo user
+        !is.na(.data$alert_flag) ~ "validation_status_not_approved",
+        is.na(.data$alert_flag) ~ "validation_status_approved",
+        TRUE ~ .data$validation_status
+      )
+    ) |>
+    dplyr::filter(!is.na(.data$submitted_by))
+
+  validation_flags_long <- validation_flags_with_kobo_status |>
+    dplyr::mutate(alert_flag = as.character(.data$alert_flag)) %>%
+    tidyr::separate_rows("alert_flag", sep = ",\\s*") |>
+    dplyr::select(-c(dplyr::starts_with("valid")))
+
+  asset_id <- survey_conf[[config_key]]
+
+  mdb_collection_push(
+    data = validation_flags_with_kobo_status,
+    connection_string = conf$storage$mongodb$cluster$validation$connection_string,
+    db_name = conf$storage$mongodb$cluster$validation$database,
+    collection_name = paste(
+      conf$storage$mongodb$cluster$validation$collection$flags,
+      asset_id,
+      sep = "-"
+    )
+  )
+
+  mdb_collection_push(
+    data = validation_flags_long,
+    connection_string = conf$storage$mongodb$cluster$validation$connection_string,
+    db_name = conf$storage$mongodb$cluster$validation$database,
+    collection_name = paste(
+      conf$storage$mongodb$cluster$validation$collection$enumerators_stats,
+      asset_id,
+      sep = "-"
+    )
+  )
+
+  logger::log_info("Validation synchronization completed successfully")
+  invisible(NULL)
 }
