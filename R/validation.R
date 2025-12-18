@@ -358,7 +358,7 @@ validate_kefs_surveys_v2 <- function() {
 
   # Query validation status from kefs asset
   logger::log_info(
-    "Querying validation status from kefs asset for {length(submission_ids)} submissions"
+    "Querying validation status from kefs asset for {length(not_approved_ids)} submissions"
   )
 
   validation_statuses <- not_approved_ids %>%
