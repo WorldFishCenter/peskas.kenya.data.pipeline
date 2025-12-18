@@ -332,6 +332,23 @@ validate_kefs_surveys_v2 <- function() {
       options = conf$storage$google$options
     )
 
+  # check for manual validates submissions (only possible among not approved submissions)
+  not_approved_ids <-
+    mdb_collection_pull(
+      connection_string = conf$storage$mongodb$cluster$validation$connection_string,
+      db_name = conf$storage$mongodb$cluster$validation$database,
+      collection_name = paste(
+        conf$storage$mongodb$cluster$validation$collection$flags,
+        conf$ingestion$kefs$koboform$asset_id_v2,
+        sep = "-"
+      )
+    ) |>
+    dplyr::filter(
+      .data$validation_status == "validation_status_not_approved"
+    ) |>
+    dplyr::pull("submission_id") |>
+    unique()
+
   # Set up limited parallel processing with rate limiting for kf.fimskenya.co.ke
   # Max 4 workers to avoid overwhelming the server
   future::plan(
@@ -339,15 +356,12 @@ validate_kefs_surveys_v2 <- function() {
     workers = future::availableCores() - 2
   )
 
-  # Get validation status from KoboToolbox for existing submissions
-  submission_ids <- unique(preprocessed_surveys$submission_id)
-
   # Query validation status from kefs asset
   logger::log_info(
     "Querying validation status from kefs asset for {length(submission_ids)} submissions"
   )
 
-  validation_statuses <- submission_ids %>%
+  validation_statuses <- not_approved_ids %>%
     furrr::future_map_dfr(
       get_validation_status,
       asset_id = conf$ingestion$`kobo-adnap`$asset_id,
@@ -899,6 +913,13 @@ export_validation_flags <- function(
     all_flags |>
     dplyr::full_join(validation_statuses, by = "submission_id") |>
     dplyr::mutate(
+      validated_by = dplyr::if_else(
+        is.na(
+          .data$alert_flag
+        ),
+        survey_conf$username,
+        .data$validated_by
+      ),
       validation_status = dplyr::case_when(
         # Preserve existing status if validated by someone else (not pipeline account user and not NA)
         !is.na(.data$validated_by) &
