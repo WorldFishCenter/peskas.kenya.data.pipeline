@@ -1092,7 +1092,7 @@ update_validation_status <- function(
 
   # Construct the URL
   base_url <- paste0(
-    "https://kf.fimskenya.co.ke/api/v2/assets/",
+    "https://kf.fims.kefs.go.ke/api/v2/assets/",
     asset_id,
     "/data/"
   )

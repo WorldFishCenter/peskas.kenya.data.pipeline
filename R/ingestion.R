@@ -146,7 +146,7 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
 #' @details
 #' The function performs the following steps:
 #' 1. Reads configuration settings.
-#' 2. Downloads survey data from KEFS Kobo instance (kf.fimskenya.co.ke).
+#' 2. Downloads survey data from KEFS Kobo instance (kf.fims.kefs.go.ke).
 #' 3. Checks for uniqueness of submissions.
 #' 4. Converts data to tabular format.
 #' 5. Uploads raw data as a Parquet file to Google Cloud Storage.
@@ -167,7 +167,7 @@ ingest_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
   kefs_config <- list(
     v1 = list(
       kobo = list(
-        url = "kf.fimskenya.co.ke",
+        url = "kf.fims.kefs.go.ke",
         asset_id = conf$ingestion$kefs$koboform$asset_id_v1,
         username = conf$ingestion$kefs$koboform$username,
         password = conf$ingestion$kefs$koboform$password
@@ -206,7 +206,7 @@ ingest_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
 #' @details
 #' The function performs the following steps:
 #' 1. Reads configuration settings.
-#' 2. Downloads survey data from KEFS Kobo instance (kf.fimskenya.co.ke).
+#' 2. Downloads survey data from KEFS Kobo instance (kf.fims.kefs.go.ke).
 #' 3. Checks for uniqueness of submissions.
 #' 4. Converts data to tabular format.
 #' 5. Uploads raw data as a Parquet file to Google Cloud Storage.
@@ -227,7 +227,7 @@ ingest_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
   kefs_config <- list(
     v2 = list(
       kobo = list(
-        url = "kf.fimskenya.co.ke",
+        url = "kf.fims.kefs.go.ke",
         asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
         username = conf$ingestion$kefs$koboform$username,
         password = conf$ingestion$kefs$koboform$password

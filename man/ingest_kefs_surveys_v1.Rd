@@ -21,7 +21,7 @@ to Google Cloud Storage.
 The function performs the following steps:
 \enumerate{
 \item Reads configuration settings.
-\item Downloads survey data from KEFS Kobo instance (kf.fimskenya.co.ke).
+\item Downloads survey data from KEFS Kobo instance (kf.fims.kefs.go.ke).
 \item Checks for uniqueness of submissions.
 \item Converts data to tabular format.
 \item Uploads raw data as a Parquet file to Google Cloud Storage.
