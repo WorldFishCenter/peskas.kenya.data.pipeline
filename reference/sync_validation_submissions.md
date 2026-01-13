@@ -78,7 +78,7 @@ always respected and never overwritten by the automated system.
 
 ## Rate Limiting
 
-To avoid overwhelming the KoboToolbox API server (kf.fimskenya.co.ke),
+To avoid overwhelming the KoboToolbox API server (kf.fims.kefs.go.ke),
 the function limits parallel workers to 4 and adds a 200ms delay between
 requests. This provides approximately 20 requests per second across all
 workers while maintaining server stability. With this configuration,

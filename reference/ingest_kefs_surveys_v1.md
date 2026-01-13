@@ -27,7 +27,7 @@ The function performs the following steps:
 
 1.  Reads configuration settings.
 
-2.  Downloads survey data from KEFS Kobo instance (kf.fimskenya.co.ke).
+2.  Downloads survey data from KEFS Kobo instance (kf.fims.kefs.go.ke).
 
 3.  Checks for uniqueness of submissions.
 
