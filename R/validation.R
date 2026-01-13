@@ -364,8 +364,8 @@ validate_kefs_surveys_v2 <- function() {
   validation_statuses <- not_approved_ids %>%
     furrr::future_map_dfr(
       get_validation_status,
-      asset_id = conf$ingestion$`kobo-adnap`$asset_id,
-      token = conf$ingestion$`kobo-lurio`$token,
+      asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+      token = conf$ingestion$kefs$koboform$token,
       .options = furrr::furrr_options(seed = TRUE)
     )
 
@@ -849,7 +849,7 @@ process_submissions_parallel <- function(
 #' @param conf Configuration object from `read_config()` containing MongoDB connection
 #'   parameters and survey-specific settings
 #' @param asset_id Character string specifying which survey to process. Must be one of
-#'   "adnap" or "lurio". Determines which configuration to use from
+#'   "v1" or "v2". Determines which configuration to use from
 #'   `conf$ingestion$kobo-{asset_id}`. Default is "adnap".
 #' @param all_flags Data frame containing all validation flags with columns:
 #'   `submission_id`, `submitted_by`, `submission_date`, `alert_flag`

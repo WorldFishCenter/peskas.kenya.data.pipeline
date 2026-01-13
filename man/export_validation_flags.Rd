@@ -16,7 +16,7 @@ export_validation_flags(
 parameters and survey-specific settings}
 
 \item{asset_id}{Character string specifying which survey to process. Must be one of
-"adnap" or "lurio". Determines which configuration to use from
+"v1" or "v2". Determines which configuration to use from
 \code{conf$ingestion$kobo-{asset_id}}. Default is "adnap".}
 
 \item{all_flags}{Data frame containing all validation flags with columns:
