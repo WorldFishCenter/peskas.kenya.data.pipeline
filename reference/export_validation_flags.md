@@ -29,7 +29,7 @@ export_validation_flags(
 - asset_id:
 
   Character string specifying which survey to process. Must be one of
-  "adnap" or "lurio". Determines which configuration to use from
+  "v1" or "v2". Determines which configuration to use from
   `conf$ingestion$kobo-{asset_id}`. Default is "adnap".
 
 - all_flags:
