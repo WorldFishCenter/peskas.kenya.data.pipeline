@@ -137,6 +137,9 @@ jobs:
         run: Rscript -e 'peskas.kenya.data.pipeline::validate_landings()'
       - name: Call export_summaries()
         run: Rscript -e 'peskas.kenya.data.pipeline::export_summaries()'
+      - name: Call get_ga4_user_summary()
+        run: Rscript -e 'peskas.kenya.data.pipeline::get_ga4_user_summary()'
+
 
   # ============================================================================
   # KEFS DATA PIPELINE

@@ -61,7 +61,7 @@ The function performs the following steps:
 }
 }
 \note{
-This function is called internally by \code{validate_surveys_adnap()} and should not
+This function is called internally by \code{validate_kefs_surveys_v2()} and should not
 typically be called directly. It requires:
 \itemize{
 \item Valid configuration with MongoDB connection string
@@ -82,7 +82,7 @@ submission for enumerator statistics}
 
 \examples{
 \dontrun{
-# Called internally by validate_surveys_adnap()
+# Called internally by validate_kefs_surveys_v2()
 export_validation_flags(
   conf = conf,
   asset_id = "v1",
@@ -94,7 +94,7 @@ export_validation_flags(
 }
 \seealso{
 \itemize{
-\item \code{\link[=validate_surveys_adnap]{validate_surveys_adnap()}} for the main validation workflow
+\item \code{\link[=validate_kefs_surveys_v2]{validate_kefs_surveys_v2()}} for the main validation workflow
 \item \code{\link[=get_validation_status]{get_validation_status()}} for fetching KoboToolbox validation status
 \item \code{\link[=sync_validation_submissions]{sync_validation_submissions()}} for the deprecated approach that updates KoboToolbox
 \item \code{\link[=mdb_collection_push]{mdb_collection_push()}} for MongoDB operations

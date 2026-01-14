@@ -21,6 +21,7 @@ Imports:
     future,
     git2r,
     glue,
+    googleAnalyticsR,
     googleAuthR,
     googleCloudStorageR,
     googlesheets4,

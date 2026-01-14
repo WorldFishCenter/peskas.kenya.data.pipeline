@@ -820,3 +820,107 @@ create_geos <- function(monthly_summaries_dat = NULL, conf = conf) {
 
   file.remove(filename_geo)
 }
+
+
+#' Get GA4 User Summary by Role and BMU
+#'
+#' @description
+#' Queries GA4 Data API for user activity metrics grouped by date, BMU and user role
+#' (custom dimensions), using a service account configured in `read_config()`.
+#'
+#' @details
+#' The function tries event-scoped custom dimensions first (`customEvent:`), and if
+#' not available falls back to user-scoped custom dimensions (`customUser:`).
+#'
+#' @param property_id GA4 property ID.
+#' @param start_date Start date for the query (default: `"500daysAgo"`).
+#' @param end_date End date for the query (default: `"today"`).
+#'
+#' @return A data frame summarised by `date`, `custom_event_user_bmu`, and
+#'   `custom_event_user_roles` with columns:
+#'   \itemize{
+#'     \item date
+#'     \item custom_event_user_bmu
+#'     \item custom_event_user_roles
+#'     \item users
+#'     \item sessions
+#'   }
+#'
+#' @keywords helper
+#' @examples
+#' \dontrun{
+#' get_ga4_user_summary(property_id = "your_property_id")
+#' }
+#'
+#' @export
+get_ga4_user_summary <- function(
+  property_id = "487803003",
+  start_date = "500daysAgo",
+  end_date = "today"
+) {
+  conf <- read_config()
+  json_key <- conf$storage$google$options$service_account_key
+
+  googleAuthR::gar_deauth()
+  try(file.remove(".httr-oauth"), silent = TRUE)
+
+  options(
+    googleAuthR.scopes.selected = c(
+      "https://www.googleapis.com/auth/analytics.readonly",
+      "https://www.googleapis.com/auth/analytics"
+    )
+  )
+
+  googleAuthR::gar_auth_service(json_key)
+
+  run_query <- function(prefix) {
+    googleAnalyticsR::ga_data(
+      propertyId = property_id,
+      dimensions = c(
+        paste0(prefix, "user_roles"),
+        paste0(prefix, "user_bmu"),
+        paste0(prefix, "user_permissions"),
+        "date"
+      ),
+      metrics = c("sessions", "totalUsers", "screenPageViews"),
+      date_range = c(start_date, end_date),
+      limit = 100000
+    )
+  }
+
+  df <- tryCatch(run_query("customEvent:"), error = function(e) e)
+  if (inherits(df, "error")) {
+    df <- run_query("customUser:")
+  }
+
+  if ("totalUsers" %in% names(df)) {
+    names(df)[names(df) == "totalUsers"] <- "users"
+  }
+  bad <- grepl("^custom(Event|User)\\.", names(df))
+  names(df)[bad] <- sub("^custom(Event|User)\\.", "", names(df)[bad])
+  if ("date" %in% names(df)) {
+    df$date <- as.Date(df$date)
+  }
+
+  users_df <-
+    df %>%
+    janitor::clean_names() %>%
+    dplyr::filter(!.data$custom_event_user_roles %in% c("", "(not set)")) %>%
+    dplyr::group_by(
+      .data$date,
+      .data$custom_event_user_bmu,
+      .data$custom_event_user_roles
+    ) %>%
+    dplyr::summarise(
+      users = max(.data$users, na.rm = TRUE),
+      sessions = sum(.data$sessions, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    readr::write_csv("users_summary.csv")
+
+  upload_cloud_file(
+    file = "users_summary.csv",
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+}
