@@ -91,8 +91,9 @@ The function performs the following steps:
 
 ## Note
 
-This function is called internally by `validate_surveys_adnap()` and
-should not typically be called directly. It requires:
+This function is called internally by
+[`validate_kefs_surveys_v2()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_kefs_surveys_v2.md)
+and should not typically be called directly. It requires:
 
 - Valid configuration with MongoDB connection string
 
@@ -117,7 +118,8 @@ The function pushes to two MongoDB collections:
 
 ## See also
 
-- `validate_surveys_adnap()` for the main validation workflow
+- [`validate_kefs_surveys_v2()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_kefs_surveys_v2.md)
+  for the main validation workflow
 
 - [`get_validation_status()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_validation_status.md)
   for fetching KoboToolbox validation status
@@ -132,7 +134,7 @@ The function pushes to two MongoDB collections:
 
 ``` r
 if (FALSE) { # \dontrun{
-# Called internally by validate_surveys_adnap()
+# Called internally by validate_kefs_surveys_v2()
 export_validation_flags(
   conf = conf,
   asset_id = "v1",

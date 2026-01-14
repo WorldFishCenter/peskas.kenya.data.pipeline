@@ -262,6 +262,8 @@ Functions dedicated to data analytics and general statistics
 - [`get_fishery_metrics_long()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_fishery_metrics_long.md)
   : Calculate key fishery metrics by landing site and month in
   normalized long format
+- [`get_ga4_user_summary()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_ga4_user_summary.md)
+  : Get GA4 User Summary by Role and BMU
 - [`get_individual_gear_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_individual_gear_metrics.md)
   : Calculate Individual Fisher Performance Metrics by Gear Type
 - [`get_individual_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_individual_metrics.md)
