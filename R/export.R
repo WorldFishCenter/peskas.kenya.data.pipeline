@@ -918,6 +918,9 @@ get_ga4_user_summary <- function(
     ) |>
     readr::write_csv("users_summary.csv")
 
+  googleAuthR::gar_deauth()
+  try(file.remove(".httr-oauth"), silent = TRUE)
+
   upload_cloud_file(
     file = "users_summary.csv",
     provider = conf$storage$google$key,
