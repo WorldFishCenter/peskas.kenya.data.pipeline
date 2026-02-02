@@ -132,32 +132,28 @@ cloud_storage_authenticate <- function(provider, options) {
 
 #' Upload File to Cloud Storage
 #'
-#' Uploads a local file to a specified cloud storage bucket, supporting both single and multiple files.
+#' This function uploads one or more files to cloud storage.
 #'
-#' @param file A character vector specifying the path(s) of the file(s) to upload.
-#' @param provider A character string specifying the cloud provider ("gcs" or "aws").
-#' @param options A named list of provider-specific options including the bucket and authentication details.
-#' @param name (Optional) The name to assign to the file in the cloud. If not specified, the local file name is used.
+#' @param file A character vector of file paths to upload.
+#' @param provider A character string specifying the cloud storage provider.
+#' @param options A named list of cloud storage provider options.
+#' @param name A character vector of names to assign files in cloud storage.
+#'   Defaults to local filenames.
 #'
-#' @details For GCS, the options list must include:
-#' - `bucket`: The name of the bucket to which files are uploaded.
-#' - `service_account_key`: The authentication JSON contents, if not previously authenticated.
+#' @return A list of upload metadata.
 #'
-#' This function utilizes [googleCloudStorageR::gcs_upload()] for file uploads to GCS.
-#'
-#' @return A list of metadata objects for the uploaded files if successful.
-#' @export
 #' @keywords storage
+#' @export
+#'
 #' @examples
 #' \dontrun{
-#' authentication_details <- readLines("path/to/json_file.json")
 #' upload_cloud_file(
-#'   "path/to/local_file.csv",
-#'   "gcs",
-#'   list(service_account_key = authentication_details, bucket = "my-bucket")
+#'   file = "data.parquet",
+#'   provider = "gcs",
+#'   options = list(bucket = "my-bucket"),
+#'   name = "data/processed.parquet"
 #' )
 #' }
-#'
 upload_cloud_file <- function(file, provider, options, name = file) {
   cloud_storage_authenticate(provider, options)
 

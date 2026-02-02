@@ -10,6 +10,7 @@ map_surveys(
   gear_mapping = NULL,
   vessels_mapping = NULL,
   sites_mapping = NULL,
+  geo_mapping = NULL,
   kefs_v2 = FALSE
 )
 }
@@ -29,6 +30,8 @@ standard_name columns.}
 
 \item{sites_mapping}{A data frame from Airtable landing_sites table with site_code and
 site columns.}
+
+\item{geo_mapping}{A data frame from Airtable geo table with GAUL codes and names}
 
 \item{kefs_v2}{Logical. If TRUE, processes data from the KEFs v2 survey form which
 uses priority_species and sample_species columns. If FALSE (default), processes

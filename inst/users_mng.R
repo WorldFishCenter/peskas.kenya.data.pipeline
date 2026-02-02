@@ -49,7 +49,8 @@ as_oid <- function(hex) list(`$oid` = unname(hex))
 # Function to read and parse the credentials CSV
 read_credentials_csv <- function(csv_path = "inst/current_login_list.csv") {
   # Read the CSV file
-  credentials <- readr::read_csv(csv_path, show_col_types = FALSE)
+  credentials <- readr::read_csv(csv_path, show_col_types = FALSE) |>
+    dplyr::mutate(password = as.character(password))
 
   # Clean column names and standardize
   colnames(credentials) <- c(
@@ -351,7 +352,7 @@ mdb_add_users_from_csv <- function(
   credentials_df <-
     read_credentials_csv(csv_path) |>
     dplyr::mutate(fisher_id = tolower(fisher_id)) |>
-    dplyr::filter(role %in% c("IIA", "WBCIA", "CIA"))
+    dplyr::filter(role %in% c("CCNF"))
 
   # If data not provided, fetch it
   if (is.null(existing_users)) {
@@ -565,7 +566,7 @@ replace_existing_users <- function(
   # Read credentials from CSV
   credentials_df <- read_credentials_csv(csv_path) %>%
     dplyr::mutate(fisher_id = tolower(fisher_id)) %>%
-    dplyr::filter(role %in% c("IIA", "WBCIA", "CIA"))
+    dplyr::filter(role %in% c("CCNF"))
 
   # Filter to specific fisher IDs if provided
   if (!is.null(fisher_ids_to_replace)) {
@@ -661,23 +662,19 @@ replace_existing_users <- function(
 
 #### Example usage ####
 
-# # Load configuration
-# conf <- read_config()
-#
-# # Run in dry-run mode first to validate
-# add_fishers_from_csv(
-#   csv_path = "inst/current_login_list.csv",
-#   connection_string = conf$storage$mongodb$connection_string,
-#   db_name = conf$storage$mongodb$database$dashboard$name,
-#   dry_run = TRUE,
-#   hash_passwords = TRUE
-# )
-#
-# # If dry run looks good, run for real
-# result <- replace_existing_users(
-#   csv_path = "inst/current_login_list.csv",
-#   connection_string = conf$storage$mongodb$connection_string,
-#   db_name = conf$storage$mongodb$database$dashboard$name,
-#   dry_run = FALSE,
-#   hash_passwords = TRUE
-# )
+# Load configuration
+conf <- read_config()
+
+
+readr::read_csv("inst/current_login_list.csv", show_col_types = FALSE) |>
+  dplyr::filter(user_bmu == "Ngomeni") |>
+  readr::write_csv("inst/current_login_list.csv")
+
+# Run in dry-run mode first to validate
+add_fishers_from_csv(
+  csv_path = "inst/current_login_list.csv",
+  connection_string = conf$storage$mongodb$cluster$dashboard$connection_string,
+  db_name = conf$storage$mongodb$cluster$dashboard$database,
+  dry_run = FALSE,
+  hash_passwords = TRUE
+)

@@ -1,3 +1,28 @@
+# peskas.kenya.data.pipeline 4.5.0
+
+## New Features
+
+- **API KEFS Data Export Pipeline**: Added new `export_api_raw()` function to export raw preprocessed survey data in API-friendly format
+  - Exports raw/preprocessed trip data (before validation) to cloud storage
+  - Part of a two-stage API export pipeline (raw and validated exports)
+  - Transforms nested survey data into flat structure with standardized trip-level records
+  - Generates unique trip IDs using xxhash64 algorithm
+  - Exports versioned parquet files to `kenya/raw/` path for external API consumption
+  - Includes comprehensive output schema with 14 standardized fields (trip_id, landing_date, gear, catch metrics, etc.)
+
+## Improvements
+
+- **Configuration Enhancements**:
+  - Added `api` configuration section for trip data exports with separate raw/validated paths
+  - Configured cloud storage paths for API exports (kenya/raw, kenya/validated)
+  - Added Airtable base ID and token configuration for metadata management
+  - Enhanced `options_api` storage configuration for peskas-coasts bucket
+
+- **GitHub Actions Workflow**:
+  - Added new `export-api-data` job to automated pipeline workflow
+  - Configured API export job to run after survey preprocessing step
+  - Added production environment configuration for API data exports
+
 # peskas.kenya.data.pipeline 4.4.0
 
 ## New features

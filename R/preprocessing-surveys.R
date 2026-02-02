@@ -280,7 +280,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       options = conf$storage$google$options_coasts
     ) |>
     readr::read_rds() |>
-    purrr::keep_at(c("taxa", "gear", "vessels", "sites")) |>
+    purrr::keep_at(c("taxa", "gear", "vessels", "sites", "geo")) |>
     purrr::map(
       ~ dplyr::filter(
         .x,
@@ -302,7 +302,6 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
-
   trip_info <-
     raw_dat |>
     dplyr::select(
@@ -314,6 +313,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       "BMU",
       landing_site = "Landing_sites",
       fishing_ground = "Area_Fished",
+      habitat = "Specify_the_type_of_T_of_the_AREA_FISHED",
       vessel_type = "Craft_Typ",
       pds = "Is_a_PDS_or_CLASS_B_stalled_on_your_Boat",
       other_vessel = "Craft_TypOther",
@@ -409,7 +409,18 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       gear_mapping = assets$gear,
       vessels_mapping = assets$vessels,
       sites_mapping = assets$sites,
+      geo_mapping = assets$geo,
       kefs_v2 = TRUE
+    ) |>
+    dplyr::mutate(
+      habitat = dplyr::case_when(
+        .data$habitat == "reef" ~ "Reef",
+        .data$habitat == "deep_sea" ~ "Open sea",
+        .data$habitat == "beach" ~ "Shore",
+        .data$habitat == "mangroove" ~ "Mangrove",
+        .data$habitat == "sea_grass" ~ "Seagrass",
+        TRUE ~ "Multiple"
+      )
     )
 
   # upload preprocessed landings
@@ -1393,6 +1404,7 @@ get_fishery_metrics_long <- function(data = NULL) {
 #'   standard_name columns.
 #' @param sites_mapping A data frame from Airtable landing_sites table with site_code and
 #'   site columns.
+#' @param geo_mapping A data frame from Airtable geo table with GAUL codes and names
 #' @param kefs_v2 Logical. If TRUE, processes data from the KEFs v2 survey form which
 #'   uses priority_species and sample_species columns. If FALSE (default), processes
 #'   standard survey forms with catch_taxon column.
@@ -1424,6 +1436,7 @@ map_surveys <- function(
   gear_mapping = NULL,
   vessels_mapping = NULL,
   sites_mapping = NULL,
+  geo_mapping = NULL,
   kefs_v2 = FALSE
 ) {
   taxa_map <-
@@ -1468,6 +1481,17 @@ map_surveys <- function(
         dplyr::relocate("alpha3_code", .after = "scientific_name")
     }
   taxa_map |>
+    dplyr::left_join(geo_mapping, by = c("district" = "survey_label")) |>
+    dplyr::select(
+      -c("form_id", "district_code", "country")
+    ) |>
+    dplyr::relocate(
+      "gaul_1_name",
+      "gaul_1_code",
+      "gaul_2_name",
+      "gaul_2_code",
+      .after = "district"
+    ) |>
     dplyr::left_join(gear_mapping, by = c("gear" = "survey_label")) |>
     dplyr::select(-c("gear", "form_id")) |>
     dplyr::relocate("standard_name", .after = "vessel_type") |>

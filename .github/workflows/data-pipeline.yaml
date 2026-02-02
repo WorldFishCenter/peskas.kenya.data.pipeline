@@ -197,6 +197,36 @@ jobs:
       - name: Call validate_kefs_surveys_v2()
         run: Rscript -e 'peskas.kenya.data.pipeline::validate_kefs_surveys_v2()'
 
+  export-api-raw:
+    container:
+      credentials:
+        password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ github.actor }}
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+    name: Export ADNAP raw API landings
+    needs: ingest-preprocess-kefs-v2
+    runs-on: ubuntu-latest
+    steps:
+      - if: endsWith(github.ref, '/main')
+        name: Set env to production
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call export_api_raw()
+        run: Rscript -e 'peskas.kenya.data.pipeline::export_api_raw()'
 
+  export-api-validated:
+    container:
+      credentials:
+        password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ github.actor }}
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+    name: Export ADNAP validated API landings
+    needs: validate-sync-kefs-v2
+    runs-on: ubuntu-latest
+    steps:
+      - if: endsWith(github.ref, '/main')
+        name: Set env to production
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call export_api_validated()
+        run: Rscript -e 'peskas.kenya.data.pipeline::export_api_validated()'
   # Note: KEFS v1 validation and export jobs will be added here
   # as those pipeline stages are developed
