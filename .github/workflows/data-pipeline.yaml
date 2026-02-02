@@ -145,23 +145,23 @@ jobs:
   # KEFS DATA PIPELINE
   # ============================================================================
 
-  ingest-preprocess-kefs-v1:
-    name: Ingest and preprocess KEFS (BMU DAILY) surveys
-    needs: build-container
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Set env to production
-        if: endsWith(github.ref, '/main')
-        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
-      - name: Call ingest_kefs_surveys_v1()
-        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_surveys_v1()'
-      - name: Call preprocess_kefs_surveys_v1()
-        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v1()'
+  # ingest-preprocess-kefs-v1:
+  #   name: Ingest and preprocess KEFS (BMU DAILY) surveys
+  #   needs: build-container
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+  #     credentials:
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   steps:
+  #     - name: Set env to production
+  #       if: endsWith(github.ref, '/main')
+  #       run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+  #     - name: Call ingest_kefs_surveys_v1()
+  #       run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_surveys_v1()'
+  #     - name: Call preprocess_kefs_surveys_v1()
+  #       run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v1()'
 
   ingest-preprocess-kefs-v2:
     name: Ingest and preprocess KEFS (CATCH ASSESSMENT) surveys
@@ -203,7 +203,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
         username: ${{ github.actor }}
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-    name: Export ADNAP raw API landings
+    name: Export KEFS raw API landings
     needs: ingest-preprocess-kefs-v2
     runs-on: ubuntu-latest
     steps:
@@ -219,7 +219,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
         username: ${{ github.actor }}
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-    name: Export ADNAP validated API landings
+    name: Export KEFS validated API landings
     needs: validate-sync-kefs-v2
     runs-on: ubuntu-latest
     steps:
