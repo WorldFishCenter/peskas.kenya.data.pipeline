@@ -16,6 +16,7 @@ map_surveys(
   gear_mapping = NULL,
   vessels_mapping = NULL,
   sites_mapping = NULL,
+  geo_mapping = NULL,
   kefs_v2 = FALSE
 )
 ```
@@ -48,6 +49,10 @@ map_surveys(
 
   A data frame from Airtable landing_sites table with site_code and site
   columns.
+
+- geo_mapping:
+
+  A data frame from Airtable geo table with GAUL codes and names
 
 - kefs_v2:
 
