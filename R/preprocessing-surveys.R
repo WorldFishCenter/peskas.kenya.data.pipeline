@@ -1241,14 +1241,20 @@ get_fishery_metrics_long <- function(data = NULL) {
     dplyr::summarise(
       avg_fishers_per_trip = round(mean(no_of_fishers, na.rm = TRUE), 2),
       avg_catch_per_trip = round(mean(total_catch_per_trip, na.rm = TRUE), 2),
-      predominant_gear = names(which.max(table(gear))),
+      predominant_gear = {
+        valid_gear <- gear[!is.na(gear)]
+        if (length(valid_gear) > 0) {
+          names(which.max(table(valid_gear)))
+        } else {
+          NA_character_
+        }
+      },
       pct_main_gear = round(
-        sum(gear == predominant_gear) / dplyr::n() * 100,
+        sum(gear == predominant_gear, na.rm = TRUE) / sum(!is.na(gear)) * 100,
         2
       ),
       .groups = "drop"
     )
-
   # Calculate CPUE by gear type
   cpue_metrics <- data %>%
     dplyr::mutate(year_month = lubridate::floor_date(landing_date, "month")) %>%
