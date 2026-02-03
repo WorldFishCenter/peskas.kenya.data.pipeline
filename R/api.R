@@ -92,17 +92,17 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
       "gaul_1_name",
       "gaul_2_code",
       "gaul_2_name",
-      no_of_fishers = "sample_alpha3_code",
+      n_fishers = "no_of_fishers",
       trip_duration_hrs = "trip_duration",
       "gear",
       "vessel_type",
       catch_habitat = "habitat",
       "catch_outcome",
       n_catch = "n_sample",
-      catch_taxon = "priority_alpha3_code",
+      catch_taxon = "sample_alpha3_code",
       "length_cm",
-      catch_kg = "total_catch_weight",
-      catch_price = "total_catch_price"
+      catch_kg = "sample_weight",
+      catch_price = "sample_price"
     )
   logger::log_info(
     "Processed {nrow(api_raw)} records from {length(unique(api_raw$trip_id))} unique trips"
@@ -232,17 +232,17 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
       "gaul_1_name",
       "gaul_2_code",
       "gaul_2_name",
-      no_of_fishers = "sample_alpha3_code",
+      n_fishers = "no_of_fishers",
       trip_duration_hrs = "trip_duration",
       "gear",
       "vessel_type",
       catch_habitat = "habitat",
       "catch_outcome",
       n_catch = "n_sample",
-      catch_taxon = "priority_alpha3_code",
+      catch_taxon = "sample_alpha3_code",
       "length_cm",
-      catch_kg = "total_catch_weight",
-      catch_price = "total_catch_price"
+      catch_kg = "sample_weight",
+      catch_price = "sample_price"
     )
   logger::log_info(
     "Processed {nrow(api_validated)} records from {length(unique(api_validated$trip_id))} unique trips"
