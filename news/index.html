@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,59 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.6.0" id="peskaskenyadatapipeline-460">peskas.kenya.data.pipeline 4.6.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-460"></a></h2>
+<div class="section level3">
+<h3 id="new-features-4-6-0">New Features<a class="anchor" aria-label="anchor" href="#new-features-4-6-0"></a></h3>
+<ul><li>
+<strong>GPS Trip Matching System</strong>: Added comprehensive fuzzy matching infrastructure to link catch surveys with GPS trip data
+<ul><li>Implemented <code><a href="../reference/match_surveys_to_gps_trips.html">match_surveys_to_gps_trips()</a></code> for universal two-step matching workflow (surveys -&gt; registry -&gt; trips)</li>
+<li>Added <code><a href="../reference/merge_trips.html">merge_trips()</a></code> for end-to-end Kenya KEFS-PDS data integration pipeline</li>
+<li>Universal matching approach supports both explicit device registries (Kenya) and implicit registry construction (to test with Zanzibar)</li>
+<li>Supports customizable Levenshtein distance thresholds for registration numbers (default 0.15) and names (default 0.25)</li>
+<li>Implements conservative one-trip-per-day constraint to prevent ambiguous matches</li>
+</ul></li>
+<li>
+<strong>Fuzzy Matching Infrastructure</strong>: Created robust text matching system for cross-dataset linking
+<ul><li>Text normalization functions for cleaning boat identifiers (<code><a href="../reference/clean_text.html">clean_text()</a></code>, <code><a href="../reference/clean_registration.html">clean_registration()</a></code>)</li>
+<li>Field-level Levenshtein distance matching with normalized thresholds (0-1 scale)</li>
+<li>Multi-field matching strategy (registration number, boat name, fisher name) with per-field thresholds</li>
+<li>Match quality metrics: <code>n_fields_used</code>, <code>n_fields_ok</code>, <code>match_ok</code> for transparency</li>
+<li>Handles variant column names across datasets (vessel_reg_number, boat_reg_no, captain_name, etc.)</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="workflow-integration-4-6-0">Workflow Integration<a class="anchor" aria-label="anchor" href="#workflow-integration-4-6-0"></a></h3>
+<ul><li>
+<strong>GitHub Actions Pipeline</strong>:
+<ul><li>Added <code>merge-trips-kefs-v2</code> job to automate survey-trip matching</li>
+<li>Integrated matching step after KEFS v2 validation in production workflow</li>
+<li>Exports merged dataset (matched + unmatched records) to cloud storage</li>
+</ul></li>
+<li>
+<strong>Configuration Support</strong>:
+<ul><li>Added merged trips output path configuration (<code>surveys.kefs.v2.merged</code>)</li>
+<li>Integrated with existing PDS API credentials and cloud storage settings</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-4-6-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-4-6-0"></a></h3>
+<ul><li>Added comprehensive documentation for 9 new functions with detailed examples:
+<ul><li>
+<code>match_surveys_to_gps_trips.Rd</code>: Main workflow function with two-step matching process</li>
+<li>
+<code>merge_trips.Rd</code>: Kenya-specific end-to-end pipeline</li>
+<li>
+<code>match_surveys_to_registry.Rd</code>: Registry fuzzy matching algorithm</li>
+<li>
+<code>match_imei_to_trip.Rd</code>: IMEI-date trip joining with uniqueness constraint</li>
+<li>
+<code>build_registry_from_trips.Rd</code>: Implicit registry construction from historical trips</li>
+<li>
+<code>standardize_column_names.Rd</code>, <code>clean_matching_fields.Rd</code>, <code>clean_registration.Rd</code>, <code>clean_text.Rd</code>: Helper functions</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="4.5.0" id="peskaskenyadatapipeline-450">peskas.kenya.data.pipeline 4.5.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-450"></a></h2>
 <div class="section level3">

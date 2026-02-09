@@ -13,9 +13,13 @@
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/alert_outlier_iqr.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/apply_gear_mapping_v1.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/apply_gear_mapping_v2.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/build_registry_from_trips.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/bulk_update_airtable.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/check_outliers_iqr.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/clean_catch_names.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/clean_matching_fields.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/clean_registration.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/clean_text.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/cloud_object_name.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/cloud_storage_authenticate.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/create_geos.html</loc></url>
@@ -63,10 +67,14 @@
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/ingest_price_survey_version.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/ingest_wcs_surveys.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/map_surveys.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/match_imei_to_trip.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/match_surveys_to_gps_trips.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/match_surveys_to_registry.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/mdb_collection_pull.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/mdb_collection_push.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_landings.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_prices.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_trips.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/pipe.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_kefs_surveys_v1.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_kefs_surveys_v2.html</loc></url>
@@ -85,6 +93,7 @@
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/reshape_catch_data_v1.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/reshape_overall_sample.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/reshape_priority_species.html</loc></url>
+<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/standardize_column_names.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/standardize_enumerator_names.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/summarise_catch_price.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/sync_validation_submissions.html</loc></url>

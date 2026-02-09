@@ -134,10 +134,14 @@ these functions executes a step in the data pipeline.
   : Ingest Pelagic Data Systems (PDS) Trip Data
 - [`ingest_wcs_surveys()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/ingest_wcs_surveys.md)
   : Download and Process WCS Catch Surveys from Kobotoolbox
+- [`match_surveys_to_gps_trips()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/match_surveys_to_gps_trips.md)
+  : Match Catch Surveys to GPS Trips
 - [`merge_landings()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_landings.md)
   : Merge Legacy and Ongoing Landings Data
 - [`merge_prices()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_prices.md)
   : Merge Price Data
+- [`merge_trips()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_trips.md)
+  : Merge Survey and GPS Trip Data
 - [`preprocess_kefs_surveys_v1()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_kefs_surveys_v1.md)
   : Preprocess KEFS Survey Data
 - [`preprocess_kefs_surveys_v2()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_kefs_surveys_v2.md)
@@ -337,6 +341,15 @@ Functions dedicated to the validation module
 
 - [`validate_total_catch_iqr()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_total_catch_iqr.md)
   : Validate Total Catch Data using IQR method
+
+## Matching
+
+Functions for linking catch surveys to GPS trip data via fuzzy matching
+
+- [`match_surveys_to_gps_trips()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/match_surveys_to_gps_trips.md)
+  : Match Catch Surveys to GPS Trips
+- [`merge_trips()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_trips.md)
+  : Merge Survey and GPS Trip Data
 
 ## Export
 
