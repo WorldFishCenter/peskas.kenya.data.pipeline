@@ -211,7 +211,7 @@ jobs:
         if: endsWith(github.ref, '/main')
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call merge_trips()
-        run: Rscript -e 'peskas.kenya.data.pipeline::merge_trips(site = "zanzibar")'
+        run: Rscript -e 'peskas.kenya.data.pipeline::merge_trips(site = "kenya")'
 
   export-api-raw:
     container:
