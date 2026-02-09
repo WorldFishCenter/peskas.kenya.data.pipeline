@@ -731,7 +731,11 @@ match_surveys_to_gps_trips <- function(
 #' performs fuzzy matching, merges all records (matched and unmatched), and
 #' uploads the result to cloud storage.
 #'
-#' @param conf Configuration list from `read_config()` containing:
+#' @param log_threshold Logger threshold level for controlling verbosity.
+#'   Default is `logger::DEBUG`. Use `logger::INFO` for less verbose output.
+#'
+#' @section Configuration:
+#' The function internally calls `read_config()` which must provide:
 #'   \itemize{
 #'     \item metadata$airtable$assets: Path to device registry
 #'     \item surveys$kefs$v2$validated$file_prefix: Path to validated surveys
@@ -814,10 +818,13 @@ match_surveys_to_gps_trips <- function(
 #' @examples
 #' \dontrun{
 #' # Standard usage - merges and uploads to cloud
-#' conf <- read_config()
-#' merge_trips(conf)
+#' merge_trips()
+#'
+#' # With custom logging threshold (less verbose)
+#' merge_trips(log_threshold = logger::INFO)
 #'
 #' # Download the merged data to analyze
+#' conf <- read_config()
 #' merged_data <- download_parquet_from_cloud(
 #'   prefix = conf$surveys$kefs$v2$merged,
 #'   provider = conf$storage$google$key,
@@ -832,7 +839,9 @@ match_surveys_to_gps_trips <- function(
 #' }
 #'
 #' @export
-merge_trips <- function(conf) {
+merge_trips <- function(log_threshold = logger::DEBUG) {
+  conf <- read_config()
+
   logger::log_info("Loading Kenya device registry...")
   registry <- cloud_object_name(
     prefix = conf$metadata$airtable$assets,
