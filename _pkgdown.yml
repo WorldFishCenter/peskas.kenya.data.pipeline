@@ -42,6 +42,11 @@ reference:
   contents:
   - has_keyword("validation")
 
+- title: Matching
+  desc: Functions for linking catch surveys to GPS trip data via fuzzy matching
+  contents:
+  - has_keyword("matching")
+
 - title: Export
   desc: Functions dedicated dissemination of processed and analysed fisheries data
   contents:

@@ -73,6 +73,8 @@ default:
           file_prefix: kefs-v2-surveys-preprocessed
         validated:
           file_prefix: kefs-v2-surveys-validated
+        merged:
+          file_prefix: kefs-v2-surveys-merged         
         validation:
           flags:
             file_prefix: kefs-v2-flags          

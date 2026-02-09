@@ -696,28 +696,45 @@ rename_child <- function(x, i, p) {
 #' @export
 ingest_pds_trips <- function(log_threshold = logger::DEBUG) {
   logger::log_threshold(log_threshold)
-  pars <- read_config()
+  conf <- read_config()
 
-  devices_table <- airtable_to_df(
-    token = pars$metadata$airtable$token,
-    base_id = pars$metadata$airtable$base_id,
-    table_name = "pds_devices"
-  )
-
-  # filter for Kenya
-  kenya_devices <-
-    devices_table |>
-    dplyr::filter(stringr::str_detect(.data$customer_name, "Kenya"))
-
+  logger::log_info("Loading device registry...")
+  devices <- cloud_object_name(
+    prefix = conf$metadata$airtable$assets,
+    provider = conf$storage$google$key,
+    version = "latest",
+    extension = "rds",
+    options = conf$storage$google$options_coasts
+  ) |>
+    download_cloud_file(
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options_coasts
+    ) |>
+    readr::read_rds() |>
+    purrr::pluck("devices") |>
+    dplyr::filter(
+      .data$customer_name %in%
+        c("WorldFish - Kenya", "Kenya", "Kenya AABS")
+    )
   boats_trips <- get_trips(
-    token = pars$pds$token,
-    secret = pars$pds$secret,
+    token = conf$pds$token,
+    secret = conf$pds$secret,
     dateFrom = "2023-01-01",
     dateTo = Sys.Date(),
-    imeis = unique(kenya_devices$imei)
-  )
+    deviceInfo = TRUE,
+    imeis = unique(devices$imei)
+  ) |>
+    janitor::clean_names() |>
+    dplyr::mutate(
+      imei = as.character(.data$imei),
+      last_seen = as.numeric(.data$last_seen)
+    ) |>
+    dplyr::left_join(
+      devices,
+      by = c("imei", "boat_name", "community", "last_seen")
+    )
 
-  filename <- pars$pds$pds_trips$file_prefix %>%
+  filename <- conf$pds$pds_trips$file_prefix |>
     add_version(extension = "parquet")
 
   arrow::write_parquet(
@@ -730,8 +747,8 @@ ingest_pds_trips <- function(log_threshold = logger::DEBUG) {
   logger::log_info("Uploading {filename} to cloud storage")
   upload_cloud_file(
     file = filename,
-    provider = pars$storage$google$key,
-    options = pars$storage$google$options
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
   )
 }
 #' Ingest Pelagic Data Systems (PDS) Track Data

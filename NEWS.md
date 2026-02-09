@@ -1,3 +1,43 @@
+# peskas.kenya.data.pipeline 4.6.0
+
+## New Features
+
+- **GPS Trip Matching System**: Added comprehensive fuzzy matching infrastructure to link catch surveys with GPS trip data
+  - Implemented `match_surveys_to_gps_trips()` for universal two-step matching workflow (surveys -> registry -> trips)
+  - Added `merge_trips()` for end-to-end Kenya KEFS-PDS data integration pipeline
+  - Universal matching approach supports both explicit device registries (Kenya) and implicit registry construction (to test with Zanzibar)
+  - Supports customizable Levenshtein distance thresholds for registration numbers (default 0.15) and names (default 0.25)
+  - Implements conservative one-trip-per-day constraint to prevent ambiguous matches
+
+- **Fuzzy Matching Infrastructure**: Created robust text matching system for cross-dataset linking
+  - Text normalization functions for cleaning boat identifiers (`clean_text()`, `clean_registration()`)
+  - Field-level Levenshtein distance matching with normalized thresholds (0-1 scale)
+  - Multi-field matching strategy (registration number, boat name, fisher name) with per-field thresholds
+  - Match quality metrics: `n_fields_used`, `n_fields_ok`, `match_ok` for transparency
+  - Handles variant column names across datasets (vessel_reg_number, boat_reg_no, captain_name, etc.)
+
+## Workflow Integration
+
+- **GitHub Actions Pipeline**:
+  - Added `merge-trips-kefs-v2` job to automate survey-trip matching
+  - Integrated matching step after KEFS v2 validation in production workflow
+  - Exports merged dataset (matched + unmatched records) to cloud storage
+
+- **Configuration Support**:
+  - Added merged trips output path configuration (`surveys.kefs.v2.merged`)
+  - Integrated with existing PDS API credentials and cloud storage settings
+
+## Documentation
+
+- Added comprehensive documentation for 9 new functions with detailed examples:
+  - `match_surveys_to_gps_trips.Rd`: Main workflow function with two-step matching process
+  - `merge_trips.Rd`: Kenya-specific end-to-end pipeline
+  - `match_surveys_to_registry.Rd`: Registry fuzzy matching algorithm
+  - `match_imei_to_trip.Rd`: IMEI-date trip joining with uniqueness constraint
+  - `build_registry_from_trips.Rd`: Implicit registry construction from historical trips
+  - `standardize_column_names.Rd`, `clean_matching_fields.Rd`, `clean_registration.Rd`, `clean_text.Rd`: Helper functions
+
+
 # peskas.kenya.data.pipeline 4.5.0
 
 ## New Features
