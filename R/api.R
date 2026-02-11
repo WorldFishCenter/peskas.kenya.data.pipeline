@@ -75,7 +75,8 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(
       trip_id = paste0(
         "TRIP_",
-        substr(digest::digest(.data$submission_id, algo = "xxhash64"), 1, 12)
+        .data$submission_id
+        #substr(digest::digest(.data$submission_id, algo = "xxhash64"), 1, 12)
       ),
       survey_id = conf$ingestion$kefs$koboform$asset_id_v2
     ) |>
@@ -103,7 +104,9 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
       "length_cm",
       catch_kg = "sample_weight",
       catch_price = "sample_price"
-    )
+    ) |>
+    dplyr::distinct()
+
   logger::log_info(
     "Processed {nrow(api_raw)} records from {length(unique(api_raw$trip_id))} unique trips"
   )
@@ -215,7 +218,8 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(
       trip_id = paste0(
         "TRIP_",
-        substr(digest::digest(.data$submission_id, algo = "xxhash64"), 1, 12)
+        .data$submission_id
+        #substr(digest::digest(.data$submission_id, algo = "xxhash64"), 1, 12)
       ),
       survey_id = conf$ingestion$kefs$koboform$asset_id_v2
     ) |>
@@ -243,7 +247,8 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
       "length_cm",
       catch_kg = "sample_weight",
       catch_price = "sample_price"
-    )
+    ) |>
+    dplyr::distinct()
   logger::log_info(
     "Processed {nrow(api_validated)} records from {length(unique(api_validated$trip_id))} unique trips"
   )
