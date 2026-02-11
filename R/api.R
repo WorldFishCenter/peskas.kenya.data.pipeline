@@ -84,6 +84,8 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(
       n_catch = as.integer(.data$n_sample),
       catch_outcome = dplyr::if_else(.data$catch_outcome == "yes", "1", "0"),
+      # to do: think how to deal with lengths
+      length_cm = NA_real_
     ) |>
     dplyr::select(
       "survey_id",
@@ -227,6 +229,8 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(
       n_catch = as.integer(.data$n_sample),
       catch_outcome = dplyr::if_else(.data$catch_outcome == "yes", "1", "0"),
+      # to do: think how to deal with lengths
+      length_cm = NA_real_
     ) |>
     dplyr::select(
       "survey_id",
