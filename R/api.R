@@ -105,7 +105,9 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
       catch_taxon = "sample_alpha3_code",
       "length_cm",
       catch_kg = "sample_weight",
-      catch_price = "sample_price"
+      catch_price = "sample_price",
+      tot_catch_weight = "total_catch_weight",
+      tot_catch_price = "total_catch_price"
     ) |>
     dplyr::distinct()
 
@@ -250,7 +252,9 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
       catch_taxon = "sample_alpha3_code",
       "length_cm",
       catch_kg = "sample_weight",
-      catch_price = "sample_price"
+      catch_price = "sample_price",
+      tot_catch_weight = "total_catch_weight",
+      tot_catch_price = "total_catch_price"
     ) |>
     dplyr::distinct()
   logger::log_info(
