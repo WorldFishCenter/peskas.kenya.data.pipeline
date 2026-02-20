@@ -20,6 +20,12 @@ default:
         password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
         token: !expr Sys.getenv('KEFS_KOBO_TOKEN')
   surveys:
+    summaries:
+      file_prefix: kenya-summaries
+      version: latest
+    aggregated:
+      file_prefix: kenya-aggregated
+      version: latest  
     wcs:
       catch:
         v2:
