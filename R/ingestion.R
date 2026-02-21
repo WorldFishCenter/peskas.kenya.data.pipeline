@@ -792,7 +792,7 @@ ingest_pds_tracks <- function(
   # Read trip IDs
   logger::log_info("Reading trip IDs...")
   trips_data <- arrow::read_parquet(file = pds_trips_parquet) %>%
-    dplyr::pull("Trip") %>%
+    dplyr::pull("trip") %>%
     unique()
 
   # Clean up downloaded file
