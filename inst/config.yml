@@ -111,7 +111,7 @@ default:
           collections:
             flags: surveys_flags
             enumerators_stats: enumerators_stats
-        dashboard:
+        dashboard_wcs:
           database_name: app-dev
           collections:
             legacy:
@@ -127,7 +127,14 @@ default:
               fish_distribution: fish_distribution
               map_distribution: map_distribution
               gear_summaries: gear_summaries
-
+        dashboard:
+          database_name: portal-dev
+          collections:
+            monthly_summaries: monthly_summaries
+            taxa_summaries: taxa_summaries
+            districts_summaries: districts_summaries
+            gear_summaries: gear_summaries
+            grid_summaries: grid_summaries
     google:
       key: gcs
       options:
@@ -200,8 +207,10 @@ production:
           database_name: pipeline
         validation:
           database_name: validation-prod
-        dashboard:
+        dashboard_wcs:
           database_name: app
+        dashboard:
+          database_name: portal-prod
   pds_storage:
     google:
       options:
