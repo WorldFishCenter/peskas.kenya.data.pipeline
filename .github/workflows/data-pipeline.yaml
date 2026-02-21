@@ -268,7 +268,7 @@ jobs:
 
   summarize-model-data:
     name: Summarize and model validated data
-    needs: [validate-sync-kefs-v2, ingest-preprocess-pds-data]
+    needs: [export-api-validated, ingest-preprocess-pds-data]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
@@ -286,7 +286,7 @@ jobs:
 
   export-surveys-portal:
     name: Export aggregated data
-    needs: summarize-model-wf-data
+    needs: summarize-model-data
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
