@@ -30,15 +30,17 @@ download_parquet_from_cloud <- function(prefix, provider, options) {
   )
 
   # Log and download file
+  local_file <- basename(parquet_file)
   logger::log_info("Retrieving {parquet_file}")
   download_cloud_file(
     name = parquet_file,
     provider = provider,
-    options = options
+    options = options,
+    file = local_file
   )
 
   # Read parquet file
-  arrow::read_parquet(file = parquet_file)
+  arrow::read_parquet(file = local_file)
 }
 
 #' Upload Processed Data to Cloud Storage

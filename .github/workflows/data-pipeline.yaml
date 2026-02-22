@@ -181,6 +181,27 @@ jobs:
       - name: Call preprocess_kefs_surveys_v2()
         run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v2()'
 
+  ingest-preprocess-pds-data:
+    name: Ingest and preprocess GPS data
+    needs: build-container
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Set env to production
+        if: endsWith(github.ref, '/main')
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call ingest_pds_trips()
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_pds_trips()'
+      - name: Call ingest_pds_tracks()
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_pds_tracks()'
+      - name: Call preprocess_pds_tracks()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_pds_tracks()'
+
+
   validate-sync-kefs-v2:
     name: Validate and sync KEFS (CATCH ASSESSMENT) surveys
     needs: ingest-preprocess-kefs-v2
@@ -244,5 +265,37 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call export_api_validated()
         run: Rscript -e 'peskas.kenya.data.pipeline::export_api_validated()'
-  # Note: KEFS v1 validation and export jobs will be added here
-  # as those pipeline stages are developed
+
+  summarize-model-data:
+    name: Summarize and model validated data
+    needs: [export-api-validated, ingest-preprocess-pds-data]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Set env to production
+        if: endsWith(github.ref, '/main')
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call summarize_data()
+        run: Rscript -e 'coasts::summarize_data(package = "peskas.kenya.data.pipeline")'
+      - name: Call generate_fleet_analysis()
+        run: Rscript -e 'coasts::generate_fleet_analysis(package = "peskas.kenya.data.pipeline")'
+
+  export-surveys-portal:
+    name: Export aggregated data
+    needs: summarize-model-data
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Set env to production
+        if: endsWith(github.ref, '/main')
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call export_portal()
+        run: Rscript -e 'coasts::export_portal(package = "peskas.kenya.data.pipeline")'

@@ -335,10 +335,10 @@ validate_kefs_surveys_v2 <- function() {
   # check for manual validates submissions (only possible among not approved submissions)
   not_approved_ids <-
     mdb_collection_pull(
-      connection_string = conf$storage$mongodb$cluster$validation$connection_string,
-      db_name = conf$storage$mongodb$cluster$validation$database,
+      connection_string = conf$storage$mongodb$connection_strings$validation,
+      db_name = conf$storage$mongodb$databases$validation$database_name,
       collection_name = paste(
-        conf$storage$mongodb$cluster$validation$collection$flags,
+        conf$storage$mongodb$databases$validation$collections$flags,
         conf$ingestion$kefs$koboform$asset_id_v2,
         sep = "-"
       )
@@ -731,10 +731,10 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
   # Push the validation flags with KoboToolbox status to MongoDB
   mdb_collection_push(
     data = validation_flags_with_kobo_status,
-    connection_string = conf$storage$mongodb$cluster$validation$connection_string,
-    db_name = conf$storage$mongodb$cluster$validation$database,
+    connection_string = conf$storage$mongodb$connection_strings$validation,
+    db_name = conf$storage$mongodb$databases$validation$database_name,
     collection_name = paste(
-      conf$storage$mongodb$cluster$validation$collection$flags,
+      conf$storage$mongodb$databases$validation$collections$flags,
       asset_id,
       sep = "-"
     )
@@ -742,10 +742,10 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
   # Push enumerators statistics to MongoDB
   mdb_collection_push(
     data = validation_flags_long,
-    connection_string = conf$storage$mongodb$cluster$validation$connection_string,
-    db_name = conf$storage$mongodb$cluster$validation$database,
+    connection_string = conf$storage$mongodb$connection_strings$validation,
+    db_name = conf$storage$mongodb$databases$validation$database_name,
     collection_name = paste(
-      conf$storage$mongodb$cluster$validation$collection$enumerators_stats,
+      conf$storage$mongodb$databases$validation$collections$enumerators_stats,
       asset_id,
       sep = "-"
     )
@@ -941,10 +941,10 @@ export_validation_flags <- function(
 
   mdb_collection_push(
     data = validation_flags_with_kobo_status,
-    connection_string = conf$storage$mongodb$cluster$validation$connection_string,
-    db_name = conf$storage$mongodb$cluster$validation$database,
+    connection_string = conf$storage$mongodb$connection_strings$validation,
+    db_name = conf$storage$mongodb$databases$validation$database_name,
     collection_name = paste(
-      conf$storage$mongodb$cluster$validation$collection$flags,
+      conf$storage$mongodb$databases$validation$collections$flags,
       asset_id,
       sep = "-"
     )
@@ -952,10 +952,10 @@ export_validation_flags <- function(
 
   mdb_collection_push(
     data = validation_flags_long,
-    connection_string = conf$storage$mongodb$cluster$validation$connection_string,
-    db_name = conf$storage$mongodb$cluster$validation$database,
+    connection_string = conf$storage$mongodb$connection_strings$validation,
+    db_name = conf$storage$mongodb$databases$validation$database_name,
     collection_name = paste(
-      conf$storage$mongodb$cluster$validation$collection$enumerators_stats,
+      conf$storage$mongodb$databases$validation$collections$enumerators_stats,
       asset_id,
       sep = "-"
     )

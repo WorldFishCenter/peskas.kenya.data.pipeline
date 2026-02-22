@@ -287,14 +287,14 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   # Collection names
   collection_names <- list(
-    individual_stats = conf$storage$mongodb$cluster$dashboard$collection$v1$individual_stats,
-    individual_gear_stats = conf$storage$mongodb$cluster$dashboard$collection$v1$individual_gear_stats,
-    individual_fish_distribution = conf$storage$mongodb$cluster$dashboard$collection$v1$individual_fish_distribution,
-    monthly_stats = conf$storage$mongodb$cluster$dashboard$collection$v1$monthly_stats,
-    monthly_summaries = conf$storage$mongodb$cluster$dashboard$collection$v1$catch_monthly,
-    fish_distribution = conf$storage$mongodb$cluster$dashboard$collection$v1$fish_distribution,
-    #map_distribution = conf$storage$mongodb$cluster$dashboard$collection$v1$map_distribution,
-    gear_summaries = conf$storage$mongodb$cluster$dashboard$collection$v1$gear_summaries
+    individual_stats = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$individual_stats,
+    individual_gear_stats = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$individual_gear_stats,
+    individual_fish_distribution = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$individual_fish_distribution,
+    monthly_stats = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$monthly_stats,
+    monthly_summaries = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$catch_monthly,
+    fish_distribution = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$fish_distribution,
+    #map_distribution = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$map_distribution,
+    gear_summaries = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$gear_summaries
   )
 
   # Iterate over the dataframes and upload them
@@ -305,9 +305,9 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       logger::log_info(paste("Uploading", .y, "data to MongoDB"))
       mdb_collection_push(
         data = .x,
-        connection_string = conf$storage$mongodb$cluster$dashboard$connection_string,
+        connection_string = conf$storage$mongodb$connection_strings$main,
         collection_name = .y,
-        db_name = conf$storage$mongodb$cluster$dashboard$database
+        db_name = conf$storage$mongodb$databases$dashboard_wcs$database_name
       )
     }
   )

@@ -1,4 +1,5 @@
 default:
+  country: kenya
   ingestion:
     wcs:
       koboform:
@@ -19,6 +20,12 @@ default:
         password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
         token: !expr Sys.getenv('KEFS_KOBO_TOKEN')
   surveys:
+    summaries:
+      file_prefix: kenya-summaries
+      version: latest
+    aggregated:
+      file_prefix: kenya-aggregated
+      version: latest  
     wcs:
       catch:
         v2:
@@ -74,23 +81,19 @@ default:
         validated:
           file_prefix: kefs-v2-surveys-validated
         merged:
-          file_prefix: kefs-v2-surveys-merged         
+          file_prefix: kefs-v2-surveys-merged
         validation:
           flags:
-            file_prefix: kefs-v2-flags          
+            file_prefix: kefs-v2-flags
   storage:
     mongodb:
-      cluster:
-        validation:
-          connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING_VALIDATION')
-          database: validation-dev
-          collection:
-            flags: surveys_flags
-            enumerators_stats: enumerators_stats
+      connection_strings:
+        main: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
+        validation: !expr Sys.getenv('MONGODB_CONNECTION_STRING_VALIDATION')
+      databases:
         pipeline:
-          connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
-          database: pipeline-dev
-          collection:
+          database_name: pipeline-dev
+          collections:
             legacy:
               raw: legacy-raw
               preprocessed: legacy-preprocessed
@@ -103,24 +106,35 @@ default:
               price_table: price_table
               validated: validated
             validation_flags: validation_flags
-        dashboard:
-          connection_string: !expr Sys.getenv('MONGODB_CONNECTION_STRING')
-          database: app-dev
-          collection:
+        validation:
+          database_name: validation-dev
+          collections:
+            flags: surveys_flags
+            enumerators_stats: enumerators_stats
+        dashboard_wcs:
+          database_name: app-dev
+          collections:
             legacy:
               fishery_metrics: legacy-metrics
               fishery_metrics_monthly: legacy-metrics_monthly
             v1:
-              individual_stats : individual_stats
-              individual_gear_stats : individual_gear_stats
-              individual_fish_distribution : individual_fish_distribution
+              individual_stats: individual_stats
+              individual_gear_stats: individual_gear_stats
+              individual_fish_distribution: individual_fish_distribution
               monthly_stats: monthly_stats
               catch_monthly: catch_monthly
               gear_distribution: gear_distribution
               fish_distribution: fish_distribution
               map_distribution: map_distribution
               gear_summaries: gear_summaries
-    
+        dashboard:
+          database_name: portal-dev
+          collections:
+            monthly_summaries: monthly_summaries
+            taxa_summaries: taxa_summaries
+            districts_summaries: districts_summaries
+            gear_summaries: gear_summaries
+            grid_summaries: grid_summaries
     google:
       key: gcs
       options:
@@ -129,10 +143,11 @@ default:
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
       options_coasts:
         project: peskas
-        bucket: peskas-coasts
+        bucket: peskas-coasts-dev
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
       options_api:
-         bucket: peskas-api-dev        
+        bucket: peskas-api-dev
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds_storage:
     google:
       key: gcs
@@ -148,8 +163,10 @@ default:
       version: latest
     pds_tracks:
       file_prefix: pds-tracks
-      version: latest  
+      version: latest
   metadata:
+    map_boundaries:
+      prefix: KEN_boundaries  
     google_sheets:
       name: metadata-tables
       sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
@@ -168,7 +185,6 @@ default:
         file_prefix: trips-validated
         cloud_path: kenya/validated
 
-  
   validation:
     k_nboats: 5
     k_nfishers: 3
@@ -183,15 +199,18 @@ production:
       options_coasts:
         bucket: peskas-coasts
       options_api:
-         bucket: peskas-api-prod         
+        bucket: peskas-api-prod
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
     mongodb:
-      cluster:
-        validation:
-          database: validation-prod
+      databases:
         pipeline:
-          database: pipeline
+          database_name: pipeline
+        validation:
+          database_name: validation-prod
+        dashboard_wcs:
+          database_name: app
         dashboard:
-          database: app
+          database_name: portal-prod
   pds_storage:
     google:
       options:
