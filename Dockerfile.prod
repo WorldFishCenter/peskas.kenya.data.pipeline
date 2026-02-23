@@ -39,7 +39,7 @@ RUN install2.r --error --skipinstalled \
     googlesheets4
 
 # Install GitHub packages
-RUN Rscript -e 'remotes::install_github("WorldFishCenter/peskas.coasts", ref = "main")'
+RUN Rscript -e 'remotes::install_github("WorldFishCenter/peskas.coasts", ref = "main", force = TRUE)'
 # Install local package
 COPY . /home
 WORKDIR /home
