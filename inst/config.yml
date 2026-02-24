@@ -156,6 +156,10 @@ default:
         bucket: pds-kenya-dev
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds:
+    customers:
+      - "Kenya"
+      - "Kenya AABS" 
+      - "WorldFish - Kenya"
     token: !expr Sys.getenv('PDS_TOKEN')
     secret: !expr Sys.getenv('PDS_SECRET')
     pds_trips:
