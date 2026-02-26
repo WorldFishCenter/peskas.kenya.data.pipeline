@@ -24,7 +24,6 @@ RUN install2.r --error --skipinstalled \
     logger \
     lubridate \
     magrittr \
-    mongolite \
     purrr \
     rlang \
     stringr \
@@ -39,7 +38,7 @@ RUN install2.r --error --skipinstalled \
     googlesheets4
 
 # Install GitHub packages
-RUN Rscript -e 'remotes::install_github("WorldFishCenter/peskas.coasts", ref = "v2.1.0")'
+RUN Rscript -e 'remotes::install_github("WorldFishCenter/peskas.coasts", ref = "v2.2.1")'
 # Install local package
 COPY . /home
 WORKDIR /home

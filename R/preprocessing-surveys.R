@@ -71,14 +71,14 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
   )
 
   assets <-
-    cloud_object_name(
+    coasts::cloud_object_name(
       prefix = conf$metadata$airtable$assets,
       provider = conf$storage$google$key,
       version = "latest",
       extension = "rds",
       options = conf$storage$google$options_coasts
     ) |>
-    download_cloud_file(
+    coasts::download_cloud_file(
       provider = conf$storage$google$key,
       options = conf$storage$google$options_coasts
     ) |>
@@ -94,7 +94,7 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
       )
     )
 
-  raw_dat <- download_parquet_from_cloud(
+  raw_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$kefs$v1$raw$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
@@ -188,7 +188,7 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
     )
 
   # upload preprocessed landings
-  upload_parquet_to_cloud(
+  coasts::upload_parquet_to_cloud(
     data = preprocessed_data,
     prefix = conf$surveys$kefs$v1$preprocessed$file_prefix,
     provider = conf$storage$google$key,
@@ -268,14 +268,14 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
   )
 
   assets <-
-    cloud_object_name(
+    coasts::cloud_object_name(
       prefix = conf$metadata$airtable$assets,
       provider = conf$storage$google$key,
       version = "latest",
       extension = "rds",
       options = conf$storage$google$options_coasts
     ) |>
-    download_cloud_file(
+    coasts::download_cloud_file(
       provider = conf$storage$google$key,
       options = conf$storage$google$options_coasts
     ) |>
@@ -297,7 +297,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       site = stringr::str_trim(stringr::str_replace_all(.data$site, "\\n", ""))
     )
 
-  raw_dat <- download_parquet_from_cloud(
+  raw_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$kefs$v2$raw$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
@@ -424,7 +424,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     )
 
   # upload preprocessed landings
-  upload_parquet_to_cloud(
+  coasts::upload_parquet_to_cloud(
     data = preprocessed_data,
     prefix = conf$surveys$kefs$v2$preprocessed$file_prefix,
     provider = conf$storage$google$key,
@@ -463,7 +463,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
 preprocess_landings_v1 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  raw_dat <- download_parquet_from_cloud(
+  raw_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$catch$v1$raw$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
@@ -474,7 +474,7 @@ preprocess_landings_v1 <- function(log_threshold = logger::DEBUG) {
     gear_mapping_func = apply_gear_mapping_v1()
   )
 
-  upload_parquet_to_cloud(
+  coasts::upload_parquet_to_cloud(
     data = preprocessed_landings,
     prefix = conf$surveys$wcs$catch$v1$preprocessed$file_prefix,
     provider = conf$storage$google$key,
@@ -512,7 +512,7 @@ preprocess_landings_v1 <- function(log_threshold = logger::DEBUG) {
 preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  raw_dat <- download_parquet_from_cloud(
+  raw_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$catch$v2$raw$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
@@ -537,7 +537,7 @@ preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
       .after = "fisher_id"
     )
 
-  upload_parquet_to_cloud(
+  coasts::upload_parquet_to_cloud(
     data = preprocessed_landings,
     prefix = conf$surveys$wcs$catch$v2$preprocessed$file_prefix,
     provider = conf$storage$google$key,
@@ -579,7 +579,7 @@ preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
 preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  raw_legacy_dat <- download_parquet_from_cloud(
+  raw_legacy_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$catch$legacy$raw$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
@@ -714,7 +714,7 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
     dplyr::mutate(total_catch_kg = sum(.data$catch_kg, na.rm = T)) |>
     dplyr::ungroup()
 
-  upload_parquet_to_cloud(
+  coasts::upload_parquet_to_cloud(
     data = processed_legacy_landings,
     prefix = conf$surveys$wcs$catch$legacy$preprocessed$file_prefix,
     provider = conf$storage$google$key,
@@ -848,7 +848,7 @@ preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
   purrr::iwalk(
     version_configs,
     ~ {
-      raw_dat <- download_parquet_from_cloud(
+      raw_dat <- coasts::download_parquet_from_cloud(
         prefix = .x$raw_prefix,
         provider = conf$storage$google$key,
         options = conf$storage$google$options
@@ -856,7 +856,7 @@ preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
 
       preprocessed_data <- preprocess_price_core(raw_dat, .y)
 
-      upload_parquet_to_cloud(
+      coasts::upload_parquet_to_cloud(
         data = preprocessed_data,
         prefix = .x$preprocessed_prefix,
         provider = conf$storage$google$key,

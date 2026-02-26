@@ -19,7 +19,7 @@ preprocess_pds_tracks <- function(
 
   # Get already preprocessed tracks
   logger::log_info("Checking existing preprocessed tracks...")
-  preprocessed_filename <- cloud_object_name(
+  preprocessed_filename <- coasts::cloud_object_name(
     prefix = paste0(pars$pds$pds_tracks$file_prefix, "-preprocessed"),
     provider = pars$storage$google$key,
     extension = "parquet",
@@ -30,7 +30,7 @@ preprocess_pds_tracks <- function(
   # Get preprocessed trip IDs if file exists
   preprocessed_trips <- tryCatch(
     {
-      download_cloud_file(
+      coasts::download_cloud_file(
         name = preprocessed_filename,
         provider = pars$storage$google$key,
         options = pars$storage$google$options
@@ -70,7 +70,7 @@ preprocess_pds_tracks <- function(
   new_processed_data <- furrr::future_map_dfr(
     new_tracks,
     function(track_file) {
-      download_cloud_file(
+      coasts::download_cloud_file(
         name = track_file,
         provider = pars$pds_storage$google$key,
         options = pars$pds_storage$google$options
@@ -107,7 +107,7 @@ preprocess_pds_tracks <- function(
   )
 
   logger::log_info("Uploading preprocessed tracks...")
-  upload_cloud_file(
+  coasts::upload_cloud_file(
     file = output_filename,
     provider = pars$storage$google$key,
     options = pars$storage$google$options
@@ -134,7 +134,7 @@ preprocess_pds_tracks <- function(
   )
 
   logger::log_info("Uploading preprocessed tracks...")
-  upload_cloud_file(
+  coasts::upload_cloud_file(
     file = output_filename,
     provider = pars$storage$google$key,
     options = pars$storage$google$options

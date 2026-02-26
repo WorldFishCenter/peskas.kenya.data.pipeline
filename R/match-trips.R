@@ -696,14 +696,14 @@ merge_trips <- function(
 
   # Load device registry
   logger::log_info("Loading {site} device registry...")
-  registry <- cloud_object_name(
+  registry <- coasts::cloud_object_name(
     prefix = conf$metadata$airtable$assets,
     provider = conf$storage$google$key,
     version = "latest",
     extension = "rds",
     options = conf$storage$google$options_coasts
   ) |>
-    download_cloud_file(
+    coasts::download_cloud_file(
       provider = conf$storage$google$key,
       options = conf$storage$google$options_coasts
     ) |>
@@ -719,7 +719,7 @@ merge_trips <- function(
 
   # Load ALL validated surveys (no filtering)
   logger::log_info("Loading ALL validated surveys...")
-  all_surveys <- download_parquet_from_cloud(
+  all_surveys <- coasts::download_parquet_from_cloud(
     prefix = site_config$survey_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
@@ -732,7 +732,7 @@ merge_trips <- function(
 
   # Load GPS trips
   logger::log_info("Loading GPS trips from cloud storage...")
-  pds_trips_parquet <- cloud_object_name(
+  pds_trips_parquet <- coasts::cloud_object_name(
     prefix = conf$pds$pds_trips$file_prefix,
     provider = conf$storage$google$key,
     extension = "parquet",
@@ -740,7 +740,7 @@ merge_trips <- function(
     options = conf$storage$google$options
   )
 
-  all_trips <- download_cloud_file(
+  all_trips <- coasts::download_cloud_file(
     name = pds_trips_parquet,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
@@ -831,7 +831,7 @@ merge_trips <- function(
 
   # Upload to cloud storage
   logger::log_info("Uploading merged data to cloud storage...")
-  upload_parquet_to_cloud(
+  coasts::upload_parquet_to_cloud(
     data = merged_trips,
     prefix = site_config$output_prefix,
     provider = conf$storage$google$key,

@@ -31,7 +31,7 @@ validate_landings <- function() {
   conf <- read_config()
 
   merged_landings <-
-    download_parquet_from_cloud(
+    coasts::download_parquet_from_cloud(
       prefix = conf$surveys$wcs$catch$merged$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
@@ -42,7 +42,7 @@ validate_landings <- function() {
     dplyr::relocate("submission_id", .after = "version")
 
   price_tables <-
-    download_parquet_from_cloud(
+    coasts::download_parquet_from_cloud(
       prefix = conf$surveys$wcs$price$price_table$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
@@ -260,7 +260,7 @@ validate_landings <- function() {
     log_messages,
     ~ {
       logger::log_info(.y) # Log the current message
-      upload_parquet_to_cloud(
+      coasts::upload_parquet_to_cloud(
         data = .x$data,
         provider = conf$storage$google$key,
         prefix = .x$prefix,
@@ -326,7 +326,7 @@ validate_kefs_surveys_v2 <- function() {
   conf <- read_config()
 
   preprocessed_surveys <-
-    download_parquet_from_cloud(
+    coasts::download_parquet_from_cloud(
       prefix = conf$surveys$kefs$v2$preprocessed$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
@@ -334,7 +334,7 @@ validate_kefs_surveys_v2 <- function() {
 
   # check for manual validates submissions (only possible among not approved submissions)
   not_approved_ids <-
-    mdb_collection_pull(
+    coasts::mdb_collection_pull(
       connection_string = conf$storage$mongodb$connection_strings$validation,
       db_name = conf$storage$mongodb$databases$validation$database_name,
       collection_name = paste(
@@ -460,7 +460,7 @@ validate_kefs_surveys_v2 <- function() {
     ) |>
     dplyr::distinct()
 
-  upload_parquet_to_cloud(
+  coasts::upload_parquet_to_cloud(
     data = valid_data,
     prefix = conf$surveys$kefs$v2$validated$file_prefix,
     provider = conf$storage$google$key,
@@ -541,7 +541,7 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
 
   # Download validation flags
   validation_flags <-
-    download_parquet_from_cloud(
+    coasts::download_parquet_from_cloud(
       prefix = conf$surveys$kefs$v2$validation$flags$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
@@ -729,7 +729,7 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
 
   asset_id <- conf$ingestion$kefs$koboform$asset_id_v2
   # Push the validation flags with KoboToolbox status to MongoDB
-  mdb_collection_push(
+  coasts::mdb_collection_push(
     data = validation_flags_with_kobo_status,
     connection_string = conf$storage$mongodb$connection_strings$validation,
     db_name = conf$storage$mongodb$databases$validation$database_name,
@@ -740,7 +740,7 @@ sync_validation_submissions <- function(log_threshold = logger::DEBUG) {
     )
   )
   # Push enumerators statistics to MongoDB
-  mdb_collection_push(
+  coasts::mdb_collection_push(
     data = validation_flags_long,
     connection_string = conf$storage$mongodb$connection_strings$validation,
     db_name = conf$storage$mongodb$databases$validation$database_name,
@@ -892,7 +892,7 @@ process_submissions_parallel <- function(
 #'   \item \code{\link[=validate_kefs_surveys_v2]{validate_kefs_surveys_v2()}} for the main validation workflow
 #'   \item \code{\link[=get_validation_status]{get_validation_status()}} for fetching KoboToolbox validation status
 #'   \item \code{\link[=sync_validation_submissions]{sync_validation_submissions()}} for the deprecated approach that updates KoboToolbox
-#'   \item \code{\link[=mdb_collection_push]{mdb_collection_push()}} for MongoDB operations
+#'   \item \code{\link[=mdb_collection_push]{coasts::mdb_collection_push()}} for MongoDB operations
 #' }
 #'
 #' @keywords validation workflow
@@ -939,7 +939,7 @@ export_validation_flags <- function(
 
   asset_id <- survey_conf[[config_key]]
 
-  mdb_collection_push(
+  coasts::mdb_collection_push(
     data = validation_flags_with_kobo_status,
     connection_string = conf$storage$mongodb$connection_strings$validation,
     db_name = conf$storage$mongodb$databases$validation$database_name,
@@ -950,7 +950,7 @@ export_validation_flags <- function(
     )
   )
 
-  mdb_collection_push(
+  coasts::mdb_collection_push(
     data = validation_flags_long,
     connection_string = conf$storage$mongodb$connection_strings$validation,
     db_name = conf$storage$mongodb$databases$validation$database_name,

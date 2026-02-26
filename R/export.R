@@ -54,7 +54,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
   valid_data <-
-    download_parquet_from_cloud(
+    coasts::download_parquet_from_cloud(
       prefix = conf$surveys$wcs$catch$validated$file_prefix,
       provider = conf$storage$google$key,
       options = conf$storage$google$options
@@ -303,7 +303,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     .y = collection_names,
     .f = ~ {
       logger::log_info(paste("Uploading", .y, "data to MongoDB"))
-      mdb_collection_push(
+      coasts::mdb_collection_push(
         data = .x,
         connection_string = conf$storage$mongodb$connection_strings$main,
         collection_name = .y,
@@ -314,7 +314,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   f_metrics <- get_fishery_metrics_long(data = valid_data)
 
-  upload_parquet_to_cloud(
+  coasts::upload_parquet_to_cloud(
     data = f_metrics,
     prefix = "kenya_fishery_metrics",
     provider = conf$storage$google$key,
@@ -794,7 +794,7 @@ create_geos <- function(monthly_summaries_dat = NULL, conf = conf) {
     ) |>
     dplyr::relocate("country", .before = "region")
 
-  upload_parquet_to_cloud(
+  coasts::upload_parquet_to_cloud(
     data = region_monthly_summaries,
     prefix = "kenya_monthly_summaries_map",
     provider = conf$storage$google$key,
@@ -812,7 +812,7 @@ create_geos <- function(monthly_summaries_dat = NULL, conf = conf) {
     delete_dsn = TRUE
   )
 
-  upload_cloud_file(
+  coasts::upload_cloud_file(
     file = filename_geo,
     provider = conf$storage$google$key,
     options = conf$storage$google$options_coasts
@@ -921,9 +921,62 @@ get_ga4_user_summary <- function(
   googleAuthR::gar_deauth()
   try(file.remove(".httr-oauth"), silent = TRUE)
 
-  upload_cloud_file(
+  coasts::upload_cloud_file(
     file = "users_summary.csv",
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
+}
+
+
+#' Get metadata tables
+#'
+#' Get Metadata tables from Google sheets. This function downloads
+#' the tables include information about the fishery.
+#'
+#' The parameters needed in `conf.yml` are:
+#'
+#' ```
+#' storage:
+#'   storage_name:
+#'     key:
+#'     options:
+#'       project:
+#'       bucket:
+#'       service_account_key:
+#' ```
+#'
+#' @param log_threshold The logging threshold level. Default is logger::DEBUG.
+#'
+#' @export
+#' @keywords storage
+#'
+#' @examples
+#' \dontrun{
+#' # Ensure you have the necessary configuration in conf.yml
+#' metadata_tables <- get_metadata()
+#' }
+get_metadata <- function(log_threshold = logger::DEBUG) {
+  logger::log_threshold(log_threshold)
+  pars <- read_config()
+
+  logger::log_info("Authenticating for google drive")
+  googlesheets4::gs4_auth(
+    path = pars$storage$google$options$service_account_key,
+    use_oob = TRUE
+  )
+  logger::log_info("Downloading metadata tables")
+
+  tables <-
+    pars$metadata$google_sheets$tables %>%
+    rlang::set_names() %>%
+    purrr::map(
+      ~ googlesheets4::range_read(
+        ss = pars$metadata$google_sheets$sheet_id,
+        sheet = .x,
+        col_types = "c"
+      )
+    )
+
+  tables
 }
