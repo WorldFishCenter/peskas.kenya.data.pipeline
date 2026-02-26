@@ -544,7 +544,7 @@ ingest_pds_trips <- function(log_threshold = logger::DEBUG) {
     purrr::pluck("devices") |>
     dplyr::filter(
       .data$customer_name %in%
-        c("WorldFish - Tanzania AP", "WorldFish - Zanzibar")
+        c("WorldFish - Kenya", "Kenya", "Kenya AABS")
     )
 
   boats_trips <- coasts::get_trips(
@@ -574,18 +574,18 @@ ingest_pds_trips <- function(log_threshold = logger::DEBUG) {
   )
 }
 
+
 #' Ingest Pelagic Data Systems (PDS) Track Data
 #'
 #' @description
-#' This function handles the automated ingestion of GPS boat track data from Pelagic Data Systems (PDS).
-#' It downloads and stores only new tracks that haven't been previously uploaded to Google Cloud Storage.
+#' Handles the automated ingestion of GPS boat track data from PDS.
+#' Downloads and stores only new tracks that haven't been previously uploaded.
 #' Uses parallel processing for improved performance.
 #'
-#' @param log_threshold The logging threshold to use. Default is logger::DEBUG.
-#' @param batch_size Optional number of tracks to process. If NULL, processes all new tracks.
+#' @param log_threshold Logging threshold level (default: logger::DEBUG).
+#' @param batch_size Optional number of tracks to process. If NULL, processes all.
 #'
-#' @return None (invisible). The function performs its operations for side effects.
-#'
+#' @return None (invisible). Processes and uploads track data.
 #' @keywords workflow ingestion
 #' @export
 ingest_pds_tracks <- function(
@@ -593,40 +593,39 @@ ingest_pds_tracks <- function(
   batch_size = NULL
 ) {
   logger::log_threshold(log_threshold)
-  pars <- read_config()
+  conf <- read_config()
 
   # Get trips file from cloud storage
   logger::log_info("Getting trips file from cloud storage...")
   pds_trips_parquet <- coasts::cloud_object_name(
-    prefix = pars$pds$pds_trips$file_prefix,
-    provider = pars$storage$google$key,
+    prefix = conf$pds$pds_trips$file_prefix,
+    provider = conf$storage$google$key,
     extension = "parquet",
-    version = pars$pds$pds_trips$version,
-    options = pars$storage$google$options
+    version = conf$pds$pds_trips$version,
+    options = conf$storage$google$options
   )
 
   logger::log_info("Downloading {pds_trips_parquet}")
   coasts::download_cloud_file(
     name = pds_trips_parquet,
-    provider = pars$storage$google$key,
-    options = pars$storage$google$options
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
   )
 
   # Read trip IDs
   logger::log_info("Reading trip IDs...")
   trips_data <- arrow::read_parquet(file = pds_trips_parquet) %>%
-    dplyr::pull("trip") %>%
+    dplyr::pull("Trip") %>%
     unique()
 
-  # Clean up downloaded file
   unlink(pds_trips_parquet)
 
   # List existing files in GCS bucket
   logger::log_info("Checking existing tracks in cloud storage...")
   existing_tracks <-
     googleCloudStorageR::gcs_list_objects(
-      bucket = pars$pds_storage$google$options$bucket,
-      prefix = pars$pds$pds_tracks$file_prefix
+      bucket = conf$pds_storage$google$options$bucket,
+      prefix = conf$pds$pds_tracks$file_prefix
     )$name
 
   # Get new trip IDs
@@ -643,97 +642,40 @@ ingest_pds_tracks <- function(
   logger::log_info("Setting up parallel processing with {workers} workers...")
   future::plan(future::multisession, workers = workers)
 
-  # Select tracks to process
   process_ids <- if (!is.null(batch_size)) {
-    new_trip_ids[1:min(batch_size, length(new_trip_ids))]
+    new_trip_ids[seq_len(min(batch_size, length(new_trip_ids)))]
   } else {
     new_trip_ids
   }
   logger::log_info("Processing {length(process_ids)} new tracks in parallel...")
 
-  # Process tracks in parallel with progress bar
   results <- furrr::future_map(
     process_ids,
-    function(trip_id) {
-      tryCatch(
-        {
-          # Create filename for this track
-          track_filename <- sprintf(
-            "%s_%s.parquet",
-            pars$pds$pds_tracks$file_prefix,
-            trip_id
-          )
-
-          # Get track data
-          track_data <- coasts::get_trip_points(
-            token = pars$pds$token,
-            secret = pars$pds$secret,
-            id = as.character(trip_id),
-            deviceInfo = TRUE
-          )
-
-          # Save to parquet
-          arrow::write_parquet(
-            x = track_data,
-            sink = track_filename,
-            compression = "lz4",
-            compression_level = 12
-          )
-
-          # Upload to cloud
-          logger::log_info("Uploading track for trip {trip_id}")
-          coasts::upload_cloud_file(
-            file = track_filename,
-            provider = pars$pds_storage$google$key,
-            options = pars$pds_storage$google$options
-          )
-
-          # Clean up local file
-          unlink(track_filename)
-
-          list(
-            status = "success",
-            trip_id = trip_id,
-            message = "Successfully processed"
-          )
-        },
-        error = function(e) {
-          list(
-            status = "error",
-            trip_id = trip_id,
-            message = e$message
-          )
-        }
-      )
-    },
+    ~ process_single_track(.x, conf),
     .options = furrr::furrr_options(seed = TRUE),
     .progress = TRUE
   )
 
-  # Clean up parallel processing
   future::plan(future::sequential)
 
   # Summarize results
-  successes <- sum(purrr::map_chr(results, "status") == "success")
-  failures <- sum(purrr::map_chr(results, "status") == "error")
+  statuses <- purrr::map_chr(results, "status")
+  successes <- sum(statuses == "success")
+  failures <- sum(statuses == "error")
 
   logger::log_info(
     "Processing complete. Successfully processed {successes} tracks."
   )
   if (failures > 0) {
     logger::log_warn("Failed to process {failures} tracks.")
-    failed_results <- results[purrr::map_chr(results, "status") == "error"]
-    failed_trips <- purrr::map_chr(failed_results, "trip_id")
-    failed_messages <- purrr::map_chr(failed_results, "message")
-
-    logger::log_warn("Failed trip IDs and reasons:")
-    purrr::walk2(
-      failed_trips,
-      failed_messages,
-      ~ logger::log_warn("Trip {.x}: {.y}")
+    failed_results <- results[statuses == "error"]
+    purrr::walk(
+      failed_results,
+      ~ logger::log_warn("Trip {.x$trip_id}: {.x$message}")
     )
   }
 }
+
 
 #' Extract Trip IDs from Track Filenames
 #'
