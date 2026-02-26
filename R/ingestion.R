@@ -544,8 +544,9 @@ ingest_pds_trips <- function(log_threshold = logger::DEBUG) {
     purrr::pluck("devices") |>
     dplyr::filter(
       .data$customer_name %in%
-        c("WorldFish - Kenya", "Kenya", "Kenya AABS")
+        c("WorldFish - Tanzania AP", "WorldFish - Zanzibar")
     )
+
   boats_trips <- coasts::get_trips(
     token = conf$pds$token,
     secret = conf$pds$secret,
@@ -553,18 +554,9 @@ ingest_pds_trips <- function(log_threshold = logger::DEBUG) {
     dateTo = Sys.Date(),
     deviceInfo = TRUE,
     imeis = unique(devices$imei)
-  ) |>
-    janitor::clean_names() |>
-    dplyr::mutate(
-      imei = as.character(.data$imei),
-      last_seen = as.numeric(.data$last_seen)
-    ) |>
-    dplyr::left_join(
-      devices,
-      by = c("imei", "boat_name", "community", "last_seen")
-    )
+  )
 
-  filename <- conf$pds$pds_trips$file_prefix |>
+  filename <- conf$pds$pds_trips$file_prefix %>%
     add_version(extension = "parquet")
 
   arrow::write_parquet(
@@ -581,6 +573,7 @@ ingest_pds_trips <- function(log_threshold = logger::DEBUG) {
     options = conf$storage$google$options
   )
 }
+
 #' Ingest Pelagic Data Systems (PDS) Track Data
 #'
 #' @description
