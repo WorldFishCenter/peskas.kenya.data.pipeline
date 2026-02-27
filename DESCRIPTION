@@ -23,7 +23,6 @@ Imports:
     glue,
     googleAnalyticsR,
     googleAuthR,
-    googleCloudStorageR,
     googlesheets4,
     httr2,
     janitor,
