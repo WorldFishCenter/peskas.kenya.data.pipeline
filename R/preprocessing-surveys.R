@@ -422,7 +422,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
         TRUE ~ "Multiple"
       )
     ) |>
-    dplyr::select("airtable_id")
+    dplyr::select(-"airtable_id")
 
   # upload preprocessed landings
   coasts::upload_parquet_to_cloud(
