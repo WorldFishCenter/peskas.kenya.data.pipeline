@@ -32,6 +32,7 @@
 #' - `catch_outcome`: Outcome of catch (landed, sold, etc.)
 #' - `n_catch`: Number of individual catch items
 #' - `catch_taxon`: Species or taxonomic group
+#' - `scientific_name`: Scientific name
 #' - `length_cm`: Length measurement in centimeters
 #' - `catch_kg`: Weight in kilograms
 #' - `catch_price`: Price in local currency
@@ -83,9 +84,7 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
     dplyr::ungroup() |>
     dplyr::mutate(
       n_catch = as.integer(.data$n_sample),
-      catch_outcome = dplyr::if_else(.data$catch_outcome == "yes", "1", "0"),
-      # to do: think how to deal with lengths
-      length_cm = NA_real_
+      catch_outcome = dplyr::if_else(.data$catch_outcome == "yes", "1", "0")
     ) |>
     dplyr::select(
       "survey_id",
@@ -103,6 +102,7 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
       "catch_outcome",
       n_catch = "n_sample",
       catch_taxon = "sample_alpha3_code",
+      scientific_name = "sample_scientific_name",
       "length_cm",
       catch_kg = "sample_weight",
       catch_price = "sample_price",
@@ -179,6 +179,7 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
 #' - `catch_outcome`: Outcome of catch (landed, sold, etc.)
 #' - `n_catch`: Number of individual catch items
 #' - `catch_taxon`: Species or taxonomic group
+#' - `scientific_name`: Scientific name
 #' - `length_cm`: Length measurement in centimeters
 #' - `catch_kg`: Weight in kilograms
 #' - `catch_price`: Price in local currency
@@ -230,9 +231,7 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
     dplyr::ungroup() |>
     dplyr::mutate(
       n_catch = as.integer(.data$n_sample),
-      catch_outcome = dplyr::if_else(.data$catch_outcome == "yes", "1", "0"),
-      # to do: think how to deal with lengths
-      length_cm = NA_real_
+      catch_outcome = dplyr::if_else(.data$catch_outcome == "yes", "1", "0")
     ) |>
     dplyr::select(
       "survey_id",
@@ -250,6 +249,7 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
       "catch_outcome",
       n_catch = "n_sample",
       catch_taxon = "sample_alpha3_code",
+      scientific_name = "sample_scientific_name",
       "length_cm",
       catch_kg = "sample_weight",
       catch_price = "sample_price",

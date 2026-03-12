@@ -131,9 +131,78 @@ theme_set(theme_modern())
 ```
 
 ```{r data-load}
+#conf <- read_config()
+#devices <-
+#   conf$metadata$airtable$name |>
+#   coasts::cloud_object_name(
+#     provider = conf$storage$google$key,
+#     extension = "rds",
+#     options = conf$storage$google$options_coasts
+#   ) |>
+#   coasts::download_cloud_file(
+#     provider = conf$storage$google$key,
+#     options = conf$storage$google$options_coasts
+#   ) |>
+#   readr::read_rds() |>
+#   purrr::pluck("devices") |>
+#   dplyr::mutate(
+#     last_seen = as.Date(as.POSIXct(
+#       .data$last_seen / 1000,
+#       origin = "1970-01-01"
+#     ))
+#   ) |>
+#   dplyr::filter(.data$customer_name %in% conf$pds$customers) |>
+#   dplyr::select(
+#     "boat_name",
+#     "region"
+#   )
+
+# pds_trips_parquet <- coasts::cloud_object_name(
+#   prefix = conf$pds$pds_trips$file_prefix,
+#   provider = conf$storage$google$key,
+#   extension = "parquet",
+#   version = conf$pds$pds_trips$version,
+#   options = country_opts
+# )
+
+# raw_tracks <- googleCloudStorageR::gcs_list_objects(
+#   bucket = conf$pds_storage$google$options$bucket,
+#   prefix = conf$pds$pds_tracks$file_prefix
+# )$name
+
+
+# workers <- parallel::detectCores() - 1
+# logger::log_info("Setting up parallel processing with {workers} workers...")
+# future::plan(future::multisession, workers = workers)
+
+# #logger::log_info("Processing {length(new_tracks)} tracks in parallel...")
+# tracks_all <- furrr::future_map_dfr(
+#   as.character(raw_tracks),
+#   function(track_file) {
+#     coasts::download_cloud_file(
+#       name = track_file,
+#       provider = conf$pds_storage$google$key,
+#       options = conf$pds_storage$google$options
+#     )
+
+#     track_data <- arrow::read_parquet(track_file)
+
+#     unlink(track_file)
+#     track_data
+#   },
+#   .options = furrr::furrr_options(seed = TRUE),
+#   .progress = TRUE
+# )
+
+# future::plan(future::sequential)
+
+# tracks_all
+
+
+
 # Load vessel tracking data (updated with latest trips)
 tracks_binned <- 
-arrow::read_parquet("tracks_binned_07-11.parquet") %>%
+arrow::read_parquet("tracks_binned_10-03.parquet") %>%
 dplyr::filter(lng > 38.18)
 # Calculate distance from coastline for accurate spatial analysis
 
@@ -623,11 +692,7 @@ The **Top 10 Hotspots chart** highlights the specific areas with the most vessel
 
 The **daily interaction chart** shows temporal patterns - when vessel interactions peak throughout the monitoring period. Peaks may indicate favorable fishing seasons, environmental conditions, or market-driven fishing effort.
 
-**Management implications:**
-- **Hotspot areas** may benefit from community-based management or cooperative arrangements
-- **Temporal patterns** can inform timing of fisher consultations and resource assessments
-- **Communication systems** between vessels could enhance cooperation and information sharing
-- **Shared areas** present opportunities for co-management agreements among user groups
+**Management implications:** - **Hotspot areas** may benefit from community-based management or cooperative arrangements - **Temporal patterns** can inform timing of fisher consultations and resource assessments - **Communication systems** between vessels could enhance cooperation and information sharing - **Shared areas** present opportunities for co-management agreements among user groups
 
 ::: key-finding
 ### 🤝 **Vessel Interaction Summary**
@@ -1888,10 +1953,7 @@ For example, if 3 vessels meet at a location 5 times, that's 15 vessel-hours for
 
 #### Visualization Approach
 
-Rather than categorizing interactions into discrete levels, we use a **continuous color gradient**:
-- Light yellow indicates low interaction intensity (few vessel-hours)
-- Dark red indicates high interaction intensity (many vessel-hours)
-- Circle size on the map is proportional to the square root of vessel-hours for better visual scaling
+Rather than categorizing interactions into discrete levels, we use a **continuous color gradient**: - Light yellow indicates low interaction intensity (few vessel-hours) - Dark red indicates high interaction intensity (many vessel-hours) - Circle size on the map is proportional to the square root of vessel-hours for better visual scaling
 
 This continuous scale provides a more accurate representation of interaction patterns without imposing arbitrary classification boundaries.
 
