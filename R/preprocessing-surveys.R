@@ -1134,7 +1134,13 @@ apply_gear_mapping_v2 <- function() {
               "trammel_net_1",
               "scoopnet_&_castnet",
               "trammel_net",
-              "nets"
+              "nets",
+              "nyavu_ya_mbu",
+              "mosquito_net",
+              "nyavu_ya_mkano_ya_kurambaza",
+              "nyavu_ya_mkano_ya_kutega",
+              "nyavu_ya_uzi_y_akutega",
+              "nyavu_ya_uzi_ya_kurambaza"
             ) ~
             "Nets",
           .data$gear %in% c("handline") ~ "Handline",
