@@ -6,7 +6,7 @@
 \usage{
 get_ga4_user_summary(
   property_id = "487803003",
-  start_date = "500daysAgo",
+  start_date = "1095daysAgo",
   end_date = "today"
 )
 }

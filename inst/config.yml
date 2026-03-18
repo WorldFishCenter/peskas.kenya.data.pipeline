@@ -177,6 +177,8 @@ default:
       sheet_id: !expr Sys.getenv("GOOGLE_SHEET_ID")
       tables:
         - BMUs
+    google_sheets_users:
+      sheet_id: !expr Sys.getenv("GOOGLE_USERS_SHEET_ID")
     airtable:
       assets: assets
       base_id: !expr Sys.getenv("AIRTABLE_BASE_ID")

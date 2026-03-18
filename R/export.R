@@ -855,7 +855,7 @@ create_geos <- function(monthly_summaries_dat = NULL, conf = conf) {
 #' @export
 get_ga4_user_summary <- function(
   property_id = "487803003",
-  start_date = "500daysAgo",
+  start_date = "1095daysAgo",
   end_date = "today"
 ) {
   conf <- read_config()
@@ -916,7 +916,20 @@ get_ga4_user_summary <- function(
       sessions = sum(.data$sessions, na.rm = TRUE),
       .groups = "drop"
     ) |>
-    readr::write_csv("users_summary.csv")
+    dplyr::arrange(.data$custom_event_user_bmu, .data$date)
+
+  logger::log_info("Authenticating for google drive")
+  googlesheets4::gs4_auth(
+    path = json_key,
+    use_oob = TRUE
+  )
+  googlesheets4::sheet_write(
+    users_df,
+    ss = conf$metadata$google_sheets_users$sheet_id,
+    sheet = 1
+  )
+
+  readr::write_csv(users_df, "users_summary.csv")
 
   googleAuthR::gar_deauth()
   try(file.remove(".httr-oauth"), silent = TRUE)
