@@ -220,9 +220,9 @@ jobs:
       - name: Call validate_kefs_surveys_v2()
         run: Rscript -e 'peskas.kenya.data.pipeline::validate_kefs_surveys_v2()'
         
-  merge-trips-kefs-v2:
+  merge-trips:
     name: Merge PDS and surveys data
-    needs: validate-sync-kefs-v2
+    needs: [validate-sync-kefs-v2, validate-export-wcs, ingest-preprocess-pds-data]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
@@ -234,7 +234,7 @@ jobs:
         if: endsWith(github.ref, '/main')
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call merge_trips()
-        run: Rscript -e 'peskas.kenya.data.pipeline::merge_trips(site = "kenya")'
+        run: Rscript -e 'peskas.kenya.data.pipeline::merge_trips()'
 
   export-api-raw:
     container:

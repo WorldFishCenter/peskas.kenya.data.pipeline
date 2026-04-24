@@ -39,7 +39,7 @@ based on the KEFS Kobo form asset ID
 \item Converts numeric fields (hp, fishers, mesh size, fuel) to appropriate types
 }
 \item \strong{Joins trip and catch data}: Combines trip information with catch records using full join on submission_id
-\item \strong{Standardizes names}: Maps survey labels to standardized names using \code{map_surveys()}:
+\item \strong{Standardizes names}: Maps survey labels to standardized names using \code{map_kefs_surveys()}:
 \itemize{
 \item Taxonomic names to scientific names and alpha3 codes
 \item Gear types to standardized gear names

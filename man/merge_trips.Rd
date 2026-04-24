@@ -4,45 +4,46 @@
 \alias{merge_trips}
 \title{Merge Survey and GPS Trip Data}
 \usage{
-merge_trips(site = c("kenya", "zanzibar"), log_threshold = logger::DEBUG)
+merge_trips(log_threshold = logger::DEBUG)
 }
 \arguments{
-\item{site}{Character. Site identifier: "kenya" or "zanzibar"}
-
 \item{log_threshold}{Logger threshold level. Default is \code{logger::DEBUG}.}
 }
 \value{
-Invisible NULL. Uploads merged parquet file to cloud storage containing:
+Invisible NULL. Uploads a merged parquet file to
+\code{conf$surveys$matched_trips$file_prefix} containing:
 \itemize{
 \item Matched survey-trip pairs (both submission_id and trip are non-NA)
 \item Unmatched surveys (trip = NA)
 \item Unmatched trips (submission_id = NA)
 \item Match quality indicators: n_fields_used, n_fields_ok, match_ok
+\item A \code{survey} column identifying the source ("kefs" or "wcs";
+NA for unmatched trips)
 }
 }
 \description{
-Matches catch surveys to GPS trips using fuzzy matching on boat identifiers,
-then merges all records (matched and unmatched) and uploads to cloud storage.
+Runs the matching pipeline for all surveys (KEFS and WCS), combines the
+results into a single country-level dataset, appends truly unmatched GPS
+trips, and uploads to cloud storage.
 }
 \details{
-The function executes a five-step pipeline:
+The function executes a six-step pipeline:
 \enumerate{
-\item Load device registry from cloud storage
-\item Load validated surveys
-\item Load preprocessed GPS trips
-\item Match surveys to trips via fuzzy matching (surveys -> registry -> trips)
-\item Merge matched subset with all unmatched records and upload
+\item Load the shared device registry from cloud storage
+\item Load GPS trips from cloud storage
+\item Run \code{compute_survey_matches()} for KEFS (uses registration number,
+boat name, and fisher name for fuzzy matching)
+\item Run \code{compute_survey_matches()} for WCS (uses boat name only)
+\item Identify trips not claimed by either survey's matching output
+\item Combine all records and upload to \code{conf$surveys$matched_trips$file_prefix}
 }
 
-Site-specific configuration is handled automatically based on the \code{site} parameter.
+The device registry and GPS trips are loaded once and shared across both
+survey pipelines.
 }
 \examples{
 \dontrun{
-# Kenya
-merge_trips(site = "kenya")
-
-# Zanzibar
-merge_trips(site = "zanzibar")
+merge_trips()
 }
 
 }

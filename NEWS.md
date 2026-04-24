@@ -1,3 +1,39 @@
+# peskas.kenya.data.pipeline 4.10.0
+
+## Major Changes
+
+- **WCS survey support in GPS trip matching**: `merge_trips()` now processes both
+  KEFS and WCS surveys and uploads a single country-level matched-trips dataset to
+  `conf$surveys$matched_trips$file_prefix` (`kenya-surveys-matched-trips`).
+  Previously only KEFS was matched; the WCS branch referenced the wrong config key
+  and was never executed.
+
+- **New `compute_survey_matches()` internal function**: Extracts the per-survey
+  load + match + enrich pipeline so it can be called independently for each survey
+  type. The device registry and GPS trips are loaded once and shared across both
+  survey pipelines.
+
+- **`merge_trips()` signature change**: The `survey` argument has been removed.
+  The function now always runs both KEFS and WCS and returns a unified result.
+  Callers that previously passed `survey = "kefs"` should drop the argument.
+
+## Configuration
+
+- Added `surveys.matched_trips.file_prefix: kenya-surveys-matched-trips` as the
+  single country-level output for matched trips.
+- Removed `surveys.kefs.v2.merged` (replaced by the above). Downstream consumers
+  of `kefs-v2-surveys-merged` should migrate to `kenya-surveys-matched-trips`.
+
+## Fixes
+
+- Fixed `match.arg(site)` bug in `merge_trips()` (parameter is named `survey`,
+  not `site`) that caused an immediate error on every call.
+- Fixed stale `{site}` glue reference in the registry loading log message.
+- Fixed `export_api_raw()` config key typo: `conf$api$trips$rawfile_prefix` →
+  `conf$api$trips$raw$file_prefix` / `conf$api$trips$raw$cloud_path`.
+- Corrected `export_api_raw()` description: function exports KEFS only (WCS is
+  included at the validated stage via `export_api_validated()`).
+
 # peskas.kenya.data.pipeline 4.9.0
 
 ### Infrastructure & Workflow

@@ -251,6 +251,10 @@ default:
     #   flags:                                              # NOTE: source-level flags (Kenya style)
     #     file_prefix: wcs-alert-flags                      # alternative to nesting under validation
 
+    # --- Country-level matched trips (all surveys combined) ---
+    # matched_trips:
+    #   file_prefix: '{country}-surveys-matched-trips'
+
   # ===========================================================================
   # PDS — Pelagic Data Systems (vessel tracking)
   # ===========================================================================

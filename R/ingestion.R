@@ -90,7 +90,6 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
   # Define WCS version configurations
-  # Define WCS version configurations
   version_configs <- list(
     v1 = list(
       kobo = list(

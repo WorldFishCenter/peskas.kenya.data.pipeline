@@ -55,6 +55,8 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
       "landing_date",
       "landing_site",
       "fishing_ground",
+      "pds",
+      "boat_name",
       "lat",
       "lon",
       "fisher_id",

@@ -25,7 +25,7 @@
 #'    - Calculates trip duration in hours from start and end times
 #'    - Converts numeric fields (hp, fishers, mesh size, fuel) to appropriate types
 #' 6. **Joins trip and catch data**: Combines trip information with catch records using full join on submission_id
-#' 7. **Standardizes names**: Maps survey labels to standardized names using `map_surveys()`:
+#' 7. **Standardizes names**: Maps survey labels to standardized names using `map_kefs_surveys()`:
 #'    - Taxonomic names to scientific names and alpha3 codes
 #'    - Gear types to standardized gear names
 #'    - Vessel types to standardized vessel categories
@@ -93,6 +93,14 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
         )
       )
     )
+
+  assets$sites <-
+    assets$sites |>
+    dplyr::mutate(
+      site = stringr::str_trim(stringr::str_replace_all(.data$site, "\\n", ""))
+    ) |>
+    dplyr::mutate(site_code = stringr::str_split(.data$site_code, ", ")) |>
+    tidyr::unnest("site_code")
 
   raw_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$kefs$v1$raw$file_prefix,
@@ -178,7 +186,7 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
     )
 
   preprocessed_data <-
-    map_surveys(
+    map_kefs_surveys(
       data = preprocessed_landings,
       taxa_mapping = assets$taxa,
       gear_mapping = assets$gear,
@@ -222,7 +230,7 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
 #'    - Calculates trip duration in hours from start and end times
 #'    - Converts numeric fields (hp, fishers, mesh size, fuel) to appropriate types
 #' 6. **Joins trip and catch data**: Combines trip information with catch records using full join on submission_id
-#' 7. **Standardizes names**: Maps survey labels to standardized names using `map_surveys()`:
+#' 7. **Standardizes names**: Maps survey labels to standardized names using `map_kefs_surveys()`:
 #'    - Taxonomic names to scientific names and alpha3 codes
 #'    - Gear types to standardized gear names
 #'    - Vessel types to standardized vessel categories
@@ -295,7 +303,9 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     assets$sites |>
     dplyr::mutate(
       site = stringr::str_trim(stringr::str_replace_all(.data$site, "\\n", ""))
-    )
+    ) |>
+    dplyr::mutate(site_code = stringr::str_split(.data$site_code, ", ")) |>
+    tidyr::unnest("site_code")
 
   raw_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$kefs$v2$raw$file_prefix,
@@ -403,7 +413,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     )
 
   preprocessed_data <-
-    map_surveys(
+    map_kefs_surveys(
       data = preprocessed_landings,
       taxa_mapping = assets$taxa,
       gear_mapping = assets$gear,
@@ -421,8 +431,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
         .data$habitat == "sea_grass" ~ "Seagrass",
         TRUE ~ "Multiple"
       )
-    ) |>
-    dplyr::select(-"airtable_id")
+    )
 
   # upload preprocessed landings
   coasts::upload_parquet_to_cloud(
@@ -536,6 +545,13 @@ preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
     dplyr::relocate(
       "trip_cost",
       .after = "fisher_id"
+    ) |>
+    dplyr::mutate(
+      pds = dplyr::if_else(.data$pds == "hapana", "no", "yes")
+    ) |>
+    dplyr::mutate(
+      boat_name = tolower(.data$boat_name),
+      boat_name = trimws(.data$boat_name)
     )
 
   coasts::upload_parquet_to_cloud(
@@ -917,6 +933,8 @@ preprocess_landings_core <- function(raw_dat, gear_mapping_func) {
       landing_site = "Tambua_BMU",
       landing_date = "Tambua_tarehe",
       fishing_ground = "Eneo_la_uvuvi",
+      pds = dplyr::any_of("Boti_lina_PDS_tracker"),
+      boat_name = dplyr::any_of("Jina_la_boti"),
       gear = "Aina_ya_zana_ya_uvuvi",
       no_of_fishers = "Number_of_fishermen",
       n_boats = "Number_of_boats",
@@ -1443,7 +1461,7 @@ get_fishery_metrics_long <- function(data = NULL) {
 #'
 #' @keywords preprocessing helper
 #' @export
-map_surveys <- function(
+map_kefs_surveys <- function(
   data = NULL,
   taxa_mapping = NULL,
   gear_mapping = NULL,
@@ -1482,7 +1500,8 @@ map_surveys <- function(
         dplyr::relocate(
           "sample_alpha3_code",
           .after = "sample_scientific_name"
-        )
+        ) |>
+        dplyr::distinct()
     } else {
       data |>
         dplyr::left_join(
@@ -1491,20 +1510,10 @@ map_surveys <- function(
         ) |>
         dplyr::select(-c("catch_taxon", "form_id", "english_name")) |>
         dplyr::relocate("scientific_name", .after = "n_catch") |>
-        dplyr::relocate("alpha3_code", .after = "scientific_name")
+        dplyr::relocate("alpha3_code", .after = "scientific_name") |>
+        dplyr::distinct()
     }
   taxa_map |>
-    dplyr::left_join(geo_mapping, by = c("district" = "survey_label")) |>
-    dplyr::select(
-      -c("form_id", "district_code", "country")
-    ) |>
-    dplyr::relocate(
-      "gaul_1_name",
-      "gaul_1_code",
-      "gaul_2_name",
-      "gaul_2_code",
-      .after = "district"
-    ) |>
     dplyr::left_join(gear_mapping, by = c("gear" = "survey_label")) |>
     dplyr::select(-c("gear", "form_id")) |>
     dplyr::relocate("standard_name", .after = "vessel_type") |>
@@ -1521,11 +1530,70 @@ map_surveys <- function(
     dplyr::rename(vessel_type = "standard_name") |>
     dplyr::left_join(
       sites_mapping,
-      by = c("landing_site" = "site_code", "gaul_2_code")
+      by = c("landing_site" = "site_code")
     ) |>
     dplyr::select(-c("landing_site", "form_id")) |>
     dplyr::relocate("site", .after = "BMU") |>
-    dplyr::rename(landing_site = "site")
+    dplyr::rename(landing_site = "site") |>
+    dplyr::distinct() |>
+    dplyr::left_join(geo_mapping, by = "gaul_2_code") |>
+    dplyr::select(
+      -dplyr::any_of(c(
+        "form_id",
+        "survey_label",
+        "district_code",
+        "country",
+        "airtable_id"
+      ))
+    ) |>
+    dplyr::relocate(
+      "gaul_1_name",
+      "gaul_1_code",
+      "gaul_2_name",
+      "gaul_2_code",
+      .after = "district"
+    ) |>
+    dplyr::distinct()
+}
+
+
+map_wcs_surveys <- function(
+  data = NULL,
+  taxa_mapping = NULL,
+  gear_mapping = NULL,
+  sites_mapping = NULL,
+  geo_mapping = NULL
+) {
+  data |>
+    dplyr::left_join(
+      taxa_mapping,
+      by = c("fish_category" = "survey_label")
+    ) |>
+    dplyr::select(-c("fish_category", "form_id", "english_name")) |>
+    dplyr::relocate("scientific_name", .after = "submission_id") |>
+    dplyr::relocate("alpha3_code", .after = "scientific_name") |>
+    dplyr::distinct() |>
+    dplyr::left_join(gear_mapping, by = c("gear" = "survey_label")) |>
+    dplyr::select(-c("gear", "form_id")) |>
+    dplyr::rename(gear = "standard_name") |>
+    dplyr::left_join(
+      sites_mapping,
+      by = c("landing_site" = "site_code")
+    ) |>
+    dplyr::select(-c("landing_site", "form_id")) |>
+    dplyr::rename(landing_site = "site") |>
+    dplyr::distinct() |>
+    dplyr::left_join(geo_mapping, by = "gaul_2_code") |>
+    dplyr::select(
+      -dplyr::any_of(c(
+        "form_id",
+        "survey_label",
+        "district_code",
+        "country",
+        "airtable_id"
+      ))
+    ) |>
+    dplyr::distinct()
 }
 
 #' Standardize Enumerator Names

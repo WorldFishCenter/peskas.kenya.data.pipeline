@@ -131,8 +131,8 @@ theme_set(theme_modern())
 ```
 
 ```{r data-load}
-#conf <- read_config()
-#devices <-
+# conf <- read_config()
+# devices <-
 #   conf$metadata$airtable$name |>
 #   coasts::cloud_object_name(
 #     provider = conf$storage$google$key,
@@ -157,13 +157,6 @@ theme_set(theme_modern())
 #     "region"
 #   )
 
-# pds_trips_parquet <- coasts::cloud_object_name(
-#   prefix = conf$pds$pds_trips$file_prefix,
-#   provider = conf$storage$google$key,
-#   extension = "parquet",
-#   version = conf$pds$pds_trips$version,
-#   options = country_opts
-# )
 
 # raw_tracks <- googleCloudStorageR::gcs_list_objects(
 #   bucket = conf$pds_storage$google$options$bucket,
@@ -196,13 +189,24 @@ theme_set(theme_modern())
 
 # future::plan(future::sequential)
 
-# tracks_all
+# tracks_clean <- 
+#   tracks_all |> 
+#   janitor::clean_names() |>
+#   dplyr::select(-c("community", "boat")) |> 
+#   dplyr::mutate(time = lubridate::floor_date(time, unit = "5 minutes")) |>
+#   dplyr::left_join(devices, by = "boat_name") |>
+#   dplyr::rename(boat = "boat_name") |> 
+#   dplyr::filter(!is.na(region)) |>
+#   dplyr::group_by(region, boat, trip, time) |>
+#   dplyr::summarise(dplyr::across(dplyr::everything(), ~ mean(.x)), .groups = "drop") |>
+#   dplyr::filter(lng > 38.18)
+# arrow::write_parquet(tracks_clean, "inst/reports/pds/tracks_binned_09-04.parquet")
 
 
 
 # Load vessel tracking data (updated with latest trips)
 tracks_binned <- 
-arrow::read_parquet("tracks_binned_10-03.parquet") %>%
+arrow::read_parquet("tracks_binned_09-04.parquet") %>%
 dplyr::filter(lng > 38.18)
 # Calculate distance from coastline for accurate spatial analysis
 

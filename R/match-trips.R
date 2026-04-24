@@ -625,77 +625,156 @@ match_surveys_to_gps_trips <- function(
 }
 
 
+# ---- Per-survey and country-level pipeline ----
+
+#' Run Matching Pipeline for a Single Survey
+#'
+#' Loads validated surveys for one survey type, runs fuzzy matching against the
+#' device registry and GPS trips, and returns enriched records plus the set of
+#' trip IDs that were claimed by the match. Called once per survey by
+#' `merge_trips()`, which combines results across all surveys.
+#'
+#' @param survey Character. Survey identifier: "kefs" or "wcs".
+#' @param conf List. Configuration object from `read_config()`.
+#' @param registry Data frame. Device registry (pre-loaded by the caller).
+#' @param all_trips Data frame. GPS trips (pre-loaded by the caller).
+#'
+#' @return A list with two elements:
+#'   \itemize{
+#'     \item \strong{records}: Data frame of matched survey-trip pairs, surveys
+#'       unmatched to any trip, and any multi-trip-day trip rows produced during
+#'       matching. Includes a `survey` column identifying the source.
+#'     \item \strong{matched_trip_ids}: Character vector of trip IDs that
+#'       appeared in the matching output (used by the caller to identify
+#'       truly unmatched trips).
+#'   }
+#'
+#' @keywords internal
+compute_survey_matches <- function(survey, conf, registry, all_trips) {
+  survey_config <- if (survey == "kefs") {
+    list(
+      survey_prefix = conf$surveys$kefs$v2$validated$file_prefix,
+      pds_flag_col = "pds",
+      pds_flag_values = c("yes", "pds")
+    )
+  } else {
+    list(
+      survey_prefix = conf$surveys$wcs$catch$validated$file_prefix,
+      pds_flag_col = "pds",
+      pds_flag_values = "yes"
+    )
+  }
+
+  logger::log_info("Loading {survey} validated surveys...")
+  all_surveys <- coasts::download_parquet_from_cloud(
+    prefix = survey_config$survey_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  ) |>
+    dplyr::mutate(
+      survey_claimed_pds = !!rlang::sym(survey_config$pds_flag_col) %in%
+        survey_config$pds_flag_values
+    )
+
+  # standardize_column_names() renames variants (vessel_reg_number, captain_name)
+  # and creates registration_number / fisher_name as NA_character_ when absent (WCS)
+  surveys_for_matching <- all_surveys |>
+    standardize_column_names() |>
+    dplyr::select(
+      "submission_id",
+      "landing_date",
+      "registration_number",
+      "boat_name",
+      "fisher_name",
+      "survey_claimed_pds"
+    ) |>
+    dplyr::distinct()
+
+  logger::log_info(
+    "Matching {nrow(surveys_for_matching)} {survey} surveys to trips..."
+  )
+
+  matched_subset <- match_surveys_to_gps_trips(
+    surveys = surveys_for_matching,
+    trips = all_trips,
+    registry = registry
+  )
+
+  matched_submission_ids <- matched_subset |>
+    dplyr::filter(!is.na(.data$submission_id)) |>
+    dplyr::pull(.data$submission_id)
+
+  matched_trip_ids <- matched_subset |>
+    dplyr::filter(!is.na(.data$trip)) |>
+    dplyr::pull(.data$trip)
+
+  matched_with_full_data <- matched_subset |>
+    dplyr::left_join(
+      all_surveys,
+      by = "submission_id",
+      suffix = c("_match", ""),
+      relationship = "many-to-many"
+    ) |>
+    dplyr::select(-dplyr::ends_with("_match"))
+
+  unmatched_surveys <- all_surveys |>
+    dplyr::filter(!.data$submission_id %in% matched_submission_ids)
+
+  records <- dplyr::bind_rows(
+    matched_with_full_data,
+    unmatched_surveys
+  ) |>
+    dplyr::mutate(survey = survey)
+
+  list(records = records, matched_trip_ids = matched_trip_ids)
+}
+
+
 #' Merge Survey and GPS Trip Data
 #'
-#' Matches catch surveys to GPS trips using fuzzy matching on boat identifiers,
-#' then merges all records (matched and unmatched) and uploads to cloud storage.
+#' Runs the matching pipeline for all surveys (KEFS and WCS), combines the
+#' results into a single country-level dataset, appends truly unmatched GPS
+#' trips, and uploads to cloud storage.
 #'
-#' @param site Character. Site identifier: "kenya" or "zanzibar"
 #' @param log_threshold Logger threshold level. Default is `logger::DEBUG`.
 #'
-#' @return Invisible NULL. Uploads merged parquet file to cloud storage containing:
+#' @return Invisible NULL. Uploads a merged parquet file to
+#'   `conf$surveys$matched_trips$file_prefix` containing:
 #'   \itemize{
 #'     \item Matched survey-trip pairs (both submission_id and trip are non-NA)
 #'     \item Unmatched surveys (trip = NA)
 #'     \item Unmatched trips (submission_id = NA)
 #'     \item Match quality indicators: n_fields_used, n_fields_ok, match_ok
+#'     \item A `survey` column identifying the source ("kefs" or "wcs";
+#'       NA for unmatched trips)
 #'   }
 #'
 #' @details
-#' The function executes a five-step pipeline:
+#' The function executes a six-step pipeline:
 #' \enumerate{
-#'   \item Load device registry from cloud storage
-#'   \item Load validated surveys
-#'   \item Load preprocessed GPS trips
-#'   \item Match surveys to trips via fuzzy matching (surveys -> registry -> trips)
-#'   \item Merge matched subset with all unmatched records and upload
+#'   \item Load the shared device registry from cloud storage
+#'   \item Load GPS trips from cloud storage
+#'   \item Run `compute_survey_matches()` for KEFS (uses registration number,
+#'     boat name, and fisher name for fuzzy matching)
+#'   \item Run `compute_survey_matches()` for WCS (uses boat name only)
+#'   \item Identify trips not claimed by either survey's matching output
+#'   \item Combine all records and upload to `conf$surveys$matched_trips$file_prefix`
 #' }
 #'
-#' Site-specific configuration is handled automatically based on the `site` parameter.
+#' The device registry and GPS trips are loaded once and shared across both
+#' survey pipelines.
 #'
 #' @examples
 #' \dontrun{
-#' # Kenya
-#' merge_trips(site = "kenya")
-#'
-#' # Zanzibar
-#' merge_trips(site = "zanzibar")
+#' merge_trips()
 #' }
 #'
 #' @export
-merge_trips <- function(
-  site = c("kenya", "zanzibar"),
-  log_threshold = logger::DEBUG
-) {
-  site <- match.arg(site)
+merge_trips <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  # Site-specific configuration
-  site_config <- if (site == "kenya") {
-    list(
-      device_filter = c("WorldFish - Kenya", "Kenya", "Kenya AABS"),
-      survey_prefix = conf$surveys$kefs$v2$validated$file_prefix,
-      output_prefix = conf$surveys$kefs$v2$merged,
-      reg_col = "vessel_reg_number",
-      fisher_col = "captain_name",
-      pds_flag_col = "pds",
-      pds_flag_values = c("yes", "pds")
-    )
-  } else {
-    # zanzibar
-    list(
-      device_filter = conf$pds$customers,
-      survey_prefix = conf$surveys$wf_v1$validated$file_prefix,
-      output_prefix = conf$surveys$wf_v1$merged$file_prefix,
-      reg_col = "boat_reg_no",
-      fisher_col = "fisher_name",
-      pds_flag_col = "has_PDS",
-      pds_flag_values = "1"
-    )
-  }
-
-  # Load device registry
-  logger::log_info("Loading {site} device registry...")
+  # Load shared resources once (used by both survey pipelines)
+  logger::log_info("Loading device registry...")
   registry <- coasts::cloud_object_name(
     prefix = conf$metadata$airtable$assets,
     provider = conf$storage$google$key,
@@ -709,7 +788,7 @@ merge_trips <- function(
     ) |>
     readr::read_rds() |>
     purrr::pluck("devices") |>
-    dplyr::filter(.data$customer_name %in% site_config$device_filter) |>
+    dplyr::filter(.data$customer_name %in% conf$pds$customers) |>
     dplyr::select(
       "imei",
       "boat_name",
@@ -717,21 +796,7 @@ merge_trips <- function(
       fisher_name = "captain"
     )
 
-  # Load ALL validated surveys (no filtering)
-  logger::log_info("Loading ALL validated surveys...")
-  all_surveys <- coasts::download_parquet_from_cloud(
-    prefix = site_config$survey_prefix,
-    provider = conf$storage$google$key,
-    options = conf$storage$google$options
-  ) |>
-    # Add flag for whether survey claimed to have PDS
-    dplyr::mutate(
-      survey_claimed_pds = !!rlang::sym(site_config$pds_flag_col) %in%
-        site_config$pds_flag_values
-    )
-
-  # Load GPS trips
-  logger::log_info("Loading GPS trips from cloud storage...")
+  logger::log_info("Loading GPS trips...")
   pds_trips_parquet <- coasts::cloud_object_name(
     prefix = conf$pds$pds_trips$file_prefix,
     provider = conf$storage$google$key,
@@ -752,61 +817,24 @@ merge_trips <- function(
       landing_date = lubridate::as_date(.data$ended)
     )
 
-  # Prepare surveys for matching (ALL of them, not filtered)
-  surveys_for_matching <- all_surveys |>
-    dplyr::select(
-      "submission_id",
-      "landing_date",
-      registration_number = dplyr::all_of(site_config$reg_col),
-      "boat_name",
-      fisher_name = dplyr::all_of(site_config$fisher_col),
-      "survey_claimed_pds" # Keep this flag
-    ) |>
-    dplyr::distinct()
+  # Run matching pipeline for each survey
+  kefs_result <- compute_survey_matches("kefs", conf, registry, all_trips)
+  wcs_result <- compute_survey_matches("wcs", conf, registry, all_trips)
 
-  logger::log_info("Matching {nrow(surveys_for_matching)} surveys to trips...")
-
-  # Fuzzy match surveys to trips
-  matched_subset <- match_surveys_to_gps_trips(
-    surveys = surveys_for_matching,
-    trips = all_trips,
-    registry = registry
+  # Trips not claimed by either survey's matching output
+  all_matched_trip_ids <- unique(
+    c(kefs_result$matched_trip_ids, wcs_result$matched_trip_ids)
   )
-
-  logger::log_info("Merging with full datasets...")
-
-  # Identify matched IDs
-  matched_submission_ids <- matched_subset |>
-    dplyr::filter(!is.na(.data$submission_id)) |>
-    dplyr::pull(.data$submission_id)
-
-  matched_trip_ids <- matched_subset |>
-    dplyr::filter(!is.na(.data$trip)) |>
-    dplyr::pull(.data$trip)
-
-  # Enrich matched records with full survey data
-  matched_with_full_data <- matched_subset |>
-    dplyr::left_join(
-      all_surveys,
-      by = "submission_id",
-      suffix = c("_match", ""),
-      relationship = "many-to-many"
-    ) |>
-    dplyr::select(-dplyr::ends_with("_match"))
-
-  # Get unmatched records
-  unmatched_surveys <- all_surveys |>
-    dplyr::filter(!.data$submission_id %in% matched_submission_ids)
-
   unmatched_trips <- all_trips |>
-    dplyr::filter(!.data$trip %in% matched_trip_ids)
+    dplyr::filter(!.data$trip %in% all_matched_trip_ids)
 
   # Combine all records
   merged_trips <- dplyr::bind_rows(
-    matched_with_full_data,
-    unmatched_surveys,
+    kefs_result$records,
+    wcs_result$records,
     unmatched_trips
-  )
+  ) |>
+    dplyr::select("submission_id":"last_seen")
 
   n_matched <- sum(
     !is.na(merged_trips$submission_id) & !is.na(merged_trips$trip)
@@ -829,11 +857,10 @@ merge_trips <- function(
     "  - {n_matched_no_claim} matched where survey did NOT claim PDS (data quality issue?)"
   )
 
-  # Upload to cloud storage
   logger::log_info("Uploading merged data to cloud storage...")
   coasts::upload_parquet_to_cloud(
     data = merged_trips,
-    prefix = site_config$output_prefix,
+    prefix = conf$surveys$matched_trips$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
