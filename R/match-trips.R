@@ -764,6 +764,7 @@ compute_survey_matches <- function(survey, conf, registry, all_trips) {
 #' The device registry and GPS trips are loaded once and shared across both
 #' survey pipelines.
 #'
+#' @keywords matching workflow
 #' @examples
 #' \dontrun{
 #' merge_trips()
