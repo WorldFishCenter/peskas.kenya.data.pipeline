@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,66 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.10.0" id="peskaskenyadatapipeline-4100">peskas.kenya.data.pipeline 4.10.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-4100"></a></h2>
+<div class="section level3">
+<h3 id="major-changes-4-10-0">Major Changes<a class="anchor" aria-label="anchor" href="#major-changes-4-10-0"></a></h3>
+<ul><li><p><strong>WCS survey support in GPS trip matching</strong>: <code><a href="../reference/merge_trips.html">merge_trips()</a></code> now processes both KEFS and WCS surveys and uploads a single country-level matched-trips dataset to <code>conf$surveys$matched_trips$file_prefix</code> (<code>kenya-surveys-matched-trips</code>). Previously only KEFS was matched; the WCS branch referenced the wrong config key and was never executed.</p></li>
+<li><p><strong>New <code><a href="../reference/compute_survey_matches.html">compute_survey_matches()</a></code> internal function</strong>: Extracts the per-survey load + match + enrich pipeline so it can be called independently for each survey type. The device registry and GPS trips are loaded once and shared across both survey pipelines.</p></li>
+<li><p><strong><code><a href="../reference/merge_trips.html">merge_trips()</a></code> signature change</strong>: The <code>survey</code> argument has been removed. The function now always runs both KEFS and WCS and returns a unified result. Callers that previously passed <code>survey = "kefs"</code> should drop the argument.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="configuration-4-10-0">Configuration<a class="anchor" aria-label="anchor" href="#configuration-4-10-0"></a></h3>
+<ul><li>Added <code>surveys.matched_trips.file_prefix: kenya-surveys-matched-trips</code> as the single country-level output for matched trips.</li>
+<li>Removed <code>surveys.kefs.v2.merged</code> (replaced by the above). Downstream consumers of <code>kefs-v2-surveys-merged</code> should migrate to <code>kenya-surveys-matched-trips</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-4-10-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-4-10-0"></a></h3>
+<ul><li>Fixed <code>match.arg(site)</code> bug in <code><a href="../reference/merge_trips.html">merge_trips()</a></code> (parameter is named <code>survey</code>, not <code>site</code>) that caused an immediate error on every call.</li>
+<li>Fixed stale <code>{site}</code> glue reference in the registry loading log message.</li>
+<li>Fixed <code><a href="../reference/export_api_raw.html">export_api_raw()</a></code> config key typo: <code>conf$api$trips$rawfile_prefix</code> → <code>conf$api$trips$raw$file_prefix</code> / <code>conf$api$trips$raw$cloud_path</code>.</li>
+<li>Corrected <code><a href="../reference/export_api_raw.html">export_api_raw()</a></code> description: function exports KEFS only (WCS is included at the validated stage via <code><a href="../reference/export_api_validated.html">export_api_validated()</a></code>).</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.9.0" id="peskaskenyadatapipeline-490">peskas.kenya.data.pipeline 4.9.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-490"></a></h2>
+<div class="section level4">
+<h4 id="infrastructure--workflow-4-9-0">Infrastructure &amp; Workflow<a class="anchor" aria-label="anchor" href="#infrastructure--workflow-4-9-0"></a></h4>
+<ul><li>
+<strong>Delegating to <code>coasts</code> most of the core storage and databse-related functions</strong>: Now core and other countries shared storage functions are delagated to central and upgraded features of the <code>coasts</code>pacakge for improved standardization and maintainability</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.8.0" id="peskaskenyadatapipeline-480">peskas.kenya.data.pipeline 4.8.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-480"></a></h2>
+<div class="section level3">
+<h3 id="major-changes-4-8-0">Major Changes<a class="anchor" aria-label="anchor" href="#major-changes-4-8-0"></a></h3>
+<ul><li>
+<strong>Adopted <code>coasts</code> as the shared multicountry analytics engine</strong>: Aggregated data summarization and dashboard export are now delegated to <a href="https://github.com/WorldFishCenter/peskas.coasts" class="external-link"><code>WorldFishCenter/peskas.coasts</code></a> (dev branch). This centralizes the logic for producing monthly, taxa, district, and gear summaries — as well as fishery metrics — across all Peskas country deployments (Zanzibar, Kenya, Mozambique), ensuring consistent outputs and a single place to maintain and improve the shared pipeline logic.
+<ul><li>Added <code>coasts</code> to <code>Imports</code> and <code>Remotes</code> in <code>DESCRIPTION</code>
+</li>
+<li>Added <code>remotes::install_github("WorldFishCenter/peskas.coasts", ref = "dev")</code> to both <code>Dockerfile</code> and <code>Dockerfile.prod</code> so the image ships the package</li>
+<li>Pipeline steps that previously used local <code>summarize_data()</code> and <code>generate_fleet_analysis()</code> now call the equivalent <code>coasts::</code> functions, passing <code>package = "peskas.kenya.data.pipeline"</code> so they read the country-specific <code>inst/conf.yml</code>
+</li>
+</ul></li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.7.0" id="peskaskenyadatapipeline-470">peskas.kenya.data.pipeline 4.7.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-470"></a></h2>
+<div class="section level3">
+<h3 id="improvements-4-7-0">Improvements<a class="anchor" aria-label="anchor" href="#improvements-4-7-0"></a></h3>
+<ul><li>
+<strong>Standardized configuration structure</strong>: Replaced <code>inst/conf.yml</code> with a unified multi-country template harmonized across all Peskas deployments (Zanzibar, Kenya, Mozambique). Key structural changes:
+<ul><li>Survey credentials moved from <code>surveys.*</code> into a new top-level <code>ingestion.*</code> section</li>
+<li>Stage keys shortened (<code>raw_surveys</code> → <code>raw</code>, <code>preprocessed_surveys</code> → <code>preprocessed</code>, etc.)</li>
+<li>Source names shortened (<code>wcs_surveys</code> → <code>wcs</code>, <code>wf_surveys_v1</code> → <code>wf_v1</code>, etc.)</li>
+<li>MongoDB structure reorganized: connection strings under <code>connection_strings.*</code>, databases under <code>databases.*</code>, collections key pluralized, <code>portal</code> renamed to <code>dashboard</code>
+</li>
+<li>Airtable config moved from top-level <code>airtable.*</code> to <code>metadata.airtable.*</code>
+</li>
+<li>All R code updated to use the new config paths</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="4.6.0" id="peskaskenyadatapipeline-460">peskas.kenya.data.pipeline 4.6.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-460"></a></h2>
 <div class="section level3">
@@ -316,14 +376,14 @@
 <h3 id="enhancements-4-1-0">Enhancements<a class="anchor" aria-label="anchor" href="#enhancements-4-1-0"></a></h3>
 <ul><li>
 <strong>Improved MongoDB Data Handling</strong>:
-<ul><li>Enhanced <code><a href="../reference/mdb_collection_pull.html">mdb_collection_pull()</a></code> to properly handle MongoDB ObjectId fields by explicitly including <code>_id</code> in queries and maintaining correct column ordering</li>
+<ul><li>Enhanced <code>mdb_collection_pull()</code> to properly handle MongoDB ObjectId fields by explicitly including <code>_id</code> in queries and maintaining correct column ordering</li>
 <li>Updated column reordering logic to prioritize <code>_id</code> field placement in retrieved datasets</li>
 <li>Improved data consistency and integrity when pulling data from MongoDB collections</li>
 </ul></li>
 <li>
 <strong>Code Style and Formatting</strong>:
 <ul><li>Standardized function parameter formatting across storage functions for improved readability</li>
-<li>Enhanced code consistency in <code><a href="../reference/upload_parquet_to_cloud.html">upload_parquet_to_cloud()</a></code>, <code><a href="../reference/cloud_object_name.html">cloud_object_name()</a></code>, and related functions</li>
+<li>Enhanced code consistency in <code>upload_parquet_to_cloud()</code>, <code>cloud_object_name()</code>, and related functions</li>
 <li>Updated <code><a href="../reference/get_metadata.html">get_metadata()</a></code> function formatting to follow consistent style guidelines</li>
 </ul></li>
 <li>

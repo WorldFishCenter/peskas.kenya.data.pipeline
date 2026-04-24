@@ -69,7 +69,7 @@ The function performs the following main operations:
 
 7.  **Standardizes names**: Maps survey labels to standardized names
     using
-    [`map_surveys()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/map_surveys.md):
+    [`map_kefs_surveys()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/map_kefs_surveys.md):
 
     - Taxonomic names to scientific names and alpha3 codes
 

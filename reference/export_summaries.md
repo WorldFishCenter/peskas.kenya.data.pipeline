@@ -28,8 +28,6 @@ collections to MongoDB:
 
 - Fish distribution statistics (`fish_distribution`)
 
-- Landing site mapping data (`map_distribution`)
-
 ## Details
 
 The function performs the following operations:

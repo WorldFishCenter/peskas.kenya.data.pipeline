@@ -1,5 +1,108 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 4.10.0
+
+### Major Changes
+
+- **WCS survey support in GPS trip matching**:
+  [`merge_trips()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_trips.md)
+  now processes both KEFS and WCS surveys and uploads a single
+  country-level matched-trips dataset to
+  `conf$surveys$matched_trips$file_prefix`
+  (`kenya-surveys-matched-trips`). Previously only KEFS was matched; the
+  WCS branch referenced the wrong config key and was never executed.
+
+- **New
+  [`compute_survey_matches()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/compute_survey_matches.md)
+  internal function**: Extracts the per-survey load + match + enrich
+  pipeline so it can be called independently for each survey type. The
+  device registry and GPS trips are loaded once and shared across both
+  survey pipelines.
+
+- **[`merge_trips()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_trips.md)
+  signature change**: The `survey` argument has been removed. The
+  function now always runs both KEFS and WCS and returns a unified
+  result. Callers that previously passed `survey = "kefs"` should drop
+  the argument.
+
+### Configuration
+
+- Added `surveys.matched_trips.file_prefix: kenya-surveys-matched-trips`
+  as the single country-level output for matched trips.
+- Removed `surveys.kefs.v2.merged` (replaced by the above). Downstream
+  consumers of `kefs-v2-surveys-merged` should migrate to
+  `kenya-surveys-matched-trips`.
+
+### Fixes
+
+- Fixed `match.arg(site)` bug in
+  [`merge_trips()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_trips.md)
+  (parameter is named `survey`, not `site`) that caused an immediate
+  error on every call.
+- Fixed stale `{site}` glue reference in the registry loading log
+  message.
+- Fixed
+  [`export_api_raw()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_api_raw.md)
+  config key typo: `conf$api$trips$rawfile_prefix` →
+  `conf$api$trips$raw$file_prefix` / `conf$api$trips$raw$cloud_path`.
+- Corrected
+  [`export_api_raw()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_api_raw.md)
+  description: function exports KEFS only (WCS is included at the
+  validated stage via
+  [`export_api_validated()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_api_validated.md)).
+
+## peskas.kenya.data.pipeline 4.9.0
+
+#### Infrastructure & Workflow
+
+- **Delegating to `coasts` most of the core storage and databse-related
+  functions**: Now core and other countries shared storage functions are
+  delagated to central and upgraded features of the `coasts`pacakge for
+  improved standardization and maintainability
+
+## peskas.kenya.data.pipeline 4.8.0
+
+### Major Changes
+
+- **Adopted `coasts` as the shared multicountry analytics engine**:
+  Aggregated data summarization and dashboard export are now delegated
+  to
+  [`WorldFishCenter/peskas.coasts`](https://github.com/WorldFishCenter/peskas.coasts)
+  (dev branch). This centralizes the logic for producing monthly, taxa,
+  district, and gear summaries — as well as fishery metrics — across all
+  Peskas country deployments (Zanzibar, Kenya, Mozambique), ensuring
+  consistent outputs and a single place to maintain and improve the
+  shared pipeline logic.
+  - Added `coasts` to `Imports` and `Remotes` in `DESCRIPTION`
+  - Added
+    `remotes::install_github("WorldFishCenter/peskas.coasts", ref = "dev")`
+    to both `Dockerfile` and `Dockerfile.prod` so the image ships the
+    package
+  - Pipeline steps that previously used local `summarize_data()` and
+    `generate_fleet_analysis()` now call the equivalent `coasts::`
+    functions, passing `package = "peskas.kenya.data.pipeline"` so they
+    read the country-specific `inst/conf.yml`
+
+## peskas.kenya.data.pipeline 4.7.0
+
+### Improvements
+
+- **Standardized configuration structure**: Replaced `inst/conf.yml`
+  with a unified multi-country template harmonized across all Peskas
+  deployments (Zanzibar, Kenya, Mozambique). Key structural changes:
+  - Survey credentials moved from `surveys.*` into a new top-level
+    `ingestion.*` section
+  - Stage keys shortened (`raw_surveys` → `raw`, `preprocessed_surveys`
+    → `preprocessed`, etc.)
+  - Source names shortened (`wcs_surveys` → `wcs`, `wf_surveys_v1` →
+    `wf_v1`, etc.)
+  - MongoDB structure reorganized: connection strings under
+    `connection_strings.*`, databases under `databases.*`, collections
+    key pluralized, `portal` renamed to `dashboard`
+  - Airtable config moved from top-level `airtable.*` to
+    `metadata.airtable.*`
+  - All R code updated to use the new config paths
+
 ## peskas.kenya.data.pipeline 4.6.0
 
 ### New Features
@@ -322,10 +425,9 @@
 ### Enhancements
 
 - **Improved MongoDB Data Handling**:
-  - Enhanced
-    [`mdb_collection_pull()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/mdb_collection_pull.md)
-    to properly handle MongoDB ObjectId fields by explicitly including
-    `_id` in queries and maintaining correct column ordering
+  - Enhanced `mdb_collection_pull()` to properly handle MongoDB ObjectId
+    fields by explicitly including `_id` in queries and maintaining
+    correct column ordering
   - Updated column reordering logic to prioritize `_id` field placement
     in retrieved datasets
   - Improved data consistency and integrity when pulling data from
@@ -333,10 +435,8 @@
 - **Code Style and Formatting**:
   - Standardized function parameter formatting across storage functions
     for improved readability
-  - Enhanced code consistency in
-    [`upload_parquet_to_cloud()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/upload_parquet_to_cloud.md),
-    [`cloud_object_name()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/cloud_object_name.md),
-    and related functions
+  - Enhanced code consistency in `upload_parquet_to_cloud()`,
+    `cloud_object_name()`, and related functions
   - Updated
     [`get_metadata()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_metadata.md)
     function formatting to follow consistent style guidelines
