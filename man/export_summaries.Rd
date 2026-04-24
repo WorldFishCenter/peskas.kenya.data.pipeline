@@ -15,7 +15,6 @@ This function does not return a value. It uploads the following collections to M
 \item Monthly catch summaries (\code{monthly_stats} and \code{monthly_summaries})
 \item Gear distribution statistics (\code{gear_distribution})
 \item Fish distribution statistics (\code{fish_distribution})
-\item Landing site mapping data (\code{map_distribution})
 }
 }
 \description{

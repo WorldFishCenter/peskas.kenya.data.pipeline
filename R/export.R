@@ -36,7 +36,6 @@
 #' - Monthly catch summaries (`monthly_stats` and `monthly_summaries`)
 #' - Gear distribution statistics (`gear_distribution`)
 #' - Fish distribution statistics (`fish_distribution`)
-#' - Landing site mapping data (`map_distribution`)
 #'
 #' @note
 #' **Dependencies**:
@@ -201,16 +200,6 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       fish_category = stringr::str_to_title(.data$fish_category)
     )
 
-  map_distribution <-
-    valid_data %>%
-    dplyr::select("submission_id", "landing_site", "lat", "lon") %>%
-    dplyr::group_by(.data$submission_id) %>%
-    dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
-    dplyr::ungroup() %>%
-    dplyr::select(-"submission_id") %>%
-    dplyr::filter(!is.na(.data$lat) & !is.na(.data$landing_site)) %>%
-    dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
-
   gear_summaries <-
     valid_data |>
     dplyr::filter(!is.na(.data$gear) & !is.na(.data$landing_date)) |>
@@ -281,7 +270,6 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     monthly_stats = monthly_stats,
     monthly_summaries = monthly_summaries |> dplyr::select(-"mean_price_kg"),
     fish_distribution = fish_distribution,
-    #map_distribution = map_distribution,
     gear_summaries = gear_summaries
   )
 
@@ -293,7 +281,6 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     monthly_stats = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$monthly_stats,
     monthly_summaries = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$catch_monthly,
     fish_distribution = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$fish_distribution,
-    #map_distribution = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$map_distribution,
     gear_summaries = conf$storage$mongodb$databases$dashboard_wcs$collections$v1$gear_summaries
   )
 
