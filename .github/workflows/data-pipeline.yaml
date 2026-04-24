@@ -37,26 +37,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve latest peskas.coasts release
+        id: coasts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ref=$(gh api repos/WorldFishCenter/peskas.coasts/releases/latest --jq .tag_name)
+          if [ -z "$ref" ] || [ "$ref" = "null" ]; then
+            echo "Failed to resolve latest peskas.coasts release" >&2
+            exit 1
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Resolved peskas.coasts ref: $ref"
+
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.prod
           push: true
           tags: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-          build-args: CACHEBUST=${{ github.sha }}
+          build-args: |
+            COASTS_REF=${{ steps.coasts.outputs.ref }}
           cache-from: type=registry,ref=ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:buildcache
           cache-to: type=registry,ref=ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:buildcache,mode=max
 
@@ -236,14 +250,14 @@ jobs:
       - name: Call merge_trips()
         run: Rscript -e 'peskas.kenya.data.pipeline::merge_trips()'
 
-  export-api-raw:
+  export-api:
     container:
       credentials:
         password: ${{ secrets.GITHUB_TOKEN }}
         username: ${{ github.actor }}
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-    name: Export KEFS raw API landings
-    needs: ingest-preprocess-kefs-v2
+    name: Export KEFS and WCS API landings
+    needs: [validate-export-wcs, validate-sync-kefs-v2]
     runs-on: ubuntu-latest
     steps:
       - if: endsWith(github.ref, '/main')
@@ -251,20 +265,6 @@ jobs:
         run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call export_api_raw()
         run: Rscript -e 'peskas.kenya.data.pipeline::export_api_raw()'
-
-  export-api-validated:
-    container:
-      credentials:
-        password: ${{ secrets.GITHUB_TOKEN }}
-        username: ${{ github.actor }}
-      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
-    name: Export KEFS validated API landings
-    needs: validate-sync-kefs-v2
-    runs-on: ubuntu-latest
-    steps:
-      - if: endsWith(github.ref, '/main')
-        name: Set env to production
-        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
       - name: Call export_api_validated()
         run: Rscript -e 'peskas.kenya.data.pipeline::export_api_validated()'
 
