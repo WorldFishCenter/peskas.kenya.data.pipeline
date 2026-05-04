@@ -4,6 +4,7 @@ on:
   push:
   schedule:
     - cron: '0 0 */2 * *'
+  workflow_dispatch: 
 
 env:
   KOBO_ASSET_ID: ${{ secrets.KOBO_ASSET_ID }}
