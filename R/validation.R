@@ -126,7 +126,7 @@ validate_landings <- function() {
       ),
       total_catch_alert = validate_total_catch(
         data = merged_landings,
-        k = conf$validation$k_catch,
+        k = 2.5,
         flag_value = 10
       ),
       fishers_catch_alert = validate_fishers_catch(
