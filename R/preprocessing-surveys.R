@@ -1190,13 +1190,21 @@ get_individual_data <- function(raw_dat) {
     dplyr::rename_with(~ stringr::str_remove(., "group_xp36r82/")) |>
     dplyr::select(
       "submission_id",
-      trip_cost = "Kadiria_gharama_inay_ana_na_pato_la_mvuvi",
+      "Kadiria_gharama_inay_ana_na_pato_la_mvuvi",
+      "Kadiria_gharama_inayohusiana_n",
       dplyr::starts_with("Jina_la_mvuvi")
     ) |>
     dplyr::mutate(
       fisher_id = do.call(
         dplyr::coalesce,
         dplyr::pick(dplyr::starts_with("Jina_la_mvuvi"))
+      ),
+      trip_cost = do.call(
+        dplyr::coalesce,
+        dplyr::pick(c(
+          "Kadiria_gharama_inay_ana_na_pato_la_mvuvi",
+          "Kadiria_gharama_inayohusiana_n"
+        ))
       ),
       submission_id = as.character(.data$submission_id),
       trip_cost = as.numeric(.data$trip_cost)
