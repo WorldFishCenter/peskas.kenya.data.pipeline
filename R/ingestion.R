@@ -132,6 +132,68 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
   )
 }
 
+#' Download and Process WF Catch Surveys from Kobotoolbox
+#'
+#' This function retrieves WF survey data from Kobotoolbox,
+#' processes it, and uploads the raw data as Parquet files to Google Cloud Storage.
+#' This function retrieves WCS survey data  from Kobotoolbox,
+#' processes it, and uploads the raw data as Parquet files to Google Cloud Storage.
+#'
+#' @param log_threshold Logging threshold level (default: logger::DEBUG)
+#'
+#' @return No return value. Function downloads data, processes it, and uploads to Google Cloud Storage.
+#'
+#' @details
+#' The function performs the following steps:
+#' 1. Reads configuration settings.
+#' 2. Downloads survey data from Kobotoolbox using `get_kobo_data`.
+#' 3. Checks for uniqueness of submissions.
+#' 4. Converts data to tabular format.
+#' 5. Uploads raw data as Parquet files to Google Cloud Storage.
+#' 5. Uploads raw data as Parquet files to Google Cloud Storage.
+#'
+#' This function processes WF surveys.
+#'
+#' @keywords workflow ingestion
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' ingest_wcs_surveys()
+#' }
+ingest_wf_surveys <- function(log_threshold = logger::DEBUG) {
+  conf <- read_config()
+
+  # Define WCS version configurations
+  version_configs <- list(
+    v1 = list(
+      kobo = list(
+        url = "eu.kobotoolbox.org",
+        asset_id = conf$ingestion$wf_gleaning$koboform$asset_id,
+        username = conf$ingestion$wf_gleaning$koboform$username,
+        password = conf$ingestion$wf_gleaning$koboform$password
+      ),
+      storage = list(
+        file_prefix = conf$surveys$wf_gleaning$raw$file_prefix,
+        provider = conf$storage$google$key,
+        options = conf$storage$google$options
+      )
+    )
+  )
+
+  # Process each WCS version
+  purrr::iwalk(
+    version_configs,
+    ~ {
+      ingest_catch_survey_version(
+        version = .y,
+        kobo_config = .x$kobo,
+        storage_config = .x$storage
+      )
+    }
+  )
+}
+
 #' Download and Process KEFS (BMU DAILY ARTISANAL 2025) Catch Surveys from Kobotoolbox
 #'
 #' This function retrieves KEFS (BMU DAILY ARTISANAL 2025) survey data from their

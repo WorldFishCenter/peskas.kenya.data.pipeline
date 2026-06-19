@@ -19,6 +19,12 @@ default:
         username: !expr Sys.getenv('KEFS_KOBO_USERNAME')
         password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
         token: !expr Sys.getenv('KEFS_KOBO_TOKEN')
+    wf_gleaning:
+      koboform:
+        asset_id: !expr Sys.getenv('WF_GLEANING_ID')
+        username: !expr Sys.getenv('WF_SURVEYS_UNAME')
+        password: !expr Sys.getenv('WF_SURVEYS_PSSW')
+        token: !expr Sys.getenv('WF_SURVEYS_TOKEN')
   surveys:
     summaries:
       file_prefix: kenya-summaries
@@ -83,6 +89,16 @@ default:
         validation:
           flags:
             file_prefix: kefs-v2-flags
+    wf_gleaning:
+      raw:
+        file_prefix: wf-surveys_gleaning-raw
+        version: latest
+      preprocessed:
+        file_prefix: wf-surveys_gleaning-preprocessed
+        version: latest
+      validated:
+        file_prefix: wf-surveys_gleaning-validated
+        version: latest
     matched_trips:
       file_prefix: kenya-surveys-matched-trips
   storage:

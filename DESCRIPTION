@@ -39,7 +39,8 @@ Imports:
     tibble,
     tidyr,
     univOutl,
-    coasts
+    coasts,
+    hms
 Suggests:
     ggplot2
 Remotes: github::WorldFishCenter/peskas.coasts, github::WorldFishCenter/ssf-ai-toolkit/Rplug@plug-R
