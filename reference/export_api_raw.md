@@ -37,6 +37,8 @@ NULL invisibly. Side effect: uploads merged parquet to cloud storage.
 
 - `gaul_2_code`, `gaul_2_name`: GAUL level 2 district
 
+- `landing_site`, `landing_site`: Landing site name
+
 - `n_fishers`: Total fishers (men + women + children)
 
 - `trip_duration_hrs`: Trip duration in hours
