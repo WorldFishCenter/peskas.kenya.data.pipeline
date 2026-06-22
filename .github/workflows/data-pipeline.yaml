@@ -329,7 +329,6 @@ jobs:
   validate-wf-gleaning-surveys:
     name: Validate and sync WF gleaning surveys
     needs: ingest-preprocess-wf-gleaning-surveys
-    name: Ingest and preproces
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
