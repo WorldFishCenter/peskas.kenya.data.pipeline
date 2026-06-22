@@ -57,7 +57,7 @@ storage:
 The function uses logging to track progress.
 }
 \seealso{
-\code{\link{reshape_gleaning_catch}}, \code{\link{sanitize_gleaning_inputs}}
+\code{\link{reshape_gleaning_catch}}
 }
 \keyword{preprocessing}
 \keyword{workflow}

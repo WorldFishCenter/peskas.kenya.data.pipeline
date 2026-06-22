@@ -1522,3 +1522,197 @@ get_indicators_flags <- function(dat = NULL, limits = NULL, clean_ids = NULL) {
       }
     )
 }
+
+#' Default Thresholds for Gleaning Survey Validation
+#'
+#' Returns the list of bounds used by [validate_gleaning_surveys()]. Defaults are
+#' calibrated to the observed Kenya/Zanzibar distributions: they remove the
+#' clearly impossible while leaving legitimate extremes (e.g. heavy seaweed
+#' hauls, hundreds of small shells) untouched. Override any value by name, e.g.
+#' `gleaning_validation_thresholds(trip_hours_max = 10)`.
+#'
+#' @param ... Named overrides for any default threshold.
+#' @return A named list of thresholds.
+#' @keywords validation
+#' @export
+gleaning_validation_thresholds <- function(...) {
+  defaults <- list(
+    age_min = 8, # years
+    age_max = 90,
+    trip_hours_max = 12, # gleaning trip length (h)
+    days_week_max = 7,
+    distance_km_max = 50, # distance to gleaning site
+    revenue_max = 100000, # daily revenue (native ccy)
+    total_catch_kg_max = 100, # per-submission catch weight
+    total_individuals_max = 10000, # per-submission count
+    taxon_weight_kg_max = 100, # per-taxon weight
+    price_per_kg_max = 2000, # unit price (native ccy)
+    n_individuals_max = 5000, # per size-class count
+    recall_days_max = 30, # submission - landing gap
+    project_start = as.Date("2025-01-01") # earliest plausible date
+  )
+  utils::modifyList(defaults, list(...))
+}
+
+
+#' Validate Preprocessed Gleaning Surveys and Build a Clean Dataset
+#'
+#' Flags unreasonable values in a preprocessed gleaning dataset (the long
+#' skeleton from [preprocess_wf_gleaning()], or the harmonized Zanzibar+Kenya
+#' table) and, because a bad value taints the whole record, removes every
+#' submission with at least one flag to yield a clean dataset.
+#'
+#' Each check writes a `flag_*` logical column (TRUE = problem; NA values pass).
+#' Checks run only for columns present, so the function works across the
+#' single-country skeletons and the unified table without modification. Flags
+#' are consolidated per row into `alert_n`, `alert_flag`, and `alert_reasons`,
+#' then rolled up to the submission for removal.
+#'
+#' Checks: demographic (`age`), effort (`trip_duration`, `days_collection_week`,
+#' `gleaning_site_distance`), economic (`catch_price`, `price_per_kg`), catch
+#' magnitude (`total_catch_kg`, `total_individuals`, `total_weight_kg`,
+#' `n_individuals`), and temporal (landing after submission, future dates, recall
+#' gap, pre-project dates).
+#'
+#' @param log_threshold Logging threshold (default `logger::INFO`).
+#'
+#' @return A list with:
+#'   \describe{
+#'     \item{validated}{Input plus all `flag_*` columns and `alert_n` /
+#'       `alert_flag` / `alert_reasons` (full audit trail).}
+#'     \item{flagged_submissions}{One row per flagged submission, with the
+#'       distinct reasons and number of flagged rows.}
+#'     \item{clean}{Original columns with flagged submissions removed.}
+#'     \item{summary}{Submissions tripping each individual check.}
+#'   }
+#' @export
+#' @keywords workflow
+#' @examples
+#' \dontrun{
+#' v <- validate_gleaning_surveys()
+#' v$summary              # what tripped
+#' v$flagged_submissions  # who and why
+#' clean <- v$clean       # analysis-ready
+#' }
+validate_gleaning_surveys <- function(
+  log_threshold = logger::INFO
+) {
+  logger::log_threshold(log_threshold)
+  th <- gleaning_validation_thresholds()
+
+  conf <- read_config()
+
+  data <-
+    coasts::download_parquet_from_cloud(
+      prefix = conf$surveys$wf_gleaning$preprocessed$file_prefix,
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options
+    )
+  n <- nrow(data)
+
+  # Safe getters: missing column -> all-NA vector, so its checks never fire.
+  get_num <- function(name) {
+    if (name %in% names(data)) as.double(data[[name]]) else rep(NA_real_, n)
+  }
+  get_date <- function(name) {
+    if (name %in% names(data)) {
+      lubridate::as_date(data[[name]])
+    } else {
+      as.Date(rep(NA, n))
+    }
+  }
+
+  age <- get_num("age")
+  trip <- get_num("trip_duration")
+  days <- get_num("days_collection_week")
+  dist <- get_num("gleaning_site_distance")
+  rev <- get_num("catch_price")
+  tck <- get_num("total_catch_kg")
+  tind <- get_num("total_individuals")
+  tw <- get_num("total_weight_kg")
+  pkg <- get_num("price_per_kg")
+  ni <- get_num("n_individuals")
+  land <- get_date("landing_date")
+  subd <- get_date("submission_date")
+
+  ff <- function(cond) dplyr::coalesce(cond, FALSE) # NA condition -> not flagged
+
+  flags <- tibble::tibble(
+    flag_age = ff(age < th$age_min | age > th$age_max),
+    flag_trip_duration = ff(trip <= 0 | trip > th$trip_hours_max),
+    flag_days_week = ff(days < 0 | days > th$days_week_max),
+    flag_distance = ff(dist > th$distance_km_max),
+    flag_revenue = ff(rev < 0 | rev > th$revenue_max),
+    flag_total_catch = ff(tck > th$total_catch_kg_max),
+    flag_total_individuals = ff(tind > th$total_individuals_max),
+    flag_taxon_weight = ff(tw <= 0 | tw > th$taxon_weight_kg_max),
+    flag_price_kg = ff(pkg > th$price_per_kg_max),
+    flag_n_individuals = ff(ni < 0 | ni > th$n_individuals_max),
+    flag_date_order = ff(land > subd),
+    flag_date_future = ff(land > Sys.Date() | subd > Sys.Date()),
+    flag_date_recall = ff(as.numeric(subd - land) > th$recall_days_max),
+    flag_date_range = ff(land < th$project_start)
+  )
+  flag_names <- names(flags)
+
+  flags <- flags |>
+    dplyr::mutate(
+      alert_n = rowSums(dplyr::across(dplyr::all_of(flag_names))),
+      alert_flag = .data$alert_n > 0,
+      alert_reasons = apply(
+        dplyr::across(dplyr::all_of(flag_names)),
+        1,
+        function(r) paste(sub("^flag_", "", flag_names)[r], collapse = ", ")
+      )
+    )
+
+  validated <- dplyr::bind_cols(data, flags)
+
+  flagged_submissions <- validated |>
+    dplyr::filter(.data$alert_flag) |>
+    dplyr::group_by(.data$submission_id) |>
+    dplyr::summarise(
+      n_flagged_rows = dplyr::n(),
+      reasons = paste(
+        sort(unique(unlist(
+          stringr::str_split(.data$alert_reasons, ", ")
+        ))),
+        collapse = ", "
+      ),
+      .groups = "drop"
+    )
+
+  summary <- tibble::tibble(
+    check = sub("^flag_", "", flag_names),
+    submissions_flagged = purrr::map_int(flag_names, function(fn) {
+      dplyr::n_distinct(validated$submission_id[validated[[fn]]])
+    })
+  ) |>
+    dplyr::arrange(dplyr::desc(.data$submissions_flagged))
+
+  clean <- validated |>
+    dplyr::filter(
+      !.data$submission_id %in% flagged_submissions$submission_id
+    ) |>
+    dplyr::select(
+      -dplyr::all_of(c(flag_names, "alert_n", "alert_flag", "alert_reasons"))
+    )
+
+  logger::log_info(
+    "Validation: flagged {nrow(flagged_submissions)} of {dplyr::n_distinct(data$submission_id)} submissions; clean set retains {dplyr::n_distinct(clean$submission_id)}."
+  )
+
+  validated_list <- list(
+    validated = validated,
+    flagged_submissions = flagged_submissions,
+    clean = clean,
+    summary = summary
+  )
+
+  coasts::upload_parquet_to_cloud(
+    data = validated_list$clean,
+    prefix = conf$surveys$wf_gleaning$validated$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+}

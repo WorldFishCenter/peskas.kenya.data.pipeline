@@ -47,7 +47,7 @@
 #'   supply-chain fields plus `total_individuals` and `total_catch_kg`.
 #' @export
 #' @keywords workflow preprocessing
-#' @seealso \code{\link{reshape_gleaning_catch}}, \code{\link{sanitize_gleaning_inputs}}
+#' @seealso \code{\link{reshape_gleaning_catch}}
 preprocess_wf_gleaning <- function(log_threshold = logger::DEBUG) {
   logger::log_threshold(log_threshold)
   conf <- read_config()
@@ -184,26 +184,50 @@ preprocess_wf_gleaning <- function(log_threshold = logger::DEBUG) {
       catch_outcome = "collect_data_today",
       dplyr::starts_with("CATCH.")
     ) |>
-    reshape_gleaning_catch_ke()
+    reshape_gleaning_catch()
+
+  # ---- Per-submission totals -------------------------------------------------
+  # total_catch_kg: per-taxon weight repeats down an instance's size-class rows,
+  # so dedupe to one weight per (submission, catch_id, taxon) before summing.
+  weight_per_submission <-
+    catch_info |>
+    dplyr::distinct(
+      .data$submission_id,
+      .data$catch_id,
+      .data$taxon,
+      .data$total_weight_kg
+    ) |>
+    dplyr::group_by(.data$submission_id) |>
+    dplyr::summarise(
+      total_catch_kg = sum(.data$total_weight_kg, na.rm = TRUE),
+      .groups = "drop"
+    )
 
   catch_totals <-
     catch_info |>
     dplyr::group_by(.data$submission_id) |>
     dplyr::summarise(
       total_individuals = sum(.data$n_individuals, na.rm = TRUE),
-      total_catch_kg = dplyr::first(.data$unit_weight_kg) *
-        dplyr::first(.data$n_containers),
       .groups = "drop"
-    )
+    ) |>
+    dplyr::left_join(weight_per_submission, by = "submission_id")
 
-  gleaning <- general_info |>
+  gleaning <-
+    general_info |>
     dplyr::left_join(
-      catch_info,
-      by = c("submission_id", "catch_outcome", "survey_activity")
+      catch_info |>
+        dplyr::select(-dplyr::any_of(c("catch_outcome", "survey_activity"))),
+      by = "submission_id"
     ) |>
     dplyr::left_join(catch_totals, by = "submission_id")
 
-  return(gleaning)
+  # upload preprocessed landings
+  coasts::upload_parquet_to_cloud(
+    data = gleaning,
+    prefix = conf$surveys$wf_gleaning$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
 }
 
 #' Parse a Free-Text Numeric Field
@@ -219,41 +243,6 @@ preprocess_wf_gleaning <- function(log_threshold = logger::DEBUG) {
 #' @export
 parse_numeric_text <- function(x) {
   as.double(stringr::str_extract(as.character(x), "[0-9]+\\.?[0-9]*"))
-}
-
-
-#' Sanitize Kenya Gleaning Catch Inputs
-#'
-#' Conservative bounds that null out the physically impossible (data-entry
-#' slips), leaving stricter taxon-aware validation downstream. Recorded zeros
-#' are kept (a true "none in this size class").
-#'
-#' \itemize{
-#'   \item `n_individuals`   in [0, 10000]
-#'   \item `total_weight_kg` in (0, 1000]
-#'   \item `price_per_kg`    in [0, 100000]
-#' }
-#'
-#' @param df A data frame with any subset of the columns above.
-#' @return The input with out-of-range values set to NA.
-#' @keywords internal
-#' @export
-sanitize_gleaning_catch_ke <- function(df) {
-  df |>
-    dplyr::mutate(
-      dplyr::across(
-        dplyr::any_of("n_individuals"),
-        ~ dplyr::if_else(.x >= 0 & .x <= 10000, .x, NA_real_)
-      ),
-      dplyr::across(
-        dplyr::any_of("total_weight_kg"),
-        ~ dplyr::if_else(.x > 0 & .x <= 1000, .x, NA_real_)
-      ),
-      dplyr::across(
-        dplyr::any_of("price_per_kg"),
-        ~ dplyr::if_else(.x >= 0 & .x <= 100000, .x, NA_real_)
-      )
-    )
 }
 
 
@@ -300,15 +289,17 @@ sanitize_gleaning_catch_ke <- function(df) {
 #'   size class (plus a context row for submissions without catch detail).
 #' @export
 #'
+#' @keywords internal
+#'
 #' @examples
 #' \dontrun{
-#' catch_long <- reshape_gleaning_catch_ke(catch_info)
+#' catch_long <- reshape_gleaning_catch(catch_info)
 #'
 #' # Per-instance catch weight (deduped: weight repeats across size rows)
 #' catch_long |>
 #'   dplyr::distinct(submission_id, catch_id, taxon, total_weight_kg, price_per_kg)
 #' }
-reshape_gleaning_catch_ke <- function(data = NULL, max_catch = 3) {
+reshape_gleaning_catch <- function(data = NULL, max_catch = 3) {
   # Accessor for a repeat-indexed column; all-NA if absent from this export.
   pull_col <- function(i, suffix) {
     nm <- paste0("CATCH.", i, ".CATCH/", suffix)
@@ -590,7 +581,6 @@ reshape_gleaning_catch_ke <- function(data = NULL, max_catch = 3) {
       ),
       by = "submission_id"
     ) |>
-    sanitize_gleaning_catch_ke() |>
     dplyr::select(
       "submission_id",
       dplyr::any_of(c("catch_outcome", "survey_activity")),
