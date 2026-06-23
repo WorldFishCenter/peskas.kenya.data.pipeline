@@ -22,9 +22,8 @@ default:
     wf_gleaning:
       koboform:
         asset_id: !expr Sys.getenv('WF_GLEANING_ID')
-        username: !expr Sys.getenv('WF_SURVEYS_UNAME')
-        password: !expr Sys.getenv('WF_SURVEYS_PSSW')
-        token: !expr Sys.getenv('WF_SURVEYS_TOKEN')
+        username: !expr Sys.getenv('KOBO_USERNAME')
+        password: !expr Sys.getenv('KOBO_PASSWORD')
   surveys:
     summaries:
       file_prefix: kenya-summaries
