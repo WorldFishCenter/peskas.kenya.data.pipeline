@@ -219,7 +219,12 @@ preprocess_wf_gleaning <- function(log_threshold = logger::DEBUG) {
         dplyr::select(-dplyr::any_of(c("catch_outcome", "survey_activity"))),
       by = "submission_id"
     ) |>
-    dplyr::left_join(catch_totals, by = "submission_id")
+    dplyr::left_join(catch_totals, by = "submission_id") |>
+    #fix fields
+    dplyr::mutate(
+      size_class = dplyr::as.character(.data$size_class),
+      happiness_rating = as.integer(.data$happiness_rating)
+    )
 
   # upload preprocessed landings
   coasts::upload_parquet_to_cloud(

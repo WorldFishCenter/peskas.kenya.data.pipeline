@@ -26,6 +26,7 @@ WCS is included at the validated stage via \code{\link[=export_api_validated]{ex
 \item \code{landing_date}: Date of landing
 \item \code{gaul_1_code}, \code{gaul_1_name}: GAUL level 1 region
 \item \code{gaul_2_code}, \code{gaul_2_name}: GAUL level 2 district
+\item \code{landing_site}, \code{landing_site}: Landing site name
 \item \code{n_fishers}: Total fishers (men + women + children)
 \item \code{trip_duration_hrs}: Trip duration in hours
 \item \code{gear}: Standardised gear type

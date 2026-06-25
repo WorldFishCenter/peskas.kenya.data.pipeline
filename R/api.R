@@ -37,6 +37,7 @@ format_api_wcs <- function(surveys_df, conf) {
       "gaul_1_name",
       "gaul_2_code",
       "gaul_2_name",
+      "landing_site",
       n_fishers = "no_of_fishers",
       "trip_duration_hrs",
       "gear",
@@ -90,6 +91,8 @@ format_api_kefs <- function(surveys_df, conf) {
       "gaul_1_name",
       "gaul_2_code",
       "gaul_2_name",
+      "landing_site",
+
       n_fishers = "no_of_fishers",
       trip_duration_hrs = "trip_duration",
       "gear",
@@ -253,6 +256,7 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
 #' - `landing_date`: Date of landing
 #' - `gaul_1_code`, `gaul_1_name`: GAUL level 1 region
 #' - `gaul_2_code`, `gaul_2_name`: GAUL level 2 district
+#' - `landing_site`, `landing_site`: Landing site name
 #' - `n_fishers`: Total fishers (men + women + children)
 #' - `trip_duration_hrs`: Trip duration in hours
 #' - `gear`: Standardised gear type
