@@ -23,6 +23,11 @@ default:
     summaries:
       file_prefix: kenya-summaries
       version: latest
+      # survey_id values kept out of the dashboard summaries
+      exclude_dashboard_ids:
+        - *kobo_asset
+        - *kobo_kf_asset
+        - legacy
     aggregated:
       file_prefix: kenya-aggregated
       version: latest  
@@ -135,6 +140,7 @@ default:
             districts_summaries: districts_summaries
             gear_summaries: gear_summaries
             grid_summaries: grid_summaries
+
     google:
       key: gcs
       options:
