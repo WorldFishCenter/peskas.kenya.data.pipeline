@@ -386,6 +386,223 @@ ingest_price_survey_version <- function(version, kobo_config, storage_config) {
   )
 }
 
+#' Download and Process ABALOBI Monitor Activities from the ABALOBI API
+#'
+#' This function retrieves activity submission data from the ABALOBI Monitor
+#' System Data API (`GET /activities`), flattens the deeply nested JSON payload
+#' into a tabular format, and uploads the raw data as a Parquet file to Google
+#' Cloud Storage.
+#'
+#' @param start_date Start of the date range (inclusive), based on
+#'   `loggedDateTimeUTC`, in ISO 8601 format (e.g. `"2024-01-01T00:00:00.000Z"`).
+#'   Defaults to `NULL`, in which case the value from configuration
+#'   (`ingestion$abalobi$api$start_date`) is used.
+#' @param end_date End of the date range (inclusive), based on
+#'   `loggedDateTimeUTC`, in ISO 8601 format. Defaults to `NULL`, in which case
+#'   the current UTC time is used, so that each run pulls the full history up to
+#'   now.
+#' @param log_threshold Logging threshold level (default: logger::DEBUG)
+#'
+#' @return No return value. Function downloads data, processes it, and uploads
+#'   to Google Cloud Storage.
+#'
+#' @details
+#' The function performs the following steps:
+#' 1. Reads configuration settings.
+#' 2. Downloads activity submission data from the ABALOBI API using
+#'    [get_abalobi_data()], iterating over all pages.
+#' 3. Checks for uniqueness of submission UUIDs.
+#' 4. Flattens each nested submission into a wide tibble using
+#'    [flatten_abalobi_record()] and renames `uuid` to `submission_id`.
+#' 5. Uploads the raw data as a Parquet file to Google Cloud Storage.
+#'
+#' The ABALOBI API requires an API key (passed in the `Authenticate` header), a
+#' `loggedDateTimeUTC` date range and one or more organisation IDs (tenant
+#' codes). All of these are read from `conf$ingestion$abalobi$api`.
+#'
+#' Note: Preprocessing is handled by [preprocess_abalobi_activities()].
+#' Validation, matching and export stages for ABALOBI data are not yet
+#' implemented.
+#'
+#' @keywords workflow ingestion
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' ingest_abalobi_activities()
+#'
+#' # Restrict the pull to a specific date range
+#' ingest_abalobi_activities(
+#'   start_date = "2025-01-01T00:00:00.000Z",
+#'   end_date = "2025-03-31T23:59:59.999Z"
+#' )
+#' }
+ingest_abalobi_activities <- function(
+  start_date = NULL,
+  end_date = NULL,
+  log_threshold = logger::DEBUG
+) {
+  conf <- read_config()
+
+  abalobi <- conf$ingestion$abalobi$api
+
+  start_date <- start_date %||% abalobi$start_date
+  end_date <- end_date %||%
+    format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC")
+
+  logger::log_info(glue::glue(
+    "Downloading ABALOBI Monitor activities from {start_date} to {end_date}..."
+  ))
+
+  data_raw <- get_abalobi_data(
+    base_url = abalobi$base_url,
+    api_key = abalobi$api_key,
+    organisation_ids = abalobi$organisation_ids,
+    start_date = start_date,
+    end_date = end_date,
+    languages = abalobi$languages,
+    page_limit = abalobi$page_limit %||% 100
+  )
+
+  logger::log_info(glue::glue(
+    "Checking uniqueness of {length(data_raw)} activity submissions..."
+  ))
+
+  # Check that submissions are unique in case there is overlap in the pagination
+  unique_ids <- dplyr::n_distinct(purrr::map_chr(
+    data_raw,
+    ~ .$uuid %||% NA_character_
+  ))
+  if (unique_ids != length(data_raw)) {
+    stop(glue::glue(
+      "Number of submission uuids ({unique_ids}) not the same as number of records ({length(data_raw)}) in ABALOBI data"
+    ))
+  }
+
+  logger::log_info("Converting ABALOBI activities to tabular format...")
+
+  raw_activities <- data_raw %>%
+    purrr::map(flatten_abalobi_record) %>%
+    dplyr::bind_rows() %>%
+    dplyr::rename(submission_id = "uuid")
+
+  logger::log_info(glue::glue(
+    "Converted {nrow(raw_activities)} rows with {ncol(raw_activities)} columns"
+  ))
+
+  coasts::upload_parquet_to_cloud(
+    data = raw_activities,
+    prefix = conf$surveys$abalobi$raw$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+
+  logger::log_info("Successfully completed ingestion for ABALOBI activities")
+}
+
+#' Retrieve activity submission data from the ABALOBI API
+#'
+#' Low-level helper that queries the ABALOBI Monitor System Data API
+#' (`GET /activities`) and returns all activity submission records for the
+#' requested organisations and date range, transparently handling pagination.
+#'
+#' @param base_url Character string. Base URL of the ABALOBI Monitor data API
+#'   (e.g. `"https://api.abalobi.org/monitor/data/1"`).
+#' @param api_key Character string. API key sent in the custom `Authenticate`
+#'   header.
+#' @param organisation_ids Character vector of organisation IDs (tenant codes)
+#'   for which data is returned. Sent as a comma-separated `organisationIds`
+#'   query parameter.
+#' @param start_date Character string. Start of the date range (inclusive),
+#'   based on `loggedDateTimeUTC`, in ISO 8601 format.
+#' @param end_date Character string. End of the date range (inclusive), based on
+#'   `loggedDateTimeUTC`, in ISO 8601 format.
+#' @param languages Character vector of language/locale codes to include in
+#'   localised name objects (e.g. `c("ke-en", "ke-sw")`). If `NULL`, all
+#'   available language codes are returned.
+#' @param page_limit Integer. Maximum number of records requested per page
+#'   (maps to the API `limit` parameter). Defaults to 100.
+#'
+#' @return A list of activity submission records (each itself a nested list), as
+#'   returned by the API and ready to be flattened with
+#'   [flatten_abalobi_record()].
+#'
+#' @details
+#' The endpoint returns a paginated array of page objects, each holding a `data`
+#' array of records together with `totalCount`, `offset` and `limit`. This
+#' function accumulates the `data` records across successive pages, increasing
+#' `offset` by `page_limit` each time, until every record reported by
+#' `totalCount` has been retrieved (or an empty page is returned).
+#'
+#' @keywords ingestion
+#' @export
+get_abalobi_data <- function(
+  base_url,
+  api_key,
+  organisation_ids,
+  start_date,
+  end_date,
+  languages = NULL,
+  page_limit = 100
+) {
+  records <- list()
+  offset <- 0
+  page_count <- 0
+
+  repeat {
+    page_count <- page_count + 1
+
+    req <- httr2::request(base_url) %>%
+      httr2::req_url_path_append("activities") %>%
+      httr2::req_headers(Authenticate = api_key) %>%
+      httr2::req_url_query(
+        organisationIds = paste(organisation_ids, collapse = ","),
+        startDate = start_date,
+        endDate = end_date,
+        limit = page_limit,
+        offset = offset
+      )
+
+    if (!is.null(languages)) {
+      req <- httr2::req_url_query(
+        req,
+        languages = paste(languages, collapse = ",")
+      )
+    }
+
+    resp_json <- req %>%
+      httr2::req_perform() %>%
+      httr2::resp_body_json()
+
+    # The endpoint documents an array of page objects; tolerate a single page
+    # object too by normalising to a list of pages.
+    pages <- if (!is.null(resp_json$data)) list(resp_json) else resp_json
+
+    # Collect the records held in each page's `data` field and read the
+    # (echoed) total record count.
+    page_records <- pages %>%
+      purrr::map("data") %>%
+      purrr::list_flatten()
+    total_count <- pages %>%
+      purrr::map_dbl(~ .x$totalCount %||% 0) %>%
+      max(0)
+
+    records <- c(records, page_records)
+
+    logger::log_info(glue::glue(
+      "Fetched page {page_count} ({length(page_records)} records, total: {length(records)}/{total_count})"
+    ))
+
+    if (length(page_records) == 0 || length(records) >= total_count) {
+      break
+    }
+
+    offset <- offset + page_limit
+  }
+
+  records
+}
+
 #' Flatten a Single Row of Kobotoolbox Data
 #'
 #' This internal function flattens a single row of Kobotoolbox data,
@@ -462,6 +679,77 @@ rename_child <- function(x, i, p) {
     }
   }
   x
+}
+
+#' Recursively flatten a single ABALOBI activity submission
+#'
+#' Converts a single, deeply nested ABALOBI activity submission (as returned by
+#' the API) into a one-row wide tibble. Unlike [flatten_row()] (tailored to the
+#' shallower Kobotoolbox structure), this helper fully qualifies every leaf with
+#' its complete dotted path, so that objects nested within objects and objects
+#' nested within arrays keep an unambiguous, unique column name.
+#'
+#' @param x A list representing a single ABALOBI activity submission record.
+#'
+#' @return A one-row tibble whose column names are the fully qualified paths of
+#'   each scalar leaf.
+#'
+#' @details
+#' Named list elements are treated as object fields and joined to the parent
+#' path with a dot (e.g. `monitoringSite.name.ke-en`). Unnamed list elements are
+#' treated as array items and joined with a zero-based index (e.g.
+#' `catchList.0.scientificName`, `catchList.0.samples.0.weight`), matching the
+#' `PREFIX.N.field` naming convention already used elsewhere in the package.
+#' Empty lists and `NULL` values collapse to `NA`.
+#'
+#' @seealso [flatten_abalobi_field()], which performs the per-field recursion.
+#'
+#' @keywords internal
+flatten_abalobi_record <- function(x) {
+  parts <- purrr::imap(x, ~ flatten_abalobi_field(.x, .y))
+  flat <- do.call(c, unname(parts))
+  tibble::as_tibble(flat, .name_repair = "minimal")
+}
+
+#' Recursively flatten a single ABALOBI field
+#'
+#' Internal recursion used by [flatten_abalobi_record()] to walk one field of an
+#' ABALOBI activity submission and return a flat, fully named list of its scalar
+#' leaves.
+#'
+#' @param x The field to be flattened (a scalar, a named list/object, an
+#'   unnamed list/array, or `NULL`).
+#' @param prefix The fully qualified dotted path accumulated for `x`.
+#'
+#' @return A named list mapping each leaf's dotted path to its scalar value.
+#'
+#' @keywords internal
+flatten_abalobi_field <- function(x, prefix) {
+  if (is.list(x)) {
+    # An empty list (e.g. an omitted array) carries no information: collapse it
+    # to a single NA leaf at the current path.
+    if (length(x) == 0) {
+      out <- list(NA)
+      names(out) <- prefix
+      return(out)
+    }
+
+    nms <- names(x)
+    is_object <- !is.null(nms) && all(nzchar(nms))
+
+    parts <- vector("list", length(x))
+    for (i in seq_along(x)) {
+      # Objects extend the path by field name; arrays by zero-based index.
+      key <- if (is_object) nms[[i]] else as.character(i - 1)
+      parts[[i]] <- flatten_abalobi_field(x[[i]], paste(prefix, key, sep = "."))
+    }
+    return(do.call(c, parts))
+  }
+
+  val <- if (is.null(x) || length(x) == 0) NA else x
+  out <- list(val)
+  names(out) <- prefix
+  out
 }
 
 #' Get All Records from Airtable with Pagination

@@ -19,6 +19,22 @@ default:
         username: !expr Sys.getenv('KEFS_KOBO_USERNAME')
         password: !expr Sys.getenv('KEFS_KOBO_PASSWORD')
         token: !expr Sys.getenv('KEFS_KOBO_TOKEN')
+    abalobi:
+      api:
+        base_url: https://api.abalobi.org/monitor/data/1
+        api_key: !expr Sys.getenv('ABALOBI_API_KEY')
+        # organisation IDs (tenant codes) to pull data for — replace the
+        # placeholders below with the actual Kenya ABALOBI tenant codes
+        organisation_ids:
+          - contake
+          - reproke
+        # locale codes to keep in localised name objects (NULL = all)
+        languages:
+          - ke-en
+          - ke-sw
+        # earliest loggedDateTimeUTC to pull (each run fetches up to "now")
+        start_date: "2024-01-01T00:00:00.000Z"
+        page_limit: 100
   surveys:
     summaries:
       file_prefix: kenya-summaries
@@ -88,6 +104,11 @@ default:
         validation:
           flags:
             file_prefix: kefs-v2-flags
+    abalobi:
+      raw:
+        file_prefix: abalobi-activities-raw
+      preprocessed:
+        file_prefix: abalobi-activities-preprocessed
     matched_trips:
       file_prefix: kenya-surveys-matched-trips
   storage:

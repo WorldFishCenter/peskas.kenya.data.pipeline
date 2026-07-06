@@ -20,6 +20,7 @@ env:
   KEFS_KOBO_USERNAME: ${{ secrets.KEFS_KOBO_USERNAME }}
   KEFS_KOBO_PASSWORD: ${{ secrets.KEFS_KOBO_PASSWORD }}
   KEFS_KOBO_TOKEN: ${{ secrets.KEFS_KOBO_TOKEN }}
+  ABALOBI_API_KEY: ${{ secrets.ABALOBI_API_KEY }}
   PDS_TOKEN: ${{ secrets.PDS_TOKEN }}
   PDS_SECRET: ${{ secrets.PDS_SECRET }}
   MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
@@ -197,6 +198,28 @@ jobs:
         run: Rscript -e 'peskas.kenya.data.pipeline::ingest_kefs_surveys_v2()'
       - name: Call preprocess_kefs_surveys_v2()
         run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_kefs_surveys_v2()'
+
+  # ============================================================================
+  # ABALOBI DATA PIPELINE
+  # ============================================================================
+
+  ingest-preprocess-abalobi:
+    name: Ingest and preprocess ABALOBI activities
+    needs: build-container
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Set env to production
+        if: endsWith(github.ref, '/main')
+        run: echo "R_CONFIG_ACTIVE=production" >> $GITHUB_ENV
+      - name: Call ingest_abalobi_activities()
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_abalobi_activities()'
+      - name: Call preprocess_abalobi_activities()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_abalobi_activities()'
 
   ingest-preprocess-pds-data:
     name: Ingest and preprocess GPS data

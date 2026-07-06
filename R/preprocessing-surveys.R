@@ -442,6 +442,239 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
   )
 }
 
+#' Preprocess ABALOBI Monitor Activities
+#'
+#' This function preprocesses raw ABALOBI Monitor activity submission data from
+#' Google Cloud Storage. It extracts trip-level information, reshapes the nested
+#' catch list to a long (one row per species) format, standardises field names
+#' and types, and uploads the result as a Parquet file to Google Cloud Storage.
+#'
+#' @param log_threshold Logging threshold level (default: logger::DEBUG)
+#'
+#' @return No return value. Function processes the data and uploads the result
+#'   as a Parquet file to Google Cloud Storage.
+#'
+#' @details
+#' The function performs the following main operations:
+#' 1. **Downloads raw data**: Retrieves the flattened raw ABALOBI activities
+#'    from Google Cloud Storage.
+#' 2. **Resolves localised names**: Collapses the multilingual name maps for the
+#'    monitoring site, fishing site, vessel type and propulsion into single
+#'    English-preferred strings using [coalesce_abalobi_localised()].
+#' 3. **Extracts trip information**: Selects and renames relevant trip-level
+#'    fields (one row per activity submission), including:
+#'    - Monitor and fisher identity
+#'    - Landing details (date, site, coordinates, region and FAO area)
+#'    - Vessel details (type, name, registration, propulsion, crew)
+#'    - Trip details (start/end times, duration, group harvesting)
+#'    - Catch outcome and basket weight
+#' 4. **Reshapes catch data**: Transforms the nested `catchList` from wide to
+#'    long format using [reshape_abalobi_catch()].
+#' 5. **Type conversions and calculations**: Parses timestamps, derives trip
+#'    duration in hours, and coerces numeric and logical fields.
+#' 6. **Joins trip and catch data**: Combines trip information with catch
+#'    records using a full join on `submission_id`.
+#' 7. **Uploads processed data**: Saves the preprocessed data as a Parquet file
+#'    to Google Cloud Storage.
+#'
+#' The per-individual biological samples are summarised at the species level
+#' within the reshaped catch (`n_samples`, `sampled_count`); the full sample
+#' detail can be obtained separately with [reshape_abalobi_samples()].
+#'
+#' @section Pipeline Integration:
+#' This function is part of the ABALOBI data pipeline sequence:
+#' 1. `ingest_abalobi_activities()` - Downloads raw data from the ABALOBI API
+#' 2. **`preprocess_abalobi_activities()`** - Cleans and standardises data (this function)
+#' 3. Validation step (to be implemented)
+#' 4. Export step (to be implemented)
+#'
+#' @keywords workflow preprocessing
+#' @examples
+#' \dontrun{
+#' preprocess_abalobi_activities()
+#'
+#' # Run with custom logging level
+#' preprocess_abalobi_activities(log_threshold = logger::INFO)
+#' }
+#' @export
+preprocess_abalobi_activities <- function(log_threshold = logger::DEBUG) {
+  conf <- read_config()
+
+  logger::log_info("Downloading raw ABALOBI activities...")
+  raw_dat <- coasts::download_parquet_from_cloud(
+    prefix = conf$surveys$abalobi$raw$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+
+  # Collapse the multilingual name maps into single English-preferred strings.
+  raw_dat$landing_site <- coalesce_abalobi_localised(
+    raw_dat,
+    "monitoringSite.name"
+  )
+  raw_dat$fishing_ground <- coalesce_abalobi_localised(
+    raw_dat,
+    "fishingSites.0.name"
+  )
+  raw_dat$vessel_type <- coalesce_abalobi_localised(raw_dat, "boatType.name")
+  raw_dat$boat_propulsion <- coalesce_abalobi_localised(
+    raw_dat,
+    "boatPropulsion.name"
+  )
+
+  # Guarantee the trip-level columns exist even when a nested object is absent
+  # from every submission in the pulled batch (e.g. an all-shore period has no
+  # vessel fields), so the selection below never fails.
+  expected_cols <- c(
+    "submission_id",
+    "tenantCode",
+    "monitorFirstName",
+    "monitorLastName",
+    "username",
+    "loggedDateTimeUTC",
+    "logGPSCoordinates.latitude",
+    "logGPSCoordinates.longitude",
+    "monitoringSite.id",
+    "monitoringSite.coordinates.latitude",
+    "monitoringSite.coordinates.longitude",
+    "region.0.name",
+    "region.0.country",
+    "region.0.faoFishingArea",
+    "logType",
+    "fisherCommunity",
+    "fisherFirstName",
+    "fisherLastName",
+    "fisherGender",
+    "fisherAge",
+    "fisherCatchSuccessful",
+    "tripStartTimestampUTC",
+    "tripEndTimestampUTC",
+    "isGroup",
+    "harvesterGroupTotal",
+    "harvesterGroupWomen",
+    "boatType.faoCode",
+    "boatName",
+    "boatRegistration",
+    "boatCrewTotal",
+    "boatCrewWomen",
+    "numberOfBoats",
+    "isVmsAboard",
+    "vmsId",
+    "catchBasketWeight",
+    "catchBasketWeightType"
+  )
+  missing_cols <- setdiff(expected_cols, names(raw_dat))
+  if (length(missing_cols) > 0) {
+    raw_dat[missing_cols] <- NA
+  }
+
+  logger::log_info("Extracting ABALOBI trip information...")
+  trip_info <-
+    raw_dat |>
+    dplyr::transmute(
+      submission_id = as.character(.data[["submission_id"]]),
+      organisation = as.character(.data[["tenantCode"]]),
+      submission_date = lubridate::ymd_hms(
+        as.character(.data[["loggedDateTimeUTC"]]),
+        quiet = TRUE
+      ),
+      enumerator_name = dplyr::na_if(
+        stringr::str_squish(paste(
+          dplyr::coalesce(as.character(.data[["monitorFirstName"]]), ""),
+          dplyr::coalesce(as.character(.data[["monitorLastName"]]), "")
+        )),
+        ""
+      ),
+      monitor_username = as.character(.data[["username"]]),
+      landing_date = lubridate::as_date(lubridate::ymd_hms(
+        as.character(.data[["tripEndTimestampUTC"]]),
+        quiet = TRUE
+      )),
+      landing_site = .data[["landing_site"]],
+      landing_site_id = as.character(.data[["monitoringSite.id"]]),
+      lat = as.numeric(.data[["monitoringSite.coordinates.latitude"]]),
+      lon = as.numeric(.data[["monitoringSite.coordinates.longitude"]]),
+      gps_lat = as.numeric(.data[["logGPSCoordinates.latitude"]]),
+      gps_lon = as.numeric(.data[["logGPSCoordinates.longitude"]]),
+      region = as.character(.data[["region.0.name"]]),
+      country = as.character(.data[["region.0.country"]]),
+      fao_area = as.character(.data[["region.0.faoFishingArea"]]),
+      log_type = as.character(.data[["logType"]]),
+      fisher_community = as.character(.data[["fisherCommunity"]]),
+      fisher_name = dplyr::na_if(
+        stringr::str_squish(paste(
+          dplyr::coalesce(as.character(.data[["fisherFirstName"]]), ""),
+          dplyr::coalesce(as.character(.data[["fisherLastName"]]), "")
+        )),
+        ""
+      ),
+      fisher_gender = as.character(.data[["fisherGender"]]),
+      fisher_age = as.integer(.data[["fisherAge"]]),
+      fishing_ground = .data[["fishing_ground"]],
+      catch_outcome = dplyr::case_when(
+        .data[["fisherCatchSuccessful"]] == TRUE ~ "yes",
+        .data[["fisherCatchSuccessful"]] == FALSE ~ "no",
+        TRUE ~ NA_character_
+      ),
+      fishing_trip_start = lubridate::ymd_hms(
+        as.character(.data[["tripStartTimestampUTC"]]),
+        quiet = TRUE
+      ),
+      fishing_trip_end = lubridate::ymd_hms(
+        as.character(.data[["tripEndTimestampUTC"]]),
+        quiet = TRUE
+      ),
+      is_group = as.logical(.data[["isGroup"]]),
+      group_total = as.integer(.data[["harvesterGroupTotal"]]),
+      group_women = as.integer(.data[["harvesterGroupWomen"]]),
+      vessel_type = .data[["vessel_type"]],
+      vessel_fao_code = as.character(.data[["boatType.faoCode"]]),
+      boat_propulsion = .data[["boat_propulsion"]],
+      boat_name = as.character(.data[["boatName"]]),
+      vessel_reg_number = as.character(.data[["boatRegistration"]]),
+      crew_total = as.integer(.data[["boatCrewTotal"]]),
+      crew_women = as.integer(.data[["boatCrewWomen"]]),
+      number_of_boats = as.integer(.data[["numberOfBoats"]]),
+      no_of_fishers = dplyr::coalesce(
+        as.integer(.data[["boatCrewTotal"]]),
+        as.integer(.data[["harvesterGroupTotal"]])
+      ),
+      vms_aboard = as.logical(.data[["isVmsAboard"]]),
+      vms_id = as.character(.data[["vmsId"]]),
+      catch_basket_weight = as.numeric(.data[["catchBasketWeight"]]),
+      catch_basket_weight_type = as.character(.data[["catchBasketWeightType"]])
+    ) |>
+    dplyr::mutate(
+      trip_duration = as.numeric(difftime(
+        .data$fishing_trip_end,
+        .data$fishing_trip_start,
+        units = "hours"
+      ))
+    ) |>
+    dplyr::relocate("trip_duration", .after = "fishing_trip_end")
+
+  logger::log_info("Reshaping ABALOBI catch data...")
+  catch_data <-
+    reshape_abalobi_catch(raw_data = raw_dat) |>
+    dplyr::mutate(submission_id = as.character(.data$submission_id))
+
+  preprocessed_data <- dplyr::full_join(
+    trip_info,
+    catch_data,
+    by = "submission_id"
+  )
+
+  logger::log_info(glue::glue(
+    "Uploading {nrow(preprocessed_data)} preprocessed ABALOBI rows..."
+  ))
+  coasts::upload_parquet_to_cloud(
+    data = preprocessed_data,
+    prefix = conf$surveys$abalobi$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+}
+
 
 #' Preprocess Landings Data (Version 1)
 #'

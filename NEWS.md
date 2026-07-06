@@ -1,3 +1,46 @@
+# peskas.kenya.data.pipeline 4.11.0
+
+## Major Changes
+
+- **ABALOBI Monitor ingestion**: New `ingest_abalobi_activities()` workflow pulls
+  activity submission data from the ABALOBI Monitor System Data API
+  (`GET /activities`), paginating through all records for the configured
+  organisations and `loggedDateTimeUTC` date range, and uploads the flattened raw
+  data to `conf$surveys$abalobi$raw$file_prefix` (`abalobi-activities-raw`).
+  Authentication uses an API key sent in the custom `Authenticate` header.
+- **`get_abalobi_data()`**: Low-level API client that handles the `Authenticate`
+  header, required query parameters (`organisationIds`, `startDate`, `endDate`)
+  and offset/limit pagination, returning the accumulated submission records.
+- **Recursive JSON flattening**: New internal `flatten_abalobi_record()` /
+  `flatten_abalobi_field()` helpers fully qualify every leaf of the deeply nested
+  ABALOBI payload (e.g. `catchList.0.samples.0.weight`,
+  `monitoringSite.name.ke-en`). The existing Kobo `flatten_row()` mangles this
+  structure, so ABALOBI uses its own flattener.
+
+## Preprocessing
+
+- **`preprocess_abalobi_activities()`**: New workflow that extracts trip-level
+  fields, reshapes the nested catch list to long format, standardises names and
+  types, and uploads the result to
+  `conf$surveys$abalobi$preprocessed$file_prefix` (`abalobi-activities-preprocessed`).
+- **`reshape_abalobi_catch()`**: Reshapes the flattened `catchList` to one row per
+  species per submission, collapsing gear options and summarising biological
+  samples.
+- **`reshape_abalobi_samples()`**: Reshapes the doubly nested biological samples
+  (`catchList.N.samples.M.*`) to one row per individual sample, carrying the
+  parent species context.
+- Validation, matching and export stages for ABALOBI data are not yet
+  implemented.
+
+## Configuration
+
+- Added `ingestion.abalobi.api` (base URL, API key, organisation IDs, languages,
+  start date and page limit) and `surveys.abalobi` (`raw`/`preprocessed` file
+  prefixes) to `inst/config.yml`, with matching examples in
+  `inst/config_template.yml`.
+- Added the `ABALOBI_API_KEY` environment variable to `.env.example` and the
+  `ingest-preprocess-abalobi` job to the data pipeline GitHub Actions workflow.
+
 # peskas.kenya.data.pipeline 4.10.0
 
 ## Major Changes

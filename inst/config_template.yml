@@ -110,6 +110,24 @@ default:
     #   username: !expr Sys.getenv('KOBO_USERNAME_KF')
     #   password: !expr Sys.getenv('KOBO_PASSWORD_KF')
 
+    # --- REST API source example (Kenya ABALOBI Monitor) ---
+    # For sources pulled from a REST API rather than KoboToolbox, model the
+    # connection under an `api` block: base URL, an API key (from an env var),
+    # the organisation IDs / tenant codes to pull, optional locale codes, the
+    # earliest date to fetch and the page size used for pagination.
+    # abalobi:
+    #   api:
+    #     base_url: https://api.abalobi.org/monitor/data/1
+    #     api_key: !expr Sys.getenv('ABALOBI_API_KEY')
+    #     organisation_ids:                                  # tenant codes
+    #       - contake
+    #       - reproke
+    #     languages:                                         # locale codes (NULL = all)
+    #       - ke-en
+    #       - ke-sw
+    #     start_date: "2024-01-01T00:00:00.000Z"
+    #     page_limit: 100
+
   # ===========================================================================
   # SURVEYS — Data pipeline stages for each survey source
   # ===========================================================================
@@ -178,6 +196,15 @@ default:
         # K_weight_max: 2
         # K_length_max: 2
         # K_price_max: 2
+
+    # --- REST API source example (Kenya ABALOBI Monitor) ---
+    # API-sourced data uses the same raw → preprocessed stages. Validation and
+    # later stages are added once implemented for the source.
+    # abalobi:
+    #   raw:
+    #     file_prefix: abalobi-activities-raw
+    #   preprocessed:
+    #     file_prefix: abalobi-activities-preprocessed
 
     # --- Mozambique migration example ---
     # Original Mozambique had these stages inside `ingestion`. They now go here:
