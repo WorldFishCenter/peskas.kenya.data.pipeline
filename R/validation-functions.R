@@ -1250,6 +1250,10 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
         .data$catch_outcome == "no" & .data$total_catch_price >= 0 ~ "4.2",
         .data$total_catch_price > limits$max_revenue ~ "4.3",
         TRUE ~ NA_character_
+      ),
+      alert_n_date = dplyr::case_when(
+        .data$landing_date > .data$submission_date ~ "7",
+        TRUE ~ NA_character_
       )
     ) |>
     dplyr::select(
@@ -1262,6 +1266,7 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
         .data$alert_n_fishers,
         .data$alert_trip_duration,
         .data$alert_tot_catch_price,
+        .data$alert_n_date,
         sep = ","
       ) |>
         stringr::str_remove_all("NA,") |>
