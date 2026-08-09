@@ -25,8 +25,13 @@ default:
       version: latest
       # survey_id values kept out of the dashboard summaries
       exclude_dashboard_ids:
-        - *kobo_asset
-        - *kobo_kf_asset
+        # NB: these were YAML aliases (*kobo_asset) pointing at anchors that
+        # were never defined, so they resolved to the literal placeholder
+        # "_yaml.bad-anchor_" and matched no survey_id -- the exclusion silently
+        # did nothing. Repeat the expressions rather than anchoring an !expr
+        # node, whose capture point relative to config's evaluation is fragile.
+        - !expr Sys.getenv('KOBO_ASSET_ID')
+        - !expr Sys.getenv('KOBO_ASSET_ID_KF')
         - legacy
     aggregated:
       file_prefix: kenya-aggregated
