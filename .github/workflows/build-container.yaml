@@ -1,0 +1,60 @@
+name: Build R container
+
+# Reusable workflow. Called by both data-pipeline.yaml and wcs-pipeline.yaml so
+# the image is defined in exactly one place: duplicating this job would either
+# rebuild the same image twice or have the two pipelines race on the :latest tag.
+on:
+  workflow_call:
+    outputs:
+      image:
+        description: Fully qualified image reference that was pushed
+        value: ${{ jobs.build.outputs.image }}
+
+jobs:
+  build:
+    name: Build R container
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve latest peskas.coasts release
+        id: coasts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ref=$(gh api repos/WorldFishCenter/peskas.coasts/releases/latest --jq .tag_name)
+          if [ -z "$ref" ] || [ "$ref" = "null" ]; then
+            echo "Failed to resolve latest peskas.coasts release" >&2
+            exit 1
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Resolved peskas.coasts ref: $ref"
+
+      - name: Expose image reference
+        id: meta
+        run: echo "image=ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.prod
+          push: true
+          tags: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+          build-args: |
+            COASTS_REF=${{ steps.coasts.outputs.ref }}
+          cache-from: type=registry,ref=ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:buildcache
+          cache-to: type=registry,ref=ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:buildcache,mode=max

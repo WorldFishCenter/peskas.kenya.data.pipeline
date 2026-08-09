@@ -61,4 +61,5 @@ ingest_landings_price(versions = c("v1", "v2"))
 }
 }
 \keyword{ingestion}
+\keyword{wcs}
 \keyword{workflow}

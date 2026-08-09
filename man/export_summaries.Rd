@@ -73,4 +73,5 @@ export_summaries()
 
 }
 \keyword{export}
+\keyword{wcs}
 \keyword{workflow}

@@ -1,0 +1,118 @@
+name: WCS Pipeline
+
+# Dedicated WCS-only pipeline for WCS collaborators.
+#
+# Uses the standard config profiles -- no WCS-specific R_CONFIG_ACTIVE. Every
+# step here reads and writes `options_wcs` (the kenya-wcs-* buckets in the
+# peskas-wcs project) and nothing else, so it never touches kenya-dev,
+# peskas-coasts-* or peskas-api-*, and it carries no KEFS, PDS or Airtable
+# credentials. The cross-country artifacts live in export_coasts_metrics(),
+# which only the main pipeline runs.
+#
+# Deliberately NOT scheduled. data-pipeline.yaml is the scheduled pipeline and
+# already mirrors WCS artifacts into kenya-wcs-*; a second cron writing the same
+# prefixes would race it, and because everything resolves by
+# `version == "latest"` the loser would be silently shadowed mid-chain.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'R/ingestion.R'
+      - 'R/preprocessing-surveys.R'
+      - 'R/merge-landings.R'
+      - 'R/validation.R'
+      - 'R/export.R'
+      - 'R/utils.R'
+      - 'inst/config.yml'
+      - '.github/workflows/wcs-pipeline.yaml'
+
+env:
+  # WCS Kobo forms only -- no KEFS_*, PDS_*, ABALOBI_* or AIRTABLE_*
+  KOBO_ASSET_ID: ${{ secrets.KOBO_ASSET_ID }}
+  KOBO_ASSET_ID_PRICE: ${{ secrets.KOBO_ASSET_ID_PRICE }}
+  KOBO_USERNAME: ${{ secrets.KOBO_USERNAME }}
+  KOBO_PASSWORD: ${{ secrets.KOBO_PASSWORD }}
+  KOBO_ASSET_ID_KF: ${{ secrets.KOBO_ASSET_ID_KF }}
+  KOBO_ASSET_ID_PRICE_KF: ${{ secrets.KOBO_ASSET_ID_PRICE_KF }}
+  KOBO_USERNAME_KF: ${{ secrets.KOBO_USERNAME_KF }}
+  KOBO_PASSWORD_KF: ${{ secrets.KOBO_PASSWORD_KF }}
+  # wcs-collaborator@peskas-wcs -- scoped to kenya-wcs-* only
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY_WCS }}
+  GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+  GOOGLE_USERS_SHEET_ID: ${{ secrets.GOOGLE_USERS_SHEET_ID }}
+  MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING_WCS }}
+
+jobs:
+  build-container:
+    uses: ./.github/workflows/build-container.yaml
+
+  ingest-preprocess-wcs-catch:
+    name: Ingest and preprocess WCS catch surveys
+    needs: build-container
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Call ingest_wcs_surveys()
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_wcs_surveys()'
+      - name: Call preprocess_legacy_landings()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_legacy_landings()'
+      - name: Call preprocess_landings_v1()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v1()'
+      - name: Call preprocess_landings_v2()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_landings_v2()'
+
+  ingest-preprocess-wcs-price:
+    name: Ingest and preprocess WCS price surveys
+    needs: build-container
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Call ingest_landings_price(versions = c("v1", "v2"))
+        run: Rscript -e 'peskas.kenya.data.pipeline::ingest_landings_price(versions = c("v1", "v2"))'
+      - name: Call preprocess_price_landings()
+        run: Rscript -e 'peskas.kenya.data.pipeline::preprocess_price_landings()'
+
+  merge-wcs:
+    name: Merge WCS surveys
+    needs: [ingest-preprocess-wcs-catch, ingest-preprocess-wcs-price]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Call merge_landings()
+        run: Rscript -e 'peskas.kenya.data.pipeline::merge_landings()'
+      - name: Call merge_prices()
+        run: Rscript -e 'peskas.kenya.data.pipeline::merge_prices()'
+
+  validate-export-wcs:
+    name: Validate and export WCS surveys
+    needs: merge-wcs
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/worldfishcenter/peskas.kenya.data.pipeline/r-runner-peskas-kenya:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Call validate_landings()
+        run: Rscript -e 'peskas.kenya.data.pipeline::validate_landings()'
+      # NOTE: export_summaries() writes to the MongoDB `dashboard_wcs` database.
+      # The `wcs` config profile does not yet override it, so it currently
+      # resolves to the shared `app-dev`, and mdb_collection_push() clears each
+      # collection before inserting. Point MONGODB_CONNECTION_STRING_WCS at a
+      # dedicated database (and add a mongodb override to the `wcs` profile)
+      # before enabling this step.
+      - name: Call export_summaries()
+        if: ${{ vars.WCS_ENABLE_EXPORT_SUMMARIES == 'true' }}
+        run: Rscript -e 'peskas.kenya.data.pipeline::export_summaries()'

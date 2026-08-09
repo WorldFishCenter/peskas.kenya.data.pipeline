@@ -38,4 +38,5 @@ ingest_wcs_surveys()
 }
 }
 \keyword{ingestion}
+\keyword{wcs}
 \keyword{workflow}

@@ -464,7 +464,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
 #' 7. Converts data types and handles cases with no catch data
 #' 8. Uploads the processed data as a Parquet file to Google Cloud Storage
 #'
-#' @keywords workflow preprocessing
+#' @keywords workflow preprocessing wcs
 #' @examples
 #' \dontrun{
 #' preprocessed_data <- preprocess_landings_v1()
@@ -476,7 +476,7 @@ preprocess_landings_v1 <- function(log_threshold = logger::DEBUG) {
   raw_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$catch$v1$raw$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   )
 
   preprocessed_landings <- preprocess_landings_core(
@@ -488,7 +488,7 @@ preprocess_landings_v1 <- function(log_threshold = logger::DEBUG) {
     data = preprocessed_landings,
     prefix = conf$surveys$wcs$catch$v1$preprocessed$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   )
 }
 
@@ -513,7 +513,7 @@ preprocess_landings_v1 <- function(log_threshold = logger::DEBUG) {
 #' 7. Converts data types and handles cases with no catch data
 #' 8. Uploads the processed data as a Parquet file to Google Cloud Storage
 #'
-#' @keywords workflow preprocessing
+#' @keywords workflow preprocessing wcs
 #' @examples
 #' \dontrun{
 #' preprocessed_data <- preprocess_landings_v2()
@@ -525,7 +525,7 @@ preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
   raw_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$catch$v2$raw$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   )
 
   individual_data <- get_individual_data(raw_dat)
@@ -558,7 +558,7 @@ preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
     data = preprocessed_landings,
     prefix = conf$surveys$wcs$catch$v2$preprocessed$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   )
 }
 
@@ -587,7 +587,7 @@ preprocess_landings_v2 <- function(log_threshold = logger::DEBUG) {
 #' @note This function requires a configuration file to be present and readable by the
 #'   'read_config' function, which should provide MongoDB connection details.
 #'
-#' @keywords workflow preprocessing
+#' @keywords workflow preprocessing wcs
 #' @examples
 #' \dontrun{
 #' preprocess_legacy_landings()
@@ -599,7 +599,7 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
   raw_legacy_dat <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$catch$legacy$raw$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   )
 
   processed_legacy_landings <-
@@ -735,7 +735,7 @@ preprocess_legacy_landings <- function(log_threshold = logger::DEBUG) {
     data = processed_legacy_landings,
     prefix = conf$surveys$wcs$catch$legacy$preprocessed$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   )
 }
 
@@ -840,7 +840,7 @@ preprocess_price_core <- function(raw_dat, version) {
 #' 7. Removes duplicate entries
 #' 8. Uploads the processed data as a Parquet file to Google Cloud Storage
 #'
-#' @keywords workflow preprocessing
+#' @keywords workflow preprocessing wcs
 #' @examples
 #' \dontrun{
 #' preprocess_price_landings()
@@ -868,7 +868,7 @@ preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
       raw_dat <- coasts::download_parquet_from_cloud(
         prefix = .x$raw_prefix,
         provider = conf$storage$google$key,
-        options = conf$storage$google$options
+        options = conf$storage$google$options_wcs
       )
 
       preprocessed_data <- preprocess_price_core(raw_dat, .y)
@@ -877,7 +877,7 @@ preprocess_price_landings <- function(log_threshold = logger::DEBUG) {
         data = preprocessed_data,
         prefix = .x$preprocessed_prefix,
         provider = conf$storage$google$key,
-        options = conf$storage$google$options
+        options = conf$storage$google$options_wcs
       )
     }
   )

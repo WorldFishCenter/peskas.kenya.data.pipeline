@@ -1,3 +1,79 @@
+#' Load the validated WCS surveys and BMU sizes used by the summary exports
+#'
+#' Shared by [export_summaries()] and [export_coasts_metrics()] so the two can
+#' run independently without duplicating the download, the metadata lookup or
+#' the landing-site filter.
+#'
+#' @param conf Configuration object from [read_config()].
+#' @return A list with `valid_data` (validated WCS surveys from 2023 onwards,
+#'   restricted to landing sites present in the BMU metadata) and `bmu_size`.
+#'
+#' @keywords internal
+load_wcs_summary_inputs <- function(conf) {
+  valid_data <-
+    coasts::download_parquet_from_cloud(
+      prefix = conf$surveys$wcs$catch$validated$file_prefix,
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options_wcs
+    ) |>
+    dplyr::filter(.data$landing_date >= "2023-01-01")
+
+  bmu_size <-
+    get_metadata()$BMUs |>
+    dplyr::mutate(
+      size_km = as.numeric(.data$size_km),
+      BMU = tolower(.data$BMU)
+    )
+
+  valid_data <-
+    valid_data |>
+    dplyr::filter(
+      !.data$landing_site %in% setdiff(valid_data$landing_site, bmu_size$BMU)
+    )
+
+  list(valid_data = valid_data, bmu_size = bmu_size)
+}
+
+#' Monthly fishery summaries, gap-filled and with fishing days
+#'
+#' Shared by [export_summaries()] (which pushes them to MongoDB) and
+#' [export_coasts_metrics()] (which derives the portal geo exports from them).
+#'
+#' @param valid_data Validated WCS surveys.
+#' @param bmu_size BMU sizes in km2.
+#' @return A data frame of monthly metrics per BMU.
+#'
+#' @keywords internal
+compute_monthly_summaries <- function(valid_data, bmu_size) {
+  get_fishery_metrics(
+    valid_data,
+    bmu_size
+  ) |>
+    tidyr::complete(
+      .data$BMU,
+      date = seq(min(.data$date), max(.data$date), by = "month"),
+      fill = list(
+        aggregated_catch_kg = NA,
+        mean_trip_catch = NA,
+        mean_effort = NA,
+        mean_cpue = NA,
+        mean_cpua = NA,
+        mean_rpue = NA,
+        mean_rpua = NA,
+        mean_cost = NA,
+        mean_profit = NA,
+        mean_price_kg = NA
+      )
+    ) |>
+    dplyr::mutate(
+      fdays = dplyr::case_when(
+        .data$BMU %in% c("Kibuyuni", "Shimoni", "Vanga", "Mkwiro", "Wasini") ~
+          .data$mean_effort * (210 / 12),
+        TRUE ~ .data$mean_effort * (220 / 12)
+      )
+    )
+}
+
 #' Export Summarized Fishery Data for Dashboard Integration
 #'
 #' @description
@@ -42,7 +118,7 @@
 #' - Requires a configuration file compatible with the `read_config` function, containing MongoDB connection information.
 #' - Access to a `bmu_size` dataset, which provides size details of BMUs, retrieved via the `get_metadata()` function.
 #'
-#' @keywords workflow export
+#' @keywords workflow export wcs
 #' @examples
 #' \dontrun{
 #' export_summaries()
@@ -52,25 +128,9 @@
 export_summaries <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  valid_data <-
-    coasts::download_parquet_from_cloud(
-      prefix = conf$surveys$wcs$catch$validated$file_prefix,
-      provider = conf$storage$google$key,
-      options = conf$storage$google$options
-    ) |>
-    dplyr::filter(.data$landing_date >= "2023-01-01")
-
-  bmu_size <-
-    get_metadata()$BMUs |>
-    dplyr::mutate(
-      size_km = as.numeric(.data$size_km),
-      BMU = tolower(.data$BMU)
-    )
-
-  valid_data %<>%
-    dplyr::filter(
-      !.data$landing_site %in% setdiff(valid_data$landing_site, bmu_size$BMU)
-    )
+  inputs <- load_wcs_summary_inputs(conf)
+  valid_data <- inputs$valid_data
+  bmu_size <- inputs$bmu_size
 
   individual_stats <- get_individual_metrics(valid_data)
   individual_gear_stats <- get_individual_gear_metrics(valid_data)
@@ -100,36 +160,7 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
     )
 
   # Caluclate fishers day and summarise by month the main metrics
-  monthly_summaries <-
-    get_fishery_metrics(
-      valid_data,
-      bmu_size
-    ) |>
-    tidyr::complete(
-      .data$BMU,
-      date = seq(min(.data$date), max(.data$date), by = "month"),
-      fill = list(
-        aggregated_catch_kg = NA,
-        mean_trip_catch = NA,
-        mean_effort = NA,
-        mean_cpue = NA,
-        mean_cpua = NA,
-        mean_rpue = NA,
-        mean_rpua = NA,
-        mean_cost = NA,
-        mean_profit = NA,
-        mean_price_kg = NA
-      )
-    ) |>
-    dplyr::mutate(
-      fdays = dplyr::case_when(
-        .data$BMU %in% c("Kibuyuni", "Shimoni", "Vanga", "Mkwiro", "Wasini") ~
-          .data$mean_effort * (210 / 12),
-        TRUE ~ .data$mean_effort * (220 / 12)
-      )
-    )
-
-  create_geos(monthly_summaries_dat = monthly_summaries, conf = conf)
+  monthly_summaries <- compute_monthly_summaries(valid_data, bmu_size)
 
   # Calculate gear usage percent
   gear_distribution <-
@@ -298,9 +329,58 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
       )
     }
   )
+}
+
+
+#' Export Kenya Metrics to the Cross-Country Coasts Bucket
+#'
+#' @description
+#' Publishes the three Kenya artifacts consumed by the multi-country Peskas
+#' portal, derived from validated WCS surveys:
+#' \itemize{
+#'   \item \code{kenya_fishery_metrics} -- long-format fishery metrics
+#'   \item \code{kenya_monthly_summaries_map} -- monthly summaries with geography
+#'   \item \code{KE_regions} -- region boundaries as GeoJSON
+#' }
+#'
+#' @details
+#' Split out from [export_summaries()] because these are the only outputs of the
+#' WCS chain that land outside the WCS bucket. They go to
+#' `storage.google.options_coasts` (`peskas-coasts*`), the shared bucket holding
+#' the equivalent Mozambique, Timor and Zanzibar artifacts, so writing them
+#' requires access no WCS-only collaborator has.
+#'
+#' Keeping them here means [export_summaries()] touches nothing but
+#' `options_wcs` and MongoDB, and a WCS collaborator can run the whole chain
+#' with no special configuration. The scheduled pipeline calls both functions,
+#' so the portal keeps receiving the same artifacts as before.
+#'
+#' @param log_threshold The logging threshold level (default: `logger::DEBUG`).
+#' @return No return value. Uploads three files to the coasts bucket.
+#'
+#' @keywords workflow export
+#' @examples
+#' \dontrun{
+#' export_coasts_metrics()
+#' }
+#'
+#' @export
+export_coasts_metrics <- function(log_threshold = logger::DEBUG) {
+  logger::log_threshold(log_threshold)
+  conf <- read_config()
+
+  inputs <- load_wcs_summary_inputs(conf)
+  valid_data <- inputs$valid_data
+  bmu_size <- inputs$bmu_size
+
+  monthly_summaries <- compute_monthly_summaries(valid_data, bmu_size)
+
+  # Writes kenya_monthly_summaries_map and KE_regions to options_coasts
+  create_geos(monthly_summaries_dat = monthly_summaries, conf = conf)
 
   f_metrics <- get_fishery_metrics_long(data = valid_data)
 
+  logger::log_info("Uploading kenya_fishery_metrics to the coasts bucket")
   coasts::upload_parquet_to_cloud(
     data = f_metrics,
     prefix = "kenya_fishery_metrics",
@@ -833,7 +913,7 @@ create_geos <- function(monthly_summaries_dat = NULL, conf = conf) {
 #'     \item sessions
 #'   }
 #'
-#' @keywords helper
+#' @keywords helper wcs
 #' @examples
 #' \dontrun{
 #' get_ga4_user_summary(property_id = "your_property_id")

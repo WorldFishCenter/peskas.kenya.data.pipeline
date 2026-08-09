@@ -25,7 +25,7 @@
 #' @note This function requires a configuration file with Google Cloud Storage credentials
 #' and parameters for validation.
 #'
-#' @keywords workflow validation
+#' @keywords workflow validation wcs
 #' @export
 validate_landings <- function() {
   conf <- read_config()
@@ -34,7 +34,7 @@ validate_landings <- function() {
     coasts::download_parquet_from_cloud(
       prefix = conf$surveys$wcs$catch$merged$file_prefix,
       provider = conf$storage$google$key,
-      options = conf$storage$google$options
+      options = conf$storage$google$options_wcs
     ) |>
     dplyr::mutate(
       submission_id = paste0(.data$version, "-", .data$submission_id)
@@ -45,7 +45,7 @@ validate_landings <- function() {
     coasts::download_parquet_from_cloud(
       prefix = conf$surveys$wcs$price$price_table$file_prefix,
       provider = conf$storage$google$key,
-      options = conf$storage$google$options
+      options = conf$storage$google$options_wcs
     ) |>
     dplyr::as_tibble() |>
     # price per kg cannot be zero
@@ -264,7 +264,7 @@ validate_landings <- function() {
         data = .x$data,
         provider = conf$storage$google$key,
         prefix = .x$prefix,
-        options = conf$storage$google$options
+        options = conf$storage$google$options_wcs
       )
     }
   )

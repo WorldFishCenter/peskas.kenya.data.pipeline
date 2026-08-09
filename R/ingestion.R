@@ -2,8 +2,19 @@
 #'
 #' @param version Version identifier (e.g., "v1", "v2")
 #' @param kobo_config Configuration object containing Kobo connection details
-#' @param storage_config Configuration object containing storage details
+#' @param storage_config Configuration object containing storage details,
+#'   including the destination bucket in `storage_config$options`.
 #' @return No return value. Processes and uploads data.
+#'
+#' @details
+#'
+#' This helper is shared by [ingest_wcs_surveys()], [ingest_kefs_surveys_v1()]
+#' and [ingest_kefs_surveys_v2()]. The destination bucket is therefore whatever
+#' the caller puts in `storage_config$options` and is never chosen here: WCS
+#' callers pass `options_wcs` (the dedicated peskas-wcs bucket), KEFS callers
+#' pass `options`. Hardcoding a bucket here would put KEFS raw surveys into the
+#' WCS-only bucket.
+#'
 #' @keywords internal
 ingest_catch_survey_version <- function(version, kobo_config, storage_config) {
   logger::log_info(glue::glue(
@@ -79,7 +90,7 @@ ingest_catch_survey_version <- function(version, kobo_config, storage_config) {
 #' This function processes WCS v1 (eu.kobotoolbox.org) and v2 (kf.kobotoolbox.org) catch surveys.
 #' This function processes WCS v1 (eu.kobotoolbox.org) and v2 (kf.kobotoolbox.org) catch surveys.
 #'
-#' @keywords workflow ingestion
+#' @keywords workflow ingestion wcs
 #' @export
 #'
 #' @examples
@@ -101,7 +112,7 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
       storage = list(
         file_prefix = conf$surveys$wcs$catch$v1$raw$file_prefix,
         provider = conf$storage$google$key,
-        options = conf$storage$google$options
+        options = conf$storage$google$options_wcs
       )
     ),
     v2 = list(
@@ -114,7 +125,7 @@ ingest_wcs_surveys <- function(log_threshold = logger::DEBUG) {
       storage = list(
         file_prefix = conf$surveys$wcs$catch$v2$raw$file_prefix,
         provider = conf$storage$google$key,
-        options = conf$storage$google$options
+        options = conf$storage$google$options_wcs
       )
     )
   )
@@ -280,7 +291,7 @@ ingest_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
 #' Note that while parameters are provided for customization, the function
 #' currently uses hardcoded values and configuration settings for some parameters.
 #'
-#' @keywords workflow ingestion
+#' @keywords workflow ingestion wcs
 #' @export
 #'
 #' @examples
@@ -316,7 +327,7 @@ ingest_landings_price <- function(
       storage = list(
         file_prefix = conf$surveys$wcs$price$v1$raw$file_prefix,
         provider = conf$storage$google$key,
-        options = conf$storage$google$options
+        options = conf$storage$google$options_wcs
       )
     ),
     v2 = list(
@@ -329,7 +340,7 @@ ingest_landings_price <- function(
       storage = list(
         file_prefix = conf$surveys$wcs$price$v2$raw$file_prefix,
         provider = conf$storage$google$key,
-        options = conf$storage$google$options
+        options = conf$storage$google$options_wcs
       )
     )
   )
@@ -347,7 +358,8 @@ ingest_landings_price <- function(
 #'
 #' @param version Version identifier (e.g., "v1", "v2")
 #' @param kobo_config Configuration object containing Kobo connection details
-#' @param storage_config Configuration object containing storage details
+#' @param storage_config Configuration object containing storage details,
+#'   including the destination bucket in `storage_config$options`.
 #' @return No return value. Processes and uploads data.
 #' @keywords internal
 ingest_price_survey_version <- function(version, kobo_config, storage_config) {

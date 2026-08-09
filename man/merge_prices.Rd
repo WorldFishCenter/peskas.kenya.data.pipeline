@@ -32,4 +32,5 @@ The function performs the following main operations:
 merge_prices()
 }
 }
+\keyword{wcs}
 \keyword{workflow}

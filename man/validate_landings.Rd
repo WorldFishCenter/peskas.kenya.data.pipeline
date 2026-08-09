@@ -39,4 +39,5 @@ This function requires a configuration file with Google Cloud Storage credential
 and parameters for validation.
 }
 \keyword{validation}
+\keyword{wcs}
 \keyword{workflow}
