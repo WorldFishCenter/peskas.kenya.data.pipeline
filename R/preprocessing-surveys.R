@@ -65,7 +65,7 @@
 preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  target_form_id = get_airtable_form_id(
+  target_form_id <- get_airtable_form_id(
     kobo_asset_id = conf$ingestion$kefs$koboform$asset_id_v1,
     conf = conf
   )
@@ -83,15 +83,12 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
       options = conf$storage$google$options_coasts
     ) |>
     readr::read_rds() |>
-    purrr::keep_at(c("taxa", "gear", "vessels", "sites")) |>
+    purrr::keep_at(c("taxa", "gear", "vessels", "sites", "geo")) |>
     purrr::map(
-      ~ dplyr::filter(
-        .x,
-        stringr::str_detect(
-          .data$form_id,
-          paste0("(^|,\\s*)", !!target_form_id, "(\\s*,|$)")
-        )
-      )
+      ~ dplyr::filter(.x, stringr::str_detect(.data$form_id, ...))
+    ) |>
+    purrr::map(
+      ~ dplyr::select(.x, -dplyr::any_of(c("country", "latitude", "longitude")))
     )
 
   assets$sites <-
@@ -270,7 +267,7 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
 preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
   conf <- read_config()
 
-  target_form_id = get_airtable_form_id(
+  target_form_id <- get_airtable_form_id(
     kobo_asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
     conf = conf
   )
@@ -290,13 +287,10 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     readr::read_rds() |>
     purrr::keep_at(c("taxa", "gear", "vessels", "sites", "geo")) |>
     purrr::map(
-      ~ dplyr::filter(
-        .x,
-        stringr::str_detect(
-          .data$form_id,
-          paste0("(^|,\\s*)", !!target_form_id, "(\\s*,|$)")
-        )
-      )
+      ~ dplyr::filter(.x, stringr::str_detect(.data$form_id, ...))
+    ) |>
+    purrr::map(
+      ~ dplyr::select(.x, -dplyr::any_of(c("country", "latitude", "longitude")))
     )
 
   assets$sites <-
