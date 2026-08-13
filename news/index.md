@@ -1,5 +1,119 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.0.0
+
+### Major Changes
+
+- **WCS artifacts moved to dedicated buckets**: The entire WCS chain —
+  ingestion, preprocessing, merging, validation and
+  [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md)
+  — now reads and writes `conf$storage$google$options_wcs`
+  (`kenya-wcs-dev` / `kenya-wcs-prod`, in the separate `peskas-wcs`
+  Google Cloud project) instead of the shared `kenya-dev` / `kenya-prod`
+  buckets. This isolates WCS data so a WCS-only collaborator can run the
+  full chain with credentials scoped to those two buckets and nothing
+  else. **Breaking**: the WCS files must exist in the new buckets before
+  the pipeline is run against them; a run pointed at the old bucket will
+  find nothing.
+
+- **Downstream consumers follow the split**:
+  [`export_api_validated()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_api_validated.md)
+  and
+  [`compute_survey_matches()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/compute_survey_matches.md)
+  now read `wcs-surveys-validated` from the WCS bucket while continuing
+  to read KEFS from the shared bucket. Their combined outputs remain in
+  `options_api` / `options` — mixed artifacts are never written back
+  into the WCS bucket.
+
+- **New
+  [`export_coasts_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_coasts_metrics.md)**:
+  The three cross-country portal artifacts (`kenya_fishery_metrics`,
+  `kenya_monthly_summaries_map`, `KE_regions`) have been split out of
+  [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md)
+  into their own exported function, as they were the only outputs of the
+  WCS chain landing outside the WCS bucket. **Breaking**:
+  [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md)
+  no longer produces them, and
+  [`create_geos()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/create_geos.md)
+  is now called from
+  [`export_coasts_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_coasts_metrics.md).
+  Callers relying on the old behaviour must call both functions; the
+  scheduled pipeline does.
+
+- **New internal helpers
+  [`load_wcs_summary_inputs()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/load_wcs_summary_inputs.md)
+  and
+  [`compute_monthly_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/compute_monthly_summaries.md)**:
+  Extract the shared download, BMU metadata lookup, landing-site filter
+  and monthly gap-filling so
+  [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md)
+  and
+  [`export_coasts_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_coasts_metrics.md)
+  can run independently without duplication.
+
+### Workflow
+
+- **New `WCS Pipeline` workflow**
+  (`.github/workflows/wcs-pipeline.yaml`): runs the WCS chain on its
+  own, carrying only the WCS Kobo and `peskas-wcs` credentials.
+  Deliberately not scheduled — `data-pipeline.yaml` remains the
+  scheduled pipeline and already covers the WCS chain, and a second cron
+  writing the same prefixes would race it.
+  [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md)
+  is gated behind the repository variable `WCS_ENABLE_EXPORT_SUMMARIES`.
+- **Extracted `build-container.yaml` as a reusable workflow**, called by
+  both pipelines so the image definition lives in one place.
+- Added
+  [`export_coasts_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_coasts_metrics.md)
+  as a step in `data-pipeline.yaml`, after
+  [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md).
+
+### Configuration
+
+- Added `storage.google.options_wcs` (project `peskas-wcs`, bucket
+  `kenya-wcs-dev`), overridden to `kenya-wcs-prod` in the `production`
+  profile.
+- No WCS-specific profile was added, deliberately: the WCS chain uses
+  `options_wcs` in every profile, so a WCS-only collaborator runs the
+  standard profiles with no extra configuration.
+
+### Fixes
+
+- **`exclude_dashboard_ids` silently excluded nothing**: the entries
+  were YAML aliases (`*kobo_asset`, `*kobo_kf_asset`) pointing at
+  anchors that were never defined, so they resolved to the literal
+  string `_yaml.bad-anchor_` and matched no `survey_id`. Replaced with
+  explicit `!expr Sys.getenv()` calls. **Note**: the two Kobo asset IDs
+  are now genuinely excluded from the dashboard summaries, so those
+  outputs will change.
+- **[`read_config()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/read_config.md)
+  no longer logs the resolved configuration**: the previous
+  `log_debug("Running with parameters {pars}")` printed the service
+  account key, MongoDB connection strings, Kobo passwords and API tokens
+  in plaintext. It now logs only the storage buckets in use. Also fixed
+  the `configutation` typo in the adjacent info message.
+
+### Documentation
+
+- Added
+  [`WCS-GUIDE.md`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/news/WCS-GUIDE.md),
+  a standalone guide for WCS collaborators covering setup, the bucket
+  boundary, configuration, the ten-step data flow, running locally and
+  on Actions, and troubleshooting.
+- Added a **WCS pipeline** section to the pkgdown reference, populated
+  by the new `wcs` roxygen keyword; tagged every function in the WCS
+  chain with it. Functions combining WCS with KEFS or PDS data are
+  deliberately excluded.
+- Added a pointer to the guide from the README.
+
+### Repository
+
+- Removed from version control: `inst/reports/` (Quarto sources plus a
+  16 MB rendered HTML and the `lumo` extension), `inst/model-tracks.R`,
+  `inst/users_mng.R` and `inst/kenya_monthly_summaries.geojson`. The
+  files remain on disk; `reports/` and `inst/**/*.R` are now gitignored.
+- Added `WCS-GUIDE.md` to `.Rbuildignore`.
+
 ## peskas.kenya.data.pipeline 4.10.0
 
 ### Major Changes

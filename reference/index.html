@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,6 +52,13 @@
 
         </dt>
         <dd>Export Validated API-Ready Trip Data</dd>
+
+        <dt>
+
+          <code><a href="export_coasts_metrics.html">export_coasts_metrics()</a></code>
+
+        </dt>
+        <dd>Export Kenya Metrics to the Cross-Country Coasts Bucket</dd>
 
         <dt>
 
@@ -192,6 +199,92 @@
 
         </dt>
         <dd>Validate KEFS Surveys Data (Version 2)</dd>
+
+        <dt>
+
+          <code><a href="validate_landings.html">validate_landings()</a></code>
+
+        </dt>
+        <dd>Validate Fisheries Data</dd>
+      </dl></div><div class="section level2">
+      <h2 id="wcs-pipeline">WCS pipeline<a class="anchor" aria-label="anchor" href="#wcs-pipeline"></a></h2>
+
+      <div class="section-desc"><p>The complete WCS data flow, in execution order, plus the storage helpers that mirror WCS artifacts into the dedicated kenya-wcs-* buckets. These are the only functions the WCS pipeline touches – functions that combine WCS with KEFS or PDS data (merge_trips, export_api_validated) are deliberately excluded.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="export_summaries.html">export_summaries()</a></code>
+
+        </dt>
+        <dd>Export Summarized Fishery Data for Dashboard Integration</dd>
+
+        <dt>
+
+          <code><a href="get_ga4_user_summary.html">get_ga4_user_summary()</a></code>
+
+        </dt>
+        <dd>Get GA4 User Summary by Role and BMU</dd>
+
+        <dt>
+
+          <code><a href="ingest_landings_price.html">ingest_landings_price()</a></code>
+
+        </dt>
+        <dd>Download and Process WCS Price Surveys from Kobotoolbox</dd>
+
+        <dt>
+
+          <code><a href="ingest_wcs_surveys.html">ingest_wcs_surveys()</a></code>
+
+        </dt>
+        <dd>Download and Process WCS Catch Surveys from Kobotoolbox</dd>
+
+        <dt>
+
+          <code><a href="merge_landings.html">merge_landings()</a></code>
+
+        </dt>
+        <dd>Merge Legacy and Ongoing Landings Data</dd>
+
+        <dt>
+
+          <code><a href="merge_prices.html">merge_prices()</a></code>
+
+        </dt>
+        <dd>Merge Price Data</dd>
+
+        <dt>
+
+          <code><a href="preprocess_landings_v1.html">preprocess_landings_v1()</a></code>
+
+        </dt>
+        <dd>Preprocess Landings Data (Version 1)</dd>
+
+        <dt>
+
+          <code><a href="preprocess_landings_v2.html">preprocess_landings_v2()</a></code>
+
+        </dt>
+        <dd>Preprocess Landings Data (Version 2)</dd>
+
+        <dt>
+
+          <code><a href="preprocess_legacy_landings.html">preprocess_legacy_landings()</a></code>
+
+        </dt>
+        <dd>Preprocess Legacy Landings Data</dd>
+
+        <dt>
+
+          <code><a href="preprocess_price_landings.html">preprocess_price_landings()</a></code>
+
+        </dt>
+        <dd>Preprocess Price Data</dd>
 
         <dt>
 
@@ -634,6 +727,13 @@
 
         <dt>
 
+          <code><a href="export_coasts_metrics.html">export_coasts_metrics()</a></code>
+
+        </dt>
+        <dd>Export Kenya Metrics to the Cross-Country Coasts Bucket</dd>
+
+        <dt>
+
           <code><a href="export_summaries.html">export_summaries()</a></code>
 
         </dt>
@@ -783,7 +883,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

@@ -9,6 +9,8 @@ these functions executes a step in the data pipeline.
   : Export Raw API-Ready Trip Data
 - [`export_api_validated()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_api_validated.md)
   : Export Validated API-Ready Trip Data
+- [`export_coasts_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_coasts_metrics.md)
+  : Export Kenya Metrics to the Cross-Country Coasts Bucket
 - [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md)
   : Export Summarized Fishery Data for Dashboard Integration
 - [`export_validation_flags()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_validation_flags.md)
@@ -51,6 +53,37 @@ these functions executes a step in the data pipeline.
   : Update Validation Status in KoboToolbox
 - [`validate_kefs_surveys_v2()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_kefs_surveys_v2.md)
   : Validate KEFS Surveys Data (Version 2)
+- [`validate_landings()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_landings.md)
+  : Validate Fisheries Data
+
+## WCS pipeline
+
+The complete WCS data flow, in execution order, plus the storage helpers
+that mirror WCS artifacts into the dedicated kenya-wcs-\* buckets. These
+are the only functions the WCS pipeline touches – functions that combine
+WCS with KEFS or PDS data (merge_trips, export_api_validated) are
+deliberately excluded.
+
+- [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md)
+  : Export Summarized Fishery Data for Dashboard Integration
+- [`get_ga4_user_summary()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_ga4_user_summary.md)
+  : Get GA4 User Summary by Role and BMU
+- [`ingest_landings_price()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/ingest_landings_price.md)
+  : Download and Process WCS Price Surveys from Kobotoolbox
+- [`ingest_wcs_surveys()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/ingest_wcs_surveys.md)
+  : Download and Process WCS Catch Surveys from Kobotoolbox
+- [`merge_landings()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_landings.md)
+  : Merge Legacy and Ongoing Landings Data
+- [`merge_prices()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/merge_prices.md)
+  : Merge Price Data
+- [`preprocess_landings_v1()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_landings_v1.md)
+  : Preprocess Landings Data (Version 1)
+- [`preprocess_landings_v2()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_landings_v2.md)
+  : Preprocess Landings Data (Version 2)
+- [`preprocess_legacy_landings()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_legacy_landings.md)
+  : Preprocess Legacy Landings Data
+- [`preprocess_price_landings()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_price_landings.md)
+  : Preprocess Price Data
 - [`validate_landings()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_landings.md)
   : Validate Fisheries Data
 
@@ -223,6 +256,8 @@ data
   : Export Raw API-Ready Trip Data
 - [`export_api_validated()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_api_validated.md)
   : Export Validated API-Ready Trip Data
+- [`export_coasts_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_coasts_metrics.md)
+  : Export Kenya Metrics to the Cross-Country Coasts Bucket
 - [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md)
   : Export Summarized Fishery Data for Dashboard Integration
 - [`update_airtable_record()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/update_airtable_record.md)

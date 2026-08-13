@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,47 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.0.0" id="peskaskenyadatapipeline-500">peskas.kenya.data.pipeline 5.0.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-500"></a></h2>
+<div class="section level3">
+<h3 id="major-changes-5-0-0">Major Changes<a class="anchor" aria-label="anchor" href="#major-changes-5-0-0"></a></h3>
+<ul><li><p><strong>WCS artifacts moved to dedicated buckets</strong>: The entire WCS chain — ingestion, preprocessing, merging, validation and <code><a href="../reference/export_summaries.html">export_summaries()</a></code> — now reads and writes <code>conf$storage$google$options_wcs</code> (<code>kenya-wcs-dev</code> / <code>kenya-wcs-prod</code>, in the separate <code>peskas-wcs</code> Google Cloud project) instead of the shared <code>kenya-dev</code> / <code>kenya-prod</code> buckets. This isolates WCS data so a WCS-only collaborator can run the full chain with credentials scoped to those two buckets and nothing else. <strong>Breaking</strong>: the WCS files must exist in the new buckets before the pipeline is run against them; a run pointed at the old bucket will find nothing.</p></li>
+<li><p><strong>Downstream consumers follow the split</strong>: <code><a href="../reference/export_api_validated.html">export_api_validated()</a></code> and <code><a href="../reference/compute_survey_matches.html">compute_survey_matches()</a></code> now read <code>wcs-surveys-validated</code> from the WCS bucket while continuing to read KEFS from the shared bucket. Their combined outputs remain in <code>options_api</code> / <code>options</code> — mixed artifacts are never written back into the WCS bucket.</p></li>
+<li><p><strong>New <code><a href="../reference/export_coasts_metrics.html">export_coasts_metrics()</a></code></strong>: The three cross-country portal artifacts (<code>kenya_fishery_metrics</code>, <code>kenya_monthly_summaries_map</code>, <code>KE_regions</code>) have been split out of <code><a href="../reference/export_summaries.html">export_summaries()</a></code> into their own exported function, as they were the only outputs of the WCS chain landing outside the WCS bucket. <strong>Breaking</strong>: <code><a href="../reference/export_summaries.html">export_summaries()</a></code> no longer produces them, and <code><a href="../reference/create_geos.html">create_geos()</a></code> is now called from <code><a href="../reference/export_coasts_metrics.html">export_coasts_metrics()</a></code>. Callers relying on the old behaviour must call both functions; the scheduled pipeline does.</p></li>
+<li><p><strong>New internal helpers <code><a href="../reference/load_wcs_summary_inputs.html">load_wcs_summary_inputs()</a></code> and <code><a href="../reference/compute_monthly_summaries.html">compute_monthly_summaries()</a></code></strong>: Extract the shared download, BMU metadata lookup, landing-site filter and monthly gap-filling so <code><a href="../reference/export_summaries.html">export_summaries()</a></code> and <code><a href="../reference/export_coasts_metrics.html">export_coasts_metrics()</a></code> can run independently without duplication.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="workflow-5-0-0">Workflow<a class="anchor" aria-label="anchor" href="#workflow-5-0-0"></a></h3>
+<ul><li>
+<strong>New <code>WCS Pipeline</code> workflow</strong> (<code>.github/workflows/wcs-pipeline.yaml</code>): runs the WCS chain on its own, carrying only the WCS Kobo and <code>peskas-wcs</code> credentials. Deliberately not scheduled — <code>data-pipeline.yaml</code> remains the scheduled pipeline and already covers the WCS chain, and a second cron writing the same prefixes would race it. <code><a href="../reference/export_summaries.html">export_summaries()</a></code> is gated behind the repository variable <code>WCS_ENABLE_EXPORT_SUMMARIES</code>.</li>
+<li>
+<strong>Extracted <code>build-container.yaml</code> as a reusable workflow</strong>, called by both pipelines so the image definition lives in one place.</li>
+<li>Added <code><a href="../reference/export_coasts_metrics.html">export_coasts_metrics()</a></code> as a step in <code>data-pipeline.yaml</code>, after <code><a href="../reference/export_summaries.html">export_summaries()</a></code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="configuration-5-0-0">Configuration<a class="anchor" aria-label="anchor" href="#configuration-5-0-0"></a></h3>
+<ul><li>Added <code>storage.google.options_wcs</code> (project <code>peskas-wcs</code>, bucket <code>kenya-wcs-dev</code>), overridden to <code>kenya-wcs-prod</code> in the <code>production</code> profile.</li>
+<li>No WCS-specific profile was added, deliberately: the WCS chain uses <code>options_wcs</code> in every profile, so a WCS-only collaborator runs the standard profiles with no extra configuration.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-5-0-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-5-0-0"></a></h3>
+<ul><li>
+<strong><code>exclude_dashboard_ids</code> silently excluded nothing</strong>: the entries were YAML aliases (<code>*kobo_asset</code>, <code>*kobo_kf_asset</code>) pointing at anchors that were never defined, so they resolved to the literal string <code>_yaml.bad-anchor_</code> and matched no <code>survey_id</code>. Replaced with explicit <code>!expr Sys.getenv()</code> calls. <strong>Note</strong>: the two Kobo asset IDs are now genuinely excluded from the dashboard summaries, so those outputs will change.</li>
+<li>
+<strong><code><a href="../reference/read_config.html">read_config()</a></code> no longer logs the resolved configuration</strong>: the previous <code>log_debug("Running with parameters {pars}")</code> printed the service account key, MongoDB connection strings, Kobo passwords and API tokens in plaintext. It now logs only the storage buckets in use. Also fixed the <code>configutation</code> typo in the adjacent info message.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-5-0-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-5-0-0"></a></h3>
+<ul><li>Added <a href="WCS-GUIDE.html"><code>WCS-GUIDE.md</code></a>, a standalone guide for WCS collaborators covering setup, the bucket boundary, configuration, the ten-step data flow, running locally and on Actions, and troubleshooting.</li>
+<li>Added a <strong>WCS pipeline</strong> section to the pkgdown reference, populated by the new <code>wcs</code> roxygen keyword; tagged every function in the WCS chain with it. Functions combining WCS with KEFS or PDS data are deliberately excluded.</li>
+<li>Added a pointer to the guide from the README.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="repository-5-0-0">Repository<a class="anchor" aria-label="anchor" href="#repository-5-0-0"></a></h3>
+<ul><li>Removed from version control: <code>inst/reports/</code> (Quarto sources plus a 16 MB rendered HTML and the <code>lumo</code> extension), <code>inst/model-tracks.R</code>, <code>inst/users_mng.R</code> and <code>inst/kenya_monthly_summaries.geojson</code>. The files remain on disk; <code>reports/</code> and <code>inst/**/*.R</code> are now gitignored.</li>
+<li>Added <code>WCS-GUIDE.md</code> to <code>.Rbuildignore</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="4.10.0" id="peskaskenyadatapipeline-4100">peskas.kenya.data.pipeline 4.10.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-4100"></a></h2>
 <div class="section level3">
@@ -823,7 +864,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

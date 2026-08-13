@@ -71,6 +71,12 @@ familiarize yourself with the package structure, particularly the
 [`R`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/R)
 directory where the main functions are located.
 
+If you are joining to work on the **WCS side of the pipeline only**,
+start with the [WCS collaborator
+guide](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/WCS-GUIDE.md):
+it covers environment setup, the WCS data flow end to end, and the
+dedicated WCS workflow.
+
 Each function typically reads the configuration using
 [`read_config()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/read_config.md)
 to access necessary parameters. To work on this package locally, you’ll

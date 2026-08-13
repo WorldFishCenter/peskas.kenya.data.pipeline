@@ -20,7 +20,8 @@ ingest_price_survey_version(version, kobo_config, storage_config)
 
 - storage_config:
 
-  Configuration object containing storage details
+  Configuration object containing storage details, including the
+  destination bucket in `storage_config$options`.
 
 ## Value
 
