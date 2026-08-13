@@ -25,8 +25,13 @@ default:
       version: latest
       # survey_id values kept out of the dashboard summaries
       exclude_dashboard_ids:
-        - *kobo_asset
-        - *kobo_kf_asset
+        # NB: these were YAML aliases (*kobo_asset) pointing at anchors that
+        # were never defined, so they resolved to the literal placeholder
+        # "_yaml.bad-anchor_" and matched no survey_id -- the exclusion silently
+        # did nothing. Repeat the expressions rather than anchoring an !expr
+        # node, whose capture point relative to config's evaluation is fragile.
+        - !expr Sys.getenv('KOBO_ASSET_ID')
+        - !expr Sys.getenv('KOBO_ASSET_ID_KF')
         - legacy
     aggregated:
       file_prefix: kenya-aggregated
@@ -154,6 +159,16 @@ default:
       options_api:
         bucket: peskas-api-dev
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+      # Home of ALL WCS artifacts, in the dedicated peskas-wcs project. The
+      # whole WCS chain reads and writes here, and the two downstream consumers
+      # of wcs-surveys-validated (export_api_validated, merge_trips) read from
+      # here too. Anything that mixes WCS with KEFS/PDS -- the API export, the
+      # matched trips, the portal aggregates -- stays in `options` and must
+      # never be written here.
+      options_wcs:
+        project: peskas-wcs
+        bucket: kenya-wcs-dev
+        service_account_key: !expr Sys.getenv('GCP_SA_KEY')
   pds_storage:
     google:
       key: gcs
@@ -214,6 +229,8 @@ production:
       options_api:
         bucket: peskas-api-prod
         service_account_key: !expr Sys.getenv('GCP_SA_KEY')
+      options_wcs:
+        bucket: kenya-wcs-prod
     mongodb:
       databases:
         pipeline:
@@ -232,3 +249,8 @@ production:
 local:
   # Local configuration inherits everything from default
   # Add only local-specific overrides here if needed
+
+# NB: there is deliberately no WCS-specific profile. The WCS chain reads and
+# writes `options_wcs` in every profile, and the only outputs that land outside
+# that bucket were split into export_coasts_metrics(). A WCS-only collaborator
+# therefore runs the standard profiles with no extra configuration.

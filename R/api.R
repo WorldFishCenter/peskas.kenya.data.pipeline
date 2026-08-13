@@ -201,10 +201,13 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
     )
 
   logger::log_info("Downloading WCS validated survey data...")
+  # WCS artifacts live in the dedicated peskas-wcs bucket; KEFS stays in the
+  # shared Kenya bucket. The combined output below is mixed, so it goes to
+  # options_api and must never be written back to the WCS bucket.
   wcs_validated <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$catch$validated$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   ) |>
     map_wcs_surveys(
       taxa_mapping = assets$taxa,

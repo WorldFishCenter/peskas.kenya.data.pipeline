@@ -36,4 +36,5 @@ preprocess_price_landings()
 }
 }
 \keyword{preprocessing}
+\keyword{wcs}
 \keyword{workflow}

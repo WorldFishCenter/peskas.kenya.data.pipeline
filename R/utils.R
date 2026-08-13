@@ -75,8 +75,16 @@ read_config <- function() {
     file = system.file("config.yml", package = "peskas.kenya.data.pipeline")
   )
 
-  logger::log_info("Using configutation: {attr(pars, 'config')}")
-  logger::log_debug("Running with parameters {pars}")
+  logger::log_info("Using configuration: {attr(pars, 'config')}")
+  # NB: never log `pars` itself -- it holds the resolved service account key,
+  # MongoDB connection strings, Kobo passwords and API tokens in plaintext.
+  # Log only the non-sensitive storage targets actually in use.
+  logger::log_debug(
+    "Buckets -> main: {pars$storage$google$options$bucket}, ",
+    "coasts: {pars$storage$google$options_coasts$bucket}, ",
+    "api: {pars$storage$google$options_api$bucket}, ",
+    "wcs: {pars$storage$google$options_wcs$bucket %||% 'none'}"
+  )
 
   pars
 }

@@ -39,4 +39,5 @@ merge_landings()
 }
 }
 \keyword{data-merging}
+\keyword{wcs}
 \keyword{workflow}

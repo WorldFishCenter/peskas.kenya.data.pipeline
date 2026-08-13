@@ -32,3 +32,5 @@ docs
 .claude/
 pds/
 figures/
+reports/
+inst/**/*.R

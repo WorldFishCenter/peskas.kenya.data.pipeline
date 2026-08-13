@@ -36,4 +36,5 @@ preprocessed_data <- preprocess_landings_v2()
 }
 }
 \keyword{preprocessing}
+\keyword{wcs}
 \keyword{workflow}

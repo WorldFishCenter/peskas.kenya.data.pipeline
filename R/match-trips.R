@@ -651,15 +651,20 @@ match_surveys_to_gps_trips <- function(
 #'
 #' @keywords internal
 compute_survey_matches <- function(survey, conf, registry, all_trips) {
+  # Each source carries its own bucket: WCS artifacts live in the dedicated
+  # peskas-wcs bucket, KEFS in the shared Kenya bucket. The matched output this
+  # feeds is mixed and stays in `options`.
   survey_config <- if (survey == "kefs") {
     list(
       survey_prefix = conf$surveys$kefs$v2$validated$file_prefix,
+      survey_options = conf$storage$google$options,
       pds_flag_col = "pds",
       pds_flag_values = c("yes", "pds")
     )
   } else {
     list(
       survey_prefix = conf$surveys$wcs$catch$validated$file_prefix,
+      survey_options = conf$storage$google$options_wcs,
       pds_flag_col = "pds",
       pds_flag_values = "yes"
     )
@@ -669,7 +674,7 @@ compute_survey_matches <- function(survey, conf, registry, all_trips) {
   all_surveys <- coasts::download_parquet_from_cloud(
     prefix = survey_config$survey_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = survey_config$survey_options
   ) |>
     dplyr::mutate(
       survey_claimed_pds = !!rlang::sym(survey_config$pds_flag_col) %in%

@@ -11,12 +11,21 @@ ingest_catch_survey_version(version, kobo_config, storage_config)
 
 \item{kobo_config}{Configuration object containing Kobo connection details}
 
-\item{storage_config}{Configuration object containing storage details}
+\item{storage_config}{Configuration object containing storage details,
+including the destination bucket in \code{storage_config$options}.}
 }
 \value{
 No return value. Processes and uploads data.
 }
 \description{
 Core ingestion logic for catch survey data
+}
+\details{
+This helper is shared by \code{\link[=ingest_wcs_surveys]{ingest_wcs_surveys()}}, \code{\link[=ingest_kefs_surveys_v1]{ingest_kefs_surveys_v1()}}
+and \code{\link[=ingest_kefs_surveys_v2]{ingest_kefs_surveys_v2()}}. The destination bucket is therefore whatever
+the caller puts in \code{storage_config$options} and is never chosen here: WCS
+callers pass \code{options_wcs} (the dedicated peskas-wcs bucket), KEFS callers
+pass \code{options}. Hardcoding a bucket here would put KEFS raw surveys into the
+WCS-only bucket.
 }
 \keyword{internal}

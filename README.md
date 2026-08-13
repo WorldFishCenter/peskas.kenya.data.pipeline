@@ -77,6 +77,10 @@ to manage environment-specific settings and connections. To get started,
 familiarize yourself with the package structure, particularly the
 [`R`](R) directory where the main functions are located.
 
+If you are joining to work on the **WCS side of the pipeline only**, start
+with the [WCS collaborator guide](WCS-GUIDE.md): it covers environment
+setup, the WCS data flow end to end, and the dedicated WCS workflow.
+
 Each function typically reads the configuration using `read_config()` to
 access necessary parameters. To work on this package locally, you'll
 need to set up environment variables using a `.env` file. Copy

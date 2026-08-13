@@ -3,6 +3,7 @@
 ^peskas\.kenya\.data\.pipeline\.Rproj$
 ^LICENSE\.md$
 ^README\.Rmd$
+^WCS-GUIDE\.md$
 ^cran-comments\.md$
 ^\.github$
 ^codecov\.yml$

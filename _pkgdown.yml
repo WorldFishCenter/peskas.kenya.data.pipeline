@@ -22,6 +22,16 @@ reference:
 - contents:
   - has_keyword("workflow")
 
+- title: WCS pipeline
+  desc: >
+    The complete WCS data flow, in execution order, plus the storage helpers
+    that mirror WCS artifacts into the dedicated kenya-wcs-* buckets. These are
+    the only functions the WCS pipeline touches -- functions that combine WCS
+    with KEFS or PDS data (merge_trips, export_api_validated) are deliberately
+    excluded.
+  contents:
+  - has_keyword("wcs")
+
 - title: Cloud Storage
   desc: Functions that interact with cloud storage providers.
   contents:

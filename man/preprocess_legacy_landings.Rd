@@ -41,4 +41,5 @@ preprocess_legacy_landings()
 }
 }
 \keyword{preprocessing}
+\keyword{wcs}
 \keyword{workflow}

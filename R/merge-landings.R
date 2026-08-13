@@ -21,7 +21,7 @@
 #' @note This function requires a configuration file with Google Cloud Storage
 #' credentials and file prefix settings.
 #'
-#' @keywords workflow data-merging
+#' @keywords workflow data-merging wcs
 #' @examples
 #' \dontrun{
 #' merge_landings()
@@ -37,7 +37,7 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
       ~ coasts::download_parquet_from_cloud(
         prefix = conf$surveys$wcs$catch[[.x]]$preprocessed$file_prefix,
         provider = conf$storage$google$key,
-        options = conf$storage$google$options
+        options = conf$storage$google$options_wcs
       )
     )
 
@@ -76,7 +76,7 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
     data = merged_landings,
     prefix = conf$surveys$wcs$catch$merged$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   )
 }
 
@@ -97,7 +97,7 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
 #' 5. Removes duplicate entries
 #' 6. Uploads the processed data back to MongoDB
 #'
-#' @keywords workflow
+#' @keywords workflow wcs
 #' @examples
 #' \dontrun{
 #' merge_prices()
@@ -111,7 +111,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
   legacy <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$catch$legacy$preprocessed$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   ) |>
     dplyr::mutate(size = NA_character_) |>
     dplyr::select(
@@ -128,7 +128,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
   v1_price <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$price$v1$preprocessed$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   ) |>
     dplyr::select(
       "landing_date",
@@ -142,7 +142,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
   v2_price <- coasts::download_parquet_from_cloud(
     prefix = conf$surveys$wcs$price$v2$preprocessed$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   ) |>
     dplyr::select(
       "landing_date",
@@ -168,7 +168,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
     data = price_table,
     prefix = conf$surveys$wcs$price$price_table$file_prefix,
     provider = conf$storage$google$key,
-    options = conf$storage$google$options
+    options = conf$storage$google$options_wcs
   )
 }
 

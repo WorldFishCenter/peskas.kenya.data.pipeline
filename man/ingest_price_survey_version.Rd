@@ -11,7 +11,8 @@ ingest_price_survey_version(version, kobo_config, storage_config)
 
 \item{kobo_config}{Configuration object containing Kobo connection details}
 
-\item{storage_config}{Configuration object containing storage details}
+\item{storage_config}{Configuration object containing storage details,
+including the destination bucket in \code{storage_config$options}.}
 }
 \value{
 No return value. Processes and uploads data.
