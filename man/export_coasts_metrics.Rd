@@ -13,11 +13,13 @@ export_coasts_metrics(log_threshold = logger::DEBUG)
 No return value. Uploads three files to the coasts bucket.
 }
 \description{
-Publishes the three Kenya artifacts consumed by the multi-country Peskas
-portal, derived from validated WCS surveys:
+Publishes the three WCS-derived Kenya artifacts that live in the shared
+coasts bucket:
 \itemize{
-\item \code{kenya_fishery_metrics} -- long-format fishery metrics
-\item \code{kenya_monthly_summaries_map} -- monthly summaries with geography
+\item \code{kenya_wcs_fishery_metrics} -- long-format fishery metrics,
+keyed by landing site and species
+\item \code{kenya_wcs_region_summaries_map} -- monthly summaries aggregated
+to WCS coast regions
 \item \code{KE_regions} -- region boundaries as GeoJSON
 }
 }
@@ -30,9 +32,19 @@ requires access no WCS-only collaborator has.
 
 Keeping them here means \code{\link[=export_summaries]{export_summaries()}} touches nothing but
 \code{options_wcs} and MongoDB, and a WCS collaborator can run the whole chain
-with no special configuration. The scheduled pipeline calls both functions,
-so the portal keeps receiving the same artifacts as before.
+with no special configuration.
 }
+\section{Prefixes owned by peskas.coasts}{
+
+These outputs are deliberately namespaced \verb{kenya_wcs_*}. The bare
+\code{kenya_fishery_metrics} and \code{kenya_monthly_summaries_map} prefixes belong to
+\code{coasts::summarize_data()} and \code{coasts::export_portal()}, which build the
+GAUL-keyed frames that \code{coasts::export_geos()} binds together with the
+Zanzibar and Mozambique equivalents to drive the coasts portal. Writing a
+differently-keyed frame under those names shadows them, because every read
+resolves by \code{version = "latest"}.
+}
+
 \examples{
 \dontrun{
 export_coasts_metrics()

@@ -196,7 +196,7 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
     readr::read_rds() |>
     purrr::keep_at(c("taxa", "gear", "vessels", "sites", "geo")) |>
     purrr::map(
-      ~ dplyr::filter(.x, stringr::str_detect(.data$form_id, ...))
+      ~ dplyr::filter(.x, stringr::str_detect(.data$form_id, ids_pattern))
     ) |>
     purrr::map(
       ~ dplyr::select(.x, -dplyr::any_of(c("country", "latitude", "longitude")))

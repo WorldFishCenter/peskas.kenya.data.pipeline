@@ -335,11 +335,13 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 #' Export Kenya Metrics to the Cross-Country Coasts Bucket
 #'
 #' @description
-#' Publishes the three Kenya artifacts consumed by the multi-country Peskas
-#' portal, derived from validated WCS surveys:
+#' Publishes the three WCS-derived Kenya artifacts that live in the shared
+#' coasts bucket:
 #' \itemize{
-#'   \item \code{kenya_fishery_metrics} -- long-format fishery metrics
-#'   \item \code{kenya_monthly_summaries_map} -- monthly summaries with geography
+#'   \item \code{kenya_wcs_fishery_metrics} -- long-format fishery metrics,
+#'     keyed by landing site and species
+#'   \item \code{kenya_wcs_region_summaries_map} -- monthly summaries aggregated
+#'     to WCS coast regions
 #'   \item \code{KE_regions} -- region boundaries as GeoJSON
 #' }
 #'
@@ -352,8 +354,16 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 #'
 #' Keeping them here means [export_summaries()] touches nothing but
 #' `options_wcs` and MongoDB, and a WCS collaborator can run the whole chain
-#' with no special configuration. The scheduled pipeline calls both functions,
-#' so the portal keeps receiving the same artifacts as before.
+#' with no special configuration.
+#'
+#' @section Prefixes owned by peskas.coasts:
+#' These outputs are deliberately namespaced `kenya_wcs_*`. The bare
+#' `kenya_fishery_metrics` and `kenya_monthly_summaries_map` prefixes belong to
+#' `coasts::summarize_data()` and `coasts::export_portal()`, which build the
+#' GAUL-keyed frames that `coasts::export_geos()` binds together with the
+#' Zanzibar and Mozambique equivalents to drive the coasts portal. Writing a
+#' differently-keyed frame under those names shadows them, because every read
+#' resolves by `version = "latest"`.
 #'
 #' @param log_threshold The logging threshold level (default: `logger::DEBUG`).
 #' @return No return value. Uploads three files to the coasts bucket.
@@ -380,10 +390,14 @@ export_coasts_metrics <- function(log_threshold = logger::DEBUG) {
 
   f_metrics <- get_fishery_metrics_long(data = valid_data)
 
-  logger::log_info("Uploading kenya_fishery_metrics to the coasts bucket")
+  # NB: NOT `kenya_fishery_metrics` -- see the note in create_geos(). That
+  # prefix belongs to coasts::summarize_data(), whose frame is keyed by
+  # gaul_2_name + catch_taxon (matching mozambique_fishery_metrics); this one is
+  # keyed by landing_site + species and would shadow it.
+  logger::log_info("Uploading kenya_wcs_fishery_metrics to the coasts bucket")
   coasts::upload_parquet_to_cloud(
     data = f_metrics,
-    prefix = "kenya_fishery_metrics",
+    prefix = "kenya_wcs_fishery_metrics",
     provider = conf$storage$google$key,
     options = conf$storage$google$options_coasts
   )
@@ -861,9 +875,16 @@ create_geos <- function(monthly_summaries_dat = NULL, conf = conf) {
     ) |>
     dplyr::relocate("country", .before = "region")
 
+  # NB: NOT `kenya_monthly_summaries_map`. That prefix belongs to
+  # coasts::export_portal(), and coasts::export_geos() reads it expecting the
+  # GAUL schema (country, gaul1_name, gaul_2_name, date, mean_cpue, mean_rpue,
+  # mean_price_kg) so it can bind Kenya to the Zanzibar and Mozambique files.
+  # This frame is keyed by WCS coast `region` instead, and when it happened to
+  # be the newest object under that prefix -- everything resolves by
+  # `version = "latest"` -- Kenya dropped out of the coasts portal entirely.
   coasts::upload_parquet_to_cloud(
     data = region_monthly_summaries,
-    prefix = "kenya_monthly_summaries_map",
+    prefix = "kenya_wcs_region_summaries_map",
     provider = conf$storage$google$key,
     options = conf$storage$google$options_coasts
   )

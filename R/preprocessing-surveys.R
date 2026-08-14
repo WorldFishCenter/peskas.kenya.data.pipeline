@@ -70,6 +70,15 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
     conf = conf
   )
 
+  # `form_id` holds either a single id or a comma-separated list, so match the
+  # id only at a list boundary. Built here rather than inside the map() lambda
+  # below, which cannot see the enclosing function's arguments.
+  form_id_pattern <- paste0(
+    "(^|,\\s*)(",
+    paste(target_form_id, collapse = "|"),
+    ")(\\s*,|$)"
+  )
+
   assets <-
     coasts::cloud_object_name(
       prefix = conf$metadata$airtable$assets,
@@ -85,7 +94,7 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
     readr::read_rds() |>
     purrr::keep_at(c("taxa", "gear", "vessels", "sites", "geo")) |>
     purrr::map(
-      ~ dplyr::filter(.x, stringr::str_detect(.data$form_id, ...))
+      ~ dplyr::filter(.x, stringr::str_detect(.data$form_id, form_id_pattern))
     ) |>
     purrr::map(
       ~ dplyr::select(.x, -dplyr::any_of(c("country", "latitude", "longitude")))
@@ -272,6 +281,15 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     conf = conf
   )
 
+  # `form_id` holds either a single id or a comma-separated list, so match the
+  # id only at a list boundary. Built here rather than inside the map() lambda
+  # below, which cannot see the enclosing function's arguments.
+  form_id_pattern <- paste0(
+    "(^|,\\s*)(",
+    paste(target_form_id, collapse = "|"),
+    ")(\\s*,|$)"
+  )
+
   assets <-
     coasts::cloud_object_name(
       prefix = conf$metadata$airtable$assets,
@@ -287,7 +305,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     readr::read_rds() |>
     purrr::keep_at(c("taxa", "gear", "vessels", "sites", "geo")) |>
     purrr::map(
-      ~ dplyr::filter(.x, stringr::str_detect(.data$form_id, ...))
+      ~ dplyr::filter(.x, stringr::str_detect(.data$form_id, form_id_pattern))
     ) |>
     purrr::map(
       ~ dplyr::select(.x, -dplyr::any_of(c("country", "latitude", "longitude")))
