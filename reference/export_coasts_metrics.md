@@ -1,11 +1,13 @@
 # Export Kenya Metrics to the Cross-Country Coasts Bucket
 
-Publishes the three Kenya artifacts consumed by the multi-country Peskas
-portal, derived from validated WCS surveys:
+Publishes the three WCS-derived Kenya artifacts that live in the shared
+coasts bucket:
 
-- `kenya_fishery_metrics` – long-format fishery metrics
+- `kenya_wcs_fishery_metrics` – long-format fishery metrics, keyed by
+  landing site and species
 
-- `kenya_monthly_summaries_map` – monthly summaries with geography
+- `kenya_wcs_region_summaries_map` – monthly summaries aggregated to WCS
+  coast regions
 
 - `KE_regions` – region boundaries as GeoJSON
 
@@ -39,9 +41,21 @@ WCS-only collaborator has.
 Keeping them here means
 [`export_summaries()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_summaries.md)
 touches nothing but `options_wcs` and MongoDB, and a WCS collaborator
-can run the whole chain with no special configuration. The scheduled
-pipeline calls both functions, so the portal keeps receiving the same
-artifacts as before.
+can run the whole chain with no special configuration.
+
+## Prefixes owned by peskas.coasts
+
+These outputs are deliberately namespaced `kenya_wcs_*`. The bare
+`kenya_fishery_metrics` and `kenya_monthly_summaries_map` prefixes
+belong to
+[`coasts::summarize_data()`](https://rdrr.io/pkg/coasts/man/summarize_data.html)
+and
+[`coasts::export_portal()`](https://rdrr.io/pkg/coasts/man/export_portal.html),
+which build the GAUL-keyed frames that
+[`coasts::export_geos()`](https://rdrr.io/pkg/coasts/man/export_geos.html)
+binds together with the Zanzibar and Mozambique equivalents to drive the
+coasts portal. Writing a differently-keyed frame under those names
+shadows them, because every read resolves by `version = "latest"`.
 
 ## Examples
 
