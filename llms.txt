@@ -230,8 +230,6 @@ Functions dedicated to the preprocessing module
   : Clean Catch Names
 - [`fetch_asset()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/fetch_asset.md)
   : Fetch and Filter Asset Data from Airtable
-- [`fetch_assets()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/fetch_assets.md)
-  : Fetch Multiple Asset Tables from Airtable
 - [`get_airtable_form_id()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_airtable_form_id.md)
   : Get Airtable Form ID from KoBoToolbox Asset ID
 - [`map_kefs_surveys()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/map_kefs_surveys.md)
@@ -382,8 +380,6 @@ Functions dedicated to data analytics and general statistics
   : Add timestamp and sha string to a file name
 - [`fetch_asset()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/fetch_asset.md)
   : Fetch and Filter Asset Data from Airtable
-- [`fetch_assets()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/fetch_assets.md)
-  : Fetch Multiple Asset Tables from Airtable
 - [`get_airtable_form_id()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_airtable_form_id.md)
   : Get Airtable Form ID from KoBoToolbox Asset ID
 - [`get_fishery_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_fishery_metrics.md)
