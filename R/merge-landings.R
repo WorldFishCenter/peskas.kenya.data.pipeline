@@ -95,7 +95,10 @@ merge_landings <- function(log_threshold = logger::DEBUG) {
 #' 3. Combines legacy and ongoing data
 #' 4. Filters data after 1990
 #' 5. Removes duplicate entries
-#' 6. Uploads the processed data back to MongoDB
+#' 6. Collapses the table to exactly one median price per
+#'    (date, landing_site, fish_category, size) key, so the many-to-one join
+#'    in [validate_landings()] cannot duplicate catch rows
+#' 7. Uploads the processed data back to MongoDB
 #'
 #' @keywords workflow wcs
 #' @examples
@@ -153,7 +156,7 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
     ) |>
     summarise_catch_price(unit = "year")
 
-  price_table <-
+  price_table_raw <-
     dplyr::bind_rows(legacy, v1_price, v2_price) |>
     dplyr::distinct() |>
     dplyr::mutate(
@@ -163,6 +166,29 @@ merge_prices <- function(log_threshold = logger::DEBUG) {
         TRUE ~ .data$landing_site
       )
     )
+
+  # The v1 and v2 price forms both collect during 2025, and the landing_site
+  # recoding above folds two more spellings into their canonical form, so the
+  # same (date, landing_site, fish_category, size) key can arrive from more
+  # than one source with a different median. validate_landings() joins this
+  # table many-to-one, so anything left duplicated here fans out the catch
+  # rows it is joined onto. Collapse to exactly one median per key.
+  price_table <-
+    price_table_raw |>
+    dplyr::group_by(
+      .data$date,
+      .data$landing_site,
+      .data$fish_category,
+      .data$size
+    ) |>
+    dplyr::summarise(
+      median_ksh_kg = stats::median(.data$median_ksh_kg, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  logger::log_info(
+    "Price table collapsed to one median per key: {nrow(price_table_raw)} rows -> {nrow(price_table)} rows ({nrow(price_table_raw) - nrow(price_table)} duplicate keys removed)"
+  )
 
   coasts::upload_parquet_to_cloud(
     data = price_table,

@@ -221,16 +221,24 @@ validate_landings <- function() {
       na.rm = TRUE
     )
 
-  clean_data <-
+  priced_landings <-
     validated_data |>
     dplyr::left_join(alert_flags, by = c("version", "submission_id")) |>
     dplyr::filter(.data$alert_number == "") |>
     dplyr::select(-"alert_number") |>
     # Add catch prices
-    dplyr::mutate(year = lubridate::year(.data$landing_date)) |>
+    dplyr::mutate(year = lubridate::year(.data$landing_date))
+
+  clean_data <-
+    priced_landings |>
+    # One price row per key, enforced here so a duplicated price table fails
+    # loudly instead of silently duplicating every catch row it matches.
+    # total_catch_price below is summed over these rows, so a fan-out would
+    # over-state trip revenue by the same factor.
     dplyr::left_join(
       price_tables,
-      by = c("year", "landing_site", "fish_category", "size")
+      by = c("year", "landing_site", "fish_category", "size"),
+      relationship = "many-to-one"
     ) |>
     dplyr::mutate(catch_price = .data$median_ksh_kg_imputed * .data$catch_kg) |>
     dplyr::group_by(.data$submission_id) |>
@@ -240,6 +248,10 @@ validate_landings <- function() {
     dplyr::ungroup() |>
     dplyr::select(-c("year", "median_ksh_kg_imputed")) |>
     dplyr::distinct()
+
+  logger::log_info(
+    "Price join: {nrow(priced_landings)} catch rows -> {nrow(clean_data)} rows across {dplyr::n_distinct(clean_data$submission_id)} trips"
+  )
 
   # Define the data and their corresponding collection names
   upload_data <- list(

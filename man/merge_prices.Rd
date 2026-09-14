@@ -24,6 +24,9 @@ The function performs the following main operations:
 \item Combines legacy and ongoing data
 \item Filters data after 1990
 \item Removes duplicate entries
+\item Collapses the table to exactly one median price per
+(date, landing_site, fish_category, size) key, so the many-to-one join
+in \code{\link[=validate_landings]{validate_landings()}} cannot duplicate catch rows
 \item Uploads the processed data back to MongoDB
 }
 }

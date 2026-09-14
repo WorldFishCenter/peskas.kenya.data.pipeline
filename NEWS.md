@@ -1,3 +1,153 @@
+# peskas.kenya.data.pipeline 5.1.0
+
+Numeric-integrity release for the `peskas-api-prod` `landings` export. Kenya was
+the only country whose published trips failed the cross-country invariant
+`tot_catch_kg == sum(catch_kg)` within `trip_id`. These changes take the overall
+failure rate from **24.5% to 6.6% of 141,336 validated trips**, with the
+remainder confined to KEFS (see *Known remaining gap* below).
+
+## Data impact
+
+Numbers below are measured against the production snapshot
+`trips-validated__20260911025624_92d37f9__.parquet`.
+
+- **WCS catch rows were being duplicated by the price join.** The published
+  validated export drops from **342,607 to 301,737 rows** — 40,870 duplicated
+  catch rows removed — with the **trip count unchanged at 141,336**. No trip and
+  no genuine catch record is lost; only rows that the price join had duplicated.
+- **Published WCS weight was over-stated.** Total `catch_kg` across the
+  validated export falls from **4,164,999 kg to 3,639,974 kg** (-12.6%). The
+  removed kilograms were double-counted copies of real catch rows, not real
+  catch.
+- **WCS trip revenue was over-stated by the same factor.** `tot_catch_price` is
+  summed over the catch rows of a trip, so it inherited the duplication. Summed
+  trip revenue falls from **952,653,752 to 830,447,469 KSH** (-12.8%).
+- **Reconciliation by survey**, `tot_catch_kg == sum(catch_kg)` failure rate:
+
+  | survey_id | trips | before | after |
+  |---|---|---|---|
+  | `aSgfgkYbHn5Q4CVD7Lgcu2` (WCS current) | 54,304 | 41.8% | **0.4%** |
+  | `aAy6nzUo7d7xPsH4YaFs4M` (WCS previous) | 42,252 | 7.3% | **0.9%** |
+  | `legacy` (WCS legacy) | 29,277 | 1.6% | 1.6% |
+  | `aNKjDfXDKyW3JLtaCdxDp5` (KEFS) | 15,503 | 54.5% | 54.5% |
+
+- **`trip_duration_hrs` is no longer fabricated for WCS.** 87.7% of published
+  rows previously carried a hardcoded `24` that was indistinguishable from a
+  measured value; those rows now carry `NA_real_`. Any WCS catch-per-hour
+  figure computed from the old value was meaningless. KEFS durations, which are
+  measured, are unaffected.
+- **KEFS `catch_price` was a rate published as a value.** It was mapped
+  straight from `sample_price`, which is a KSH/kg rate, into a column the schema
+  defines in the same units as `tot_catch_price`. Multiplying by the row's
+  weight takes summed KEFS `catch_price` from **14,278,682 to 87,172,859 KSH**
+  against a trip-level `tot_catch_price` total of 152,027,377 KSH, and raises
+  the share of KEFS trips where `tot_catch_price` agrees with
+  `sum(catch_price)` within 1% from **0.7% to 37.1%** (66.5% across the 53.9% of
+  trips that sample the whole catch). Row and trip counts are unchanged at
+  44,468 / 15,503, and KEFS weight reconciliation is deliberately unchanged —
+  see *Known remaining gap*. Across the whole validated export, summed
+  `catch_price` moves from 839,184,457 to 787,061,815 KSH, the net of this
+  increase and the WCS de-duplication above.
+- **The raw export now covers the same population as the validated export.**
+  `kenya/raw` grows from **20,312 trips (1 survey, from 2024-01-06) to 169,394
+  trips (4 surveys, from 1995-09-06)**, and the number of validated trips absent
+  from the raw export goes from **125,833 to 0**. Kenya's `status` parameter now
+  selects two processing stages of one population, as in the other three
+  country repos, instead of two unrelated populations.
+
+## Fixes
+
+- **Duplicate keys in `wcs-price_table` fanned out the WCS catch rows**
+  (`merge_prices()`, `R/merge-landings.R`). The table carried 6,130 rows for
+  only 5,776 distinct `(date, landing_site, fish_category, size)` keys. It is
+  now collapsed to exactly one median per key before upload: **6,130 -> 5,776
+  rows, 354 duplicate keys removed**.
+
+  Two independent sources produced the duplicates, and the collapse is placed
+  after the `landing_site` recoding so it catches both. 318 keys came from the
+  v1 and v2 price forms overlapping through 2025 — both forms collect at the
+  same sites, each is summarised to a yearly median separately, and
+  `bind_rows()` kept both. The remaining 36 are created by the recoding itself
+  (`rigati` -> `rigata`, `kiwayuu_cha_nje` -> `kiwayuu_cha_inde`), which folds a
+  variant spelling onto a key that already exists. The duplicate pairs are not a
+  small/large split that lost its size label: both sizes appear duplicated
+  independently, with the size label intact.
+
+- **The price join in `validate_landings()` is now declared `many-to-one`**
+  (`R/validation.R`). `dplyr` had been warning about an unexpected many-to-many
+  relationship on every production run. Because `catch_price` is computed per
+  joined row and `total_catch_price = sum(catch_price)` is computed after the
+  join, the trailing `distinct()` could not collapse the duplicates. A
+  duplicated price table now aborts the run instead of silently inflating both
+  weight and revenue.
+
+- **`trip_duration_hrs` was hardcoded to `24` for WCS** (`format_api_wcs()`,
+  `R/api.R`), now `NA_real_`. No WCS form — legacy, v1 or v2 — collects trip
+  duration. The only time fields on the Kobo forms are the `start`/`end` stamps
+  of the enumerator's form session, whose median span is 0 minutes; they measure
+  form-filling, not time at sea. The reasoning is recorded in the function's
+  roxygen so the `NA` is not later "fixed" back to a constant.
+
+- **`export_api_raw()` published a different population from
+  `export_api_validated()`** (`R/api.R`). It formatted KEFS only. It now also
+  reads the WCS merged landings (`wcs-surveys-all_landings`, the WCS
+  preprocessed stage written by `merge_landings()`) and formats them through the
+  same mapping path, mirroring the validated export. WCS `catch_price` and
+  `tot_catch_price` are `NA` at this stage because prices are resolved during
+  validation, consistent with the documented raw-stage schema.
+
+- **KEFS `catch_price` published a price per kilogram, not a value**
+  (`format_api_kefs()`, `R/api.R`), now `sample_weight * sample_price`. The
+  evidence that `sample_price` is a rate: it equals the form's trip-level
+  `PricePerKg` in **95.0%** of single-species trips (against 2.3% for a value
+  reading), is an exact multiple of 50 KSH in **83.9%** of rows, and is
+  essentially uncorrelated with `sample_weight` (Spearman **-0.125**, where a
+  value correlates at 0.937). This matches how `format_api_wcs()` already
+  derives `catch_price`, as a median KSH/kg multiplied by the row's weight. The
+  unit is now recorded in the function's roxygen, alongside a description of the
+  sampled-composition design, so neither is re-derived from the column names.
+
+- **Removed a dead `n_catch` mutate** in `format_api_kefs()` (`R/api.R`). The
+  mutate assigned `n_catch = as.integer(n_sample)` and the following `select()`
+  immediately overwrote it by renaming `n_sample` to `n_catch`, discarding the
+  result. The integer cast is kept, applied to `n_sample` so it survives the
+  rename.
+
+## Internal
+
+- Added the internal helper `read_wcs_api_assets()` (`R/api.R`, not exported) so
+  both export stages share one copy of the Airtable taxa/gear/site/geo lookup
+  that maps WCS surveys, rather than duplicating the block in the raw export.
+
+## Known remaining gap
+
+KEFS (`aNKjDfXDKyW3JLtaCdxDp5`) still fails the invariant on 54.5% of its trips,
+and this release deliberately does not change that. KEFS is a **sampled-
+composition design**: the form records the whole catch (`TotalCatchWeight`,
+`TValue`) and separately identifies the species composition of a *sample*
+(`OverallSampleWeight`, reshaped to `sample_weight`/`sample_price`). The sample
+rows sum to `total_sample_weight`, not to `total_catch_weight` — measured at
+80.5% exact agreement with `total_sample_weight`. Forcing them to agree would
+falsify the survey. A schema-level way to declare sampled composition is needed
+instead, and is out of scope here.
+
+The `catch_price` unit error found alongside this is fixed above; it was a
+genuine defect rather than a property of the design. What remains is the design
+itself, and one consequence of it:
+
+- `tot_catch_price` for KEFS is derived, not summed: it equals
+  `total_catch_weight * total_price_kg` in **100.0%** of trips. It is a
+  whole-catch valuation at a single trip-level price, which is why it cannot
+  fully reconcile against per-species sample rows even with `catch_price` in the
+  right units. The residual gap is the un-sampled portion of the catch, not an
+  arithmetic error.
+- Declaring sampled composition in the export itself would need a schema
+  addition — a sampled-weight column, or a flag distinguishing census from
+  sample rows — which is out of scope for this release. Until then the design is
+  documented only in `format_api_kefs()`'s roxygen, and consumers computing
+  species composition from KEFS `catch_kg` should treat it as a sample, not a
+  census.
+
 # peskas.kenya.data.pipeline 5.0.0
 
 ## Major Changes

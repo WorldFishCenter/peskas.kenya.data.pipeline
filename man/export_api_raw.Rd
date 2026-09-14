@@ -13,12 +13,20 @@ export_api_raw(log_threshold = logger::DEBUG)
 NULL invisibly. Side effect: uploads merged parquet to cloud storage.
 }
 \description{
-Downloads preprocessed KEFS survey data, transforms it into the canonical
-API schema, and uploads a parquet file to cloud storage. This is the
-\strong{raw/preprocessed} stage of the two-stage API export pipeline (KEFS only;
-WCS is included at the validated stage via \code{\link[=export_api_validated]{export_api_validated()}}).
+Downloads preprocessed KEFS and WCS survey data, transforms both into the
+canonical API schema, and uploads a parquet file to cloud storage. This is
+the \strong{raw/preprocessed} stage of the two-stage API export pipeline.
 }
 \details{
+Both stages cover the same two sources, so the validated export is a strict
+subset of this one and the API's \code{status} parameter selects two processing
+stages of one population rather than two different populations. The WCS
+preprocessed stage is \code{conf$surveys$wcs$catch$merged$file_prefix}, the
+merged landings written by \code{\link[=merge_landings]{merge_landings()}}: the legacy, v1 and v2 sources
+bound together before \code{\link[=validate_landings]{validate_landings()}} drops alerting trips and joins
+prices. Trips present here but absent from the validated export are those
+validation rejected.
+
 \strong{Output Schema}:
 \itemize{
 \item \code{survey_id}: Kobo asset ID identifying the source survey form
@@ -28,7 +36,8 @@ WCS is included at the validated stage via \code{\link[=export_api_validated]{ex
 \item \code{gaul_2_code}, \code{gaul_2_name}: GAUL level 2 district
 \item \code{landing_site}, \code{landing_site}: Landing site name
 \item \code{n_fishers}: Total fishers (men + women + children)
-\item \code{trip_duration_hrs}: Trip duration in hours
+\item \code{trip_duration_hrs}: Trip duration in hours (NA for WCS — not collected by
+any WCS form)
 \item \code{gear}: Standardised gear type
 \item \code{vessel_type}: Standardised vessel type
 \item \code{catch_habitat}: Habitat where catch occurred
@@ -38,9 +47,10 @@ WCS is included at the validated stage via \code{\link[=export_api_validated]{ex
 \item \code{scientific_name}: Scientific name
 \item \code{length_cm}: Length in cm (NA for WCS surveys)
 \item \code{catch_kg}: Catch weight in kg
-\item \code{catch_price}: Individual-level price (NA — not resolved at this stage)
+\item \code{catch_price}: Individual-level price (NA for WCS — prices are resolved
+only at the validated stage)
 \item \code{tot_catch_kg}: Total catch weight per trip
-\item \code{tot_catch_price}: Total catch price per trip
+\item \code{tot_catch_price}: Total catch price per trip (NA for WCS, as above)
 }
 
 \strong{Cloud Storage Location}:
