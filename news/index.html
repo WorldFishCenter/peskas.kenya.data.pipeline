@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,71 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.1.0" id="peskaskenyadatapipeline-510">peskas.kenya.data.pipeline 5.1.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-510"></a></h2>
+<p>Numeric-integrity release for the <code>peskas-api-prod</code> <code>landings</code> export. Kenya was the only country whose published trips failed the cross-country invariant <code>tot_catch_kg == sum(catch_kg)</code> within <code>trip_id</code>. These changes take the overall failure rate from <strong>24.5% to 6.6% of 141,336 validated trips</strong>, with the remainder confined to KEFS (see <em>Known remaining gap</em> below).</p>
+<div class="section level3">
+<h3 id="data-impact-5-1-0">Data impact<a class="anchor" aria-label="anchor" href="#data-impact-5-1-0"></a></h3>
+<p>Numbers below are measured against the production snapshot <code>trips-validated__20260911025624_92d37f9__.parquet</code>.</p>
+<ul><li><p><strong>WCS catch rows were being duplicated by the price join.</strong> The published validated export drops from <strong>342,607 to 301,737 rows</strong> — 40,870 duplicated catch rows removed — with the <strong>trip count unchanged at 141,336</strong>. No trip and no genuine catch record is lost; only rows that the price join had duplicated.</p></li>
+<li><p><strong>Published WCS weight was over-stated.</strong> Total <code>catch_kg</code> across the validated export falls from <strong>4,164,999 kg to 3,639,974 kg</strong> (-12.6%). The removed kilograms were double-counted copies of real catch rows, not real catch.</p></li>
+<li><p><strong>WCS trip revenue was over-stated by the same factor.</strong> <code>tot_catch_price</code> is summed over the catch rows of a trip, so it inherited the duplication. Summed trip revenue falls from <strong>952,653,752 to 830,447,469 KSH</strong> (-12.8%).</p></li>
+<li>
+<p><strong>Reconciliation by survey</strong>, <code>tot_catch_kg == sum(catch_kg)</code> failure rate:</p>
+<table class="table"><thead><tr><th>survey_id</th>
+<th>trips</th>
+<th>before</th>
+<th>after</th>
+</tr></thead><tbody><tr><td>
+<code>aSgfgkYbHn5Q4CVD7Lgcu2</code> (WCS current)</td>
+<td>54,304</td>
+<td>41.8%</td>
+<td><strong>0.4%</strong></td>
+</tr><tr><td>
+<code>aAy6nzUo7d7xPsH4YaFs4M</code> (WCS previous)</td>
+<td>42,252</td>
+<td>7.3%</td>
+<td><strong>0.9%</strong></td>
+</tr><tr><td>
+<code>legacy</code> (WCS legacy)</td>
+<td>29,277</td>
+<td>1.6%</td>
+<td>1.6%</td>
+</tr><tr><td>
+<code>aNKjDfXDKyW3JLtaCdxDp5</code> (KEFS)</td>
+<td>15,503</td>
+<td>54.5%</td>
+<td>54.5%</td>
+</tr></tbody></table></li>
+<li><p><strong><code>trip_duration_hrs</code> is no longer fabricated for WCS.</strong> 87.7% of published rows previously carried a hardcoded <code>24</code> that was indistinguishable from a measured value; those rows now carry <code>NA_real_</code>. Any WCS catch-per-hour figure computed from the old value was meaningless. KEFS durations, which are measured, are unaffected.</p></li>
+<li><p><strong>KEFS <code>catch_price</code> was a rate published as a value.</strong> It was mapped straight from <code>sample_price</code>, which is a KSH/kg rate, into a column the schema defines in the same units as <code>tot_catch_price</code>. Multiplying by the row’s weight takes summed KEFS <code>catch_price</code> from <strong>14,278,682 to 87,172,859 KSH</strong> against a trip-level <code>tot_catch_price</code> total of 152,027,377 KSH, and raises the share of KEFS trips where <code>tot_catch_price</code> agrees with <code>sum(catch_price)</code> within 1% from <strong>0.7% to 37.1%</strong> (66.5% across the 53.9% of trips that sample the whole catch). Row and trip counts are unchanged at 44,468 / 15,503, and KEFS weight reconciliation is deliberately unchanged — see <em>Known remaining gap</em>. Across the whole validated export, summed <code>catch_price</code> moves from 839,184,457 to 787,061,815 KSH, the net of this increase and the WCS de-duplication above.</p></li>
+<li><p><strong>The raw export now covers the same population as the validated export.</strong> <code>kenya/raw</code> grows from <strong>20,312 trips (1 survey, from 2024-01-06) to 169,394 trips (4 surveys, from 1995-09-06)</strong>, and the number of validated trips absent from the raw export goes from <strong>125,833 to 0</strong>. Kenya’s <code>status</code> parameter now selects two processing stages of one population, as in the other three country repos, instead of two unrelated populations.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-5-1-0">Fixes<a class="anchor" aria-label="anchor" href="#fixes-5-1-0"></a></h3>
+<ul><li>
+<p><strong>Duplicate keys in <code>wcs-price_table</code> fanned out the WCS catch rows</strong> (<code><a href="../reference/merge_prices.html">merge_prices()</a></code>, <code>R/merge-landings.R</code>). The table carried 6,130 rows for only 5,776 distinct <code>(date, landing_site, fish_category, size)</code> keys. It is now collapsed to exactly one median per key before upload: <strong>6,130 -&gt; 5,776 rows, 354 duplicate keys removed</strong>.</p>
+<p>Two independent sources produced the duplicates, and the collapse is placed after the <code>landing_site</code> recoding so it catches both. 318 keys came from the v1 and v2 price forms overlapping through 2025 — both forms collect at the same sites, each is summarised to a yearly median separately, and <code>bind_rows()</code> kept both. The remaining 36 are created by the recoding itself (<code>rigati</code> -&gt; <code>rigata</code>, <code>kiwayuu_cha_nje</code> -&gt; <code>kiwayuu_cha_inde</code>), which folds a variant spelling onto a key that already exists. The duplicate pairs are not a small/large split that lost its size label: both sizes appear duplicated independently, with the size label intact.</p>
+</li>
+<li><p><strong>The price join in <code><a href="../reference/validate_landings.html">validate_landings()</a></code> is now declared <code>many-to-one</code></strong> (<code>R/validation.R</code>). <code>dplyr</code> had been warning about an unexpected many-to-many relationship on every production run. Because <code>catch_price</code> is computed per joined row and <code>total_catch_price = sum(catch_price)</code> is computed after the join, the trailing <code>distinct()</code> could not collapse the duplicates. A duplicated price table now aborts the run instead of silently inflating both weight and revenue.</p></li>
+<li><p><strong><code>trip_duration_hrs</code> was hardcoded to <code>24</code> for WCS</strong> (<code>format_api_wcs()</code>, <code>R/api.R</code>), now <code>NA_real_</code>. No WCS form — legacy, v1 or v2 — collects trip duration. The only time fields on the Kobo forms are the <code>start</code>/<code>end</code> stamps of the enumerator’s form session, whose median span is 0 minutes; they measure form-filling, not time at sea. The reasoning is recorded in the function’s roxygen so the <code>NA</code> is not later “fixed” back to a constant.</p></li>
+<li><p><strong><code><a href="../reference/export_api_raw.html">export_api_raw()</a></code> published a different population from <code><a href="../reference/export_api_validated.html">export_api_validated()</a></code></strong> (<code>R/api.R</code>). It formatted KEFS only. It now also reads the WCS merged landings (<code>wcs-surveys-all_landings</code>, the WCS preprocessed stage written by <code><a href="../reference/merge_landings.html">merge_landings()</a></code>) and formats them through the same mapping path, mirroring the validated export. WCS <code>catch_price</code> and <code>tot_catch_price</code> are <code>NA</code> at this stage because prices are resolved during validation, consistent with the documented raw-stage schema.</p></li>
+<li><p><strong>KEFS <code>catch_price</code> published a price per kilogram, not a value</strong> (<code>format_api_kefs()</code>, <code>R/api.R</code>), now <code>sample_weight * sample_price</code>. The evidence that <code>sample_price</code> is a rate: it equals the form’s trip-level <code>PricePerKg</code> in <strong>95.0%</strong> of single-species trips (against 2.3% for a value reading), is an exact multiple of 50 KSH in <strong>83.9%</strong> of rows, and is essentially uncorrelated with <code>sample_weight</code> (Spearman <strong>-0.125</strong>, where a value correlates at 0.937). This matches how <code>format_api_wcs()</code> already derives <code>catch_price</code>, as a median KSH/kg multiplied by the row’s weight. The unit is now recorded in the function’s roxygen, alongside a description of the sampled-composition design, so neither is re-derived from the column names.</p></li>
+<li><p><strong>Removed a dead <code>n_catch</code> mutate</strong> in <code>format_api_kefs()</code> (<code>R/api.R</code>). The mutate assigned <code>n_catch = as.integer(n_sample)</code> and the following <code>select()</code> immediately overwrote it by renaming <code>n_sample</code> to <code>n_catch</code>, discarding the result. The integer cast is kept, applied to <code>n_sample</code> so it survives the rename.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="internal-5-1-0">Internal<a class="anchor" aria-label="anchor" href="#internal-5-1-0"></a></h3>
+<ul><li>Added the internal helper <code>read_wcs_api_assets()</code> (<code>R/api.R</code>, not exported) so both export stages share one copy of the Airtable taxa/gear/site/geo lookup that maps WCS surveys, rather than duplicating the block in the raw export.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="known-remaining-gap-5-1-0">Known remaining gap<a class="anchor" aria-label="anchor" href="#known-remaining-gap-5-1-0"></a></h3>
+<p>KEFS (<code>aNKjDfXDKyW3JLtaCdxDp5</code>) still fails the invariant on 54.5% of its trips, and this release deliberately does not change that. KEFS is a <strong>sampled- composition design</strong>: the form records the whole catch (<code>TotalCatchWeight</code>, <code>TValue</code>) and separately identifies the species composition of a <em>sample</em> (<code>OverallSampleWeight</code>, reshaped to <code>sample_weight</code>/<code>sample_price</code>). The sample rows sum to <code>total_sample_weight</code>, not to <code>total_catch_weight</code> — measured at 80.5% exact agreement with <code>total_sample_weight</code>. Forcing them to agree would falsify the survey. A schema-level way to declare sampled composition is needed instead, and is out of scope here.</p>
+<p>The <code>catch_price</code> unit error found alongside this is fixed above; it was a genuine defect rather than a property of the design. What remains is the design itself, and one consequence of it:</p>
+<ul><li>
+<code>tot_catch_price</code> for KEFS is derived, not summed: it equals <code>total_catch_weight * total_price_kg</code> in <strong>100.0%</strong> of trips. It is a whole-catch valuation at a single trip-level price, which is why it cannot fully reconcile against per-species sample rows even with <code>catch_price</code> in the right units. The residual gap is the un-sampled portion of the catch, not an arithmetic error.</li>
+<li>Declaring sampled composition in the export itself would need a schema addition — a sampled-weight column, or a flag distinguishing census from sample rows — which is out of scope for this release. Until then the design is documented only in <code>format_api_kefs()</code>’s roxygen, and consumers computing species composition from KEFS <code>catch_kg</code> should treat it as a sample, not a census.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.0.0" id="peskaskenyadatapipeline-500">peskas.kenya.data.pipeline 5.0.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-500"></a></h2>
 <div class="section level3">

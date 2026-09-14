@@ -34,7 +34,12 @@ The function performs the following main operations:
 
 5.  Removes duplicate entries
 
-6.  Uploads the processed data back to MongoDB
+6.  Collapses the table to exactly one median price per (date,
+    landing_site, fish_category, size) key, so the many-to-one join in
+    [`validate_landings()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_landings.md)
+    cannot duplicate catch rows
+
+7.  Uploads the processed data back to MongoDB
 
 ## Examples
 

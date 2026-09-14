@@ -9,7 +9,7 @@ aggregating prices by year and uploading the results back to MongoDB."><meta pro
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -62,6 +62,9 @@ aggregating prices by year and uploading the results back to MongoDB.</p>
 <li><p>Combines legacy and ongoing data</p></li>
 <li><p>Filters data after 1990</p></li>
 <li><p>Removes duplicate entries</p></li>
+<li><p>Collapses the table to exactly one median price per
+(date, landing_site, fish_category, size) key, so the many-to-one join
+in <code><a href="validate_landings.html">validate_landings()</a></code> cannot duplicate catch rows</p></li>
 <li><p>Uploads the processed data back to MongoDB</p></li>
 </ol></div>
 
