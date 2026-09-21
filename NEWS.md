@@ -1,3 +1,32 @@
+# peskas.kenya.data.pipeline 5.1.2
+
+## `landing_date` is published as a date, not a timestamp
+
+The cross-country `landings` schema declares `landing_date` as a date, and
+Mozambique, Timor-Leste and Zanzibar all publish one. Kenya published a POSIXct
+timestamp, and was the last country still doing so — anyone concatenating the
+four parquet files hit either a type error or a silent coercion, depending on
+the reader.
+
+The cause was a bind, not a cast. The WCS tables carry `landing_date` as
+POSIXct and the KEFS tables carry it as `Date`; `dplyr::bind_rows()` promotes
+the pair to POSIXct, so the WCS type won for the whole column, KEFS rows
+included.
+
+* **FIXED** `format_api_wcs()` casts `landing_date` with
+  `lubridate::as_date()` before the select, so both branches enter the bind as
+  `Date`. **Data impact**: the published type only. Verified against
+  `trips-validated__20260921154256_ff4fdcf__.parquet`: 286,916 rows and the
+  22-column order are unchanged, no value moves, and the set of dates is
+  `identical()` to the published one once both are read as dates. Every one of
+  the 258,556 WCS source rows is already at midnight, so the cast discards no
+  time component.
+* The cast is at the API boundary rather than in preprocessing on purpose: the
+  WCS preprocessed parquet is read by `merge_landings()`, `validate_landings()`
+  and the price join, which derives `year` from this column. Retyping it there
+  would reach all of them for no gain, since the schema this fixes governs the
+  export alone.
+
 # peskas.kenya.data.pipeline 5.1.1
 
 Structural fix to KEFS v2 preprocessing. The form's two repeat groups were

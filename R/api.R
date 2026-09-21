@@ -32,6 +32,11 @@ format_api_wcs <- function(surveys_df, conf) {
     ) |>
     dplyr::ungroup() |>
     dplyr::mutate(
+      # The WCS tables carry landing_date as POSIXct, KEFS as Date, and
+      # bind_rows() promotes the pair to POSIXct -- which is what made Kenya
+      # the only country publishing a timestamp where the schema says date.
+      # Every WCS row is midnight, so the cast drops no information.
+      landing_date = lubridate::as_date(.data$landing_date),
       # Not collected by any WCS form; NA rather than a fabricated constant.
       trip_duration_hrs = NA_real_,
       vessel_type = NA_character_,
