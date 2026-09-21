@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,51 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.1.1" id="peskaskenyadatapipeline-511">peskas.kenya.data.pipeline 5.1.1<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-511"></a></h2>
+<p>Structural fix to KEFS v2 preprocessing. The form’s two repeat groups were joined as if they were the same level of the data, producing a cartesian product of every measured fish with every sampled species.</p>
+<div class="section level3">
+<h3 id="data-impact-5-1-1">Data impact<a class="anchor" aria-label="anchor" href="#data-impact-5-1-1"></a></h3>
+<p>Re-running <code><a href="../reference/preprocess_kefs_surveys_v2.html">preprocess_kefs_surveys_v2()</a></code> over the current raw snapshot (20,227 submissions):</p>
+<table class="table"><thead><tr><th></th>
+<th>before</th>
+<th>after</th>
+</tr></thead><tbody><tr><td>preprocessed rows</td>
+<td>60,707</td>
+<td>36,147</td>
+</tr><tr><td>API <code>sum(catch_kg)</code>
+</td>
+<td>535,898 kg</td>
+<td>429,391 kg (-19.9%)</td>
+</tr><tr><td>API <code>sum(catch_price)</code>
+</td>
+<td>266.4M KSH</td>
+<td>159.7M KSH (-40.1%)</td>
+</tr><tr><td>duplicate <code>(trip_id, n_catch)</code> keys</td>
+<td>20,580</td>
+<td>0</td>
+</tr><tr><td>rows carrying <code>length_cm</code>
+</td>
+<td>26,525</td>
+<td>3,744</td>
+</tr><tr><td>
+<code>tot_catch_kg == sum(catch_kg)</code> failure</td>
+<td>53.6%</td>
+<td>46.0%</td>
+</tr></tbody></table><p>The submission count is unchanged: the removed rows were copies, not records. 2,517 trips had their weight inflated, the worst by a factor of 25, and 56.9% of the rows carrying a length had it on the wrong species. Part of the 54.5% invariant failure reported in 5.1.0 as a property of the sampled-composition design was in fact this defect; the remaining 46% is the design.</p>
+</div>
+<div class="section level3">
+<h3 id="fixes-5-1-1">Fixes<a class="anchor" aria-label="anchor" href="#fixes-5-1-1"></a></h3>
+<ul><li><p><strong><code>OverallSampleWeight</code> and <code>PrioritySpeciesCatch</code> were joined on <code>submission_id</code> alone</strong> (<code>R/preprocessing-surveys.R</code>). They are nested levels: the first is the species composition of the weighed sample, one row per catch item; the second is a length subsample of individual fish drawn from it, one row per fish. Enumerators do measure several species per trip, so the fish cannot be assumed to share a taxon. The new <code><a href="../reference/summarise_priority_lengths.html">summarise_priority_lengths()</a></code> collapses them onto the species they belong to, attached by <code>submission_id</code> <strong>and</strong> species.</p></li>
+<li><p><strong><code>total_sample_weight</code> read only <code>SampleWeight</code></strong> (<code>R/preprocessing-surveys.R</code>). The Kobo form renamed the field to lowercase around 2025-12-10; the column is now the <code>coalesce()</code> of both, recovering 641 submissions. Validation rules 5.1 and 5.2 had been inert for those and now fire 184 additional genuine alerts, losing none.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="behaviour-changes-5-1-1">Behaviour changes<a class="anchor" aria-label="anchor" href="#behaviour-changes-5-1-1"></a></h3>
+<ul><li><p><strong>The preprocessed KEFS v2 schema changed.</strong> The <code>priority_*</code> columns are gone, since a catch row now carries exactly one taxon. In their place: <code>length_min_cm</code>, <code>length_max_cm</code>, <code>n_measured</code>, <code>measured_weight_kg</code>. <code>length_cm</code> is now the mean over the individuals measured for that row’s species, matching how Timor publishes the field. <strong>The 22-column API schema is unchanged.</strong></p></li>
+<li><p><strong>Lengths for a species absent from the composition block are dropped</strong>, with a warning naming the count (292 species / 572 fish). Keeping them would publish a catch item that was never weighed.</p></li>
+<li><p><strong>A species appearing in more than one composition row stays as separate rows</strong> (276 pairs). These are genuine separate entries with their own weight and price, not duplicates; they share the species’ length summary, which is a mean and so double-counts nothing.</p></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.0" id="peskaskenyadatapipeline-510">peskas.kenya.data.pipeline 5.1.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-510"></a></h2>
 <p>Numeric-integrity release for the <code>peskas-api-prod</code> <code>landings</code> export. Kenya was the only country whose published trips failed the cross-country invariant <code>tot_catch_kg == sum(catch_kg)</code> within <code>trip_id</code>. These changes take the overall failure rate from <strong>24.5% to 6.6% of 141,336 validated trips</strong>, with the remainder confined to KEFS (see <em>Known remaining gap</em> below).</p>

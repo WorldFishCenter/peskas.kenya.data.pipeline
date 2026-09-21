@@ -143,6 +143,9 @@ Functions dedicated to the preprocessing module
   : Reshape Priority Species Catch Data from Wide to Long Format
 - [`standardize_enumerator_names()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/standardize_enumerator_names.md)
   : Standardize Enumerator Names
+- [`summarise_priority_lengths()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/summarise_priority_lengths.md)
+  : Collapse individual length measurements to the species they belong
+  to
 
 ## Validation
 
@@ -298,3 +301,6 @@ Functions dedicated to data analytics and general statistics
   : Standardize Enumerator Names
 - [`summarise_catch_price()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/summarise_catch_price.md)
   : Summarize Catch Price Data
+- [`summarise_priority_lengths()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/summarise_priority_lengths.md)
+  : Collapse individual length measurements to the species they belong
+  to

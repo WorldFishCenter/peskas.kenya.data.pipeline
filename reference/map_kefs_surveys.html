@@ -15,7 +15,7 @@ vessel, and site names."><meta property="og:image" content="https://worldfishcen
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -115,8 +115,10 @@ sample_alpha3_code</p></li>
     <p>This function is called within <code>preprocess_landings()</code> after processing raw survey data.
 The mapping tables are retrieved from Airtable frame base and filtered by
 form ID before being passed to this function.</p>
-<p>The KEFs v2 survey form captures both priority species (target catch) and sample species
-(for biological sampling), requiring separate taxonomic mappings for each.</p>
+<p>The KEFS v2 survey form records the species composition of the weighed sample
+and, nested inside it, length measurements of individual priority-species
+fish. The measurements are collapsed onto their species before this function
+runs, so a single taxonomic mapping covers the catch row.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

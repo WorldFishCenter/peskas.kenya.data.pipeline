@@ -83,6 +83,8 @@ This function is called within `preprocess_landings()` after processing
 raw survey data. The mapping tables are retrieved from Airtable frame
 base and filtered by form ID before being passed to this function.
 
-The KEFs v2 survey form captures both priority species (target catch)
-and sample species (for biological sampling), requiring separate
-taxonomic mappings for each.
+The KEFS v2 survey form records the species composition of the weighed
+sample and, nested inside it, length measurements of individual
+priority-species fish. The measurements are collapsed onto their species
+before this function runs, so a single taxonomic mapping covers the
+catch row.

@@ -1,5 +1,71 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.1.1
+
+Structural fix to KEFS v2 preprocessing. The form’s two repeat groups
+were joined as if they were the same level of the data, producing a
+cartesian product of every measured fish with every sampled species.
+
+### Data impact
+
+Re-running
+[`preprocess_kefs_surveys_v2()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_kefs_surveys_v2.md)
+over the current raw snapshot (20,227 submissions):
+
+|                                         | before     | after               |
+|-----------------------------------------|------------|---------------------|
+| preprocessed rows                       | 60,707     | 36,147              |
+| API `sum(catch_kg)`                     | 535,898 kg | 429,391 kg (-19.9%) |
+| API `sum(catch_price)`                  | 266.4M KSH | 159.7M KSH (-40.1%) |
+| duplicate `(trip_id, n_catch)` keys     | 20,580     | 0                   |
+| rows carrying `length_cm`               | 26,525     | 3,744               |
+| `tot_catch_kg == sum(catch_kg)` failure | 53.6%      | 46.0%               |
+
+The submission count is unchanged: the removed rows were copies, not
+records. 2,517 trips had their weight inflated, the worst by a factor of
+25, and 56.9% of the rows carrying a length had it on the wrong species.
+Part of the 54.5% invariant failure reported in 5.1.0 as a property of
+the sampled-composition design was in fact this defect; the remaining
+46% is the design.
+
+### Fixes
+
+- **`OverallSampleWeight` and `PrioritySpeciesCatch` were joined on
+  `submission_id` alone** (`R/preprocessing-surveys.R`). They are nested
+  levels: the first is the species composition of the weighed sample,
+  one row per catch item; the second is a length subsample of individual
+  fish drawn from it, one row per fish. Enumerators do measure several
+  species per trip, so the fish cannot be assumed to share a taxon. The
+  new
+  [`summarise_priority_lengths()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/summarise_priority_lengths.md)
+  collapses them onto the species they belong to, attached by
+  `submission_id` **and** species.
+
+- **`total_sample_weight` read only `SampleWeight`**
+  (`R/preprocessing-surveys.R`). The Kobo form renamed the field to
+  lowercase around 2025-12-10; the column is now the `coalesce()` of
+  both, recovering 641 submissions. Validation rules 5.1 and 5.2 had
+  been inert for those and now fire 184 additional genuine alerts,
+  losing none.
+
+### Behaviour changes
+
+- **The preprocessed KEFS v2 schema changed.** The `priority_*` columns
+  are gone, since a catch row now carries exactly one taxon. In their
+  place: `length_min_cm`, `length_max_cm`, `n_measured`,
+  `measured_weight_kg`. `length_cm` is now the mean over the individuals
+  measured for that row’s species, matching how Timor publishes the
+  field. **The 22-column API schema is unchanged.**
+
+- **Lengths for a species absent from the composition block are
+  dropped**, with a warning naming the count (292 species / 572 fish).
+  Keeping them would publish a catch item that was never weighed.
+
+- **A species appearing in more than one composition row stays as
+  separate rows** (276 pairs). These are genuine separate entries with
+  their own weight and price, not duplicates; they share the species’
+  length summary, which is a mean and so double-counts nothing.
+
 ## peskas.kenya.data.pipeline 5.1.0
 
 Numeric-integrity release for the `peskas-api-prod` `landings` export.
