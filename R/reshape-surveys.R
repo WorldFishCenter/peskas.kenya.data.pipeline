@@ -301,3 +301,66 @@ reshape_overall_sample <- function(raw_data = NULL) {
 
   return(long_data)
 }
+
+#' Collapse individual length measurements to the species they belong to
+#'
+#' @description
+#' `PrioritySpeciesCatch` records one row per *measured fish*, while
+#' `OverallSampleWeight` records one row per *catch item* (a species in the
+#' weighed sample). The two are nested, and the cross-country API schema carries
+#' a single `length_cm` per catch row, so the individuals have to be collapsed
+#' onto their species before the two can be joined.
+#'
+#' @param priority_df Long priority-species data from [reshape_priority_species()].
+#'
+#' @return Tibble with one row per `submission_id` x `priority_species`:
+#'   \describe{
+#'     \item{submission_id}{Unique identifier for each submission}
+#'     \item{priority_species}{Survey label of the measured species}
+#'     \item{length_type}{Length convention used (e.g. `total_length`)}
+#'     \item{length_cm}{Mean length of the measured individuals}
+#'     \item{length_min_cm, length_max_cm}{Range of the measured individuals}
+#'     \item{n_measured}{Number of individuals measured for that species}
+#'     \item{measured_weight_kg}{Summed weight of those individuals}
+#'   }
+#'
+#' @details
+#' `length_cm` is the plain mean across individuals, which -- because Kenya
+#' records one row per fish rather than per length bin -- is the same
+#' individual-weighted mean the Timor pipeline publishes for the shared API
+#' schema. It is a subsample statistic: `measured_weight_kg` is the weight of the
+#' fish actually measured and is generally *less* than the species'
+#' `sample_weight`, which covers the whole weighed sample.
+#'
+#' Rows carrying no usable length are dropped, so a species measured only with
+#' missing lengths contributes nothing rather than an `NaN` mean.
+#'
+#' @keywords preprocessing helper
+#' @export
+summarise_priority_lengths <- function(priority_df = NULL) {
+  priority_df |>
+    dplyr::filter(
+      !is.na(.data$priority_species),
+      !is.na(.data$length_cm)
+    ) |>
+    dplyr::group_by(.data$submission_id, .data$priority_species) |>
+    dplyr::summarise(
+      length_type = dplyr::first(stats::na.omit(.data$length_type)),
+      # Order matters: `summarise()` evaluates sequentially, so the range has to
+      # be taken before `length_cm` is replaced by its own mean.
+      length_min_cm = min(.data$length_cm),
+      length_max_cm = max(.data$length_cm),
+      length_cm = mean(.data$length_cm),
+      n_measured = dplyr::n(),
+      measured_weight_kg = if (all(is.na(.data$priority_weight))) {
+        NA_real_
+      } else {
+        sum(.data$priority_weight, na.rm = TRUE)
+      },
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      submission_id = as.character(.data$submission_id)
+    ) |>
+    dplyr::relocate("length_cm", .before = "length_min_cm")
+}

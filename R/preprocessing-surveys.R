@@ -354,6 +354,9 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       length_measure = "Are_you_taking_lengt_the_priority_species",
       protected_species = "SpeciesETP",
       total_sample_weight = "SampleWeight",
+      # The form renamed this field to lowercase around Dec 2025; the two are
+      # mutually exclusive, so carry both and coalesce after coercion.
+      total_sample_weight_lc = "sample_weight",
       total_catch_weight = "TotalCatchWeight",
       total_price_kg = "PricePerKg",
       total_catch_price = "TValue"
@@ -379,16 +382,43 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     ) |>
     dplyr::select(-"enumerator_name")
 
+  # `OverallSampleWeight` and `PrioritySpeciesCatch` are two *nested* levels of
+  # the same form, not two views of the same rows: the first is the species
+  # composition of the weighed sample (one row per catch item), the second is a
+  # length-frequency subsample of individual fish drawn from it (one row per
+  # fish, and enumerators do measure several species in one trip). Joining them
+  # on `submission_id` alone crosses every fish with every species, which
+  # duplicated `sample_weight` and stuck each length on the wrong taxon.
+  # Collapse the fish to the species they belong to first, then attach.
   priority_df <- reshape_priority_species(raw_data = raw_dat)
-  sample_df <- reshape_overall_sample(raw_data = raw_dat)
+  sample_df <- reshape_overall_sample(raw_data = raw_dat) |>
+    dplyr::mutate(submission_id = as.character(.data$submission_id))
 
-  catch_info <- dplyr::full_join(
-    priority_df,
-    sample_df,
-    by = c("submission_id")
-  ) |>
-    dplyr::mutate(
-      submission_id = as.character(.data$submission_id)
+  lengths_df <- summarise_priority_lengths(priority_df)
+
+  # Species measured but absent from the composition block have no catch weight
+  # to hang on; keeping them would publish a catch item that was never weighed.
+  orphan_lengths <- dplyr::anti_join(
+    lengths_df,
+    dplyr::distinct(sample_df, .data$submission_id, .data$sample_species),
+    by = c("submission_id", "priority_species" = "sample_species")
+  )
+  if (nrow(orphan_lengths) > 0) {
+    logger::log_warn(
+      "Dropping {nrow(orphan_lengths)} measured species not present in the ",
+      "sample composition block ({sum(orphan_lengths$n_measured)} fish)"
+    )
+  }
+
+  # A species may legitimately appear in more than one composition row (separate
+  # grades or batches, with their own weight and price). Each keeps its own
+  # weight, and they share the species' length summary -- a mean is not additive,
+  # so sharing it double-counts nothing.
+  catch_info <-
+    sample_df |>
+    dplyr::left_join(
+      lengths_df,
+      by = c("submission_id", "sample_species" = "priority_species")
     ) |>
     dplyr::distinct()
 
@@ -410,12 +440,16 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       )),
       fishing_per_week = as.integer(.data$fishing_per_week),
       mesh_size = as.numeric(.data$mesh_size),
-      total_sample_weight = as.numeric(.data$total_sample_weight),
+      total_sample_weight = dplyr::coalesce(
+        as.numeric(.data$total_sample_weight),
+        as.numeric(.data$total_sample_weight_lc)
+      ),
       total_catch_weight = as.numeric(.data$total_catch_weight),
       total_price_kg = as.numeric(.data$total_price_kg),
       total_catch_price = as.numeric(.data$total_catch_price)
     ) |>
-    dplyr::relocate("trip_duration", .after = "fishing_trip_end")
+    dplyr::relocate("trip_duration", .after = "fishing_trip_end") |>
+    dplyr::select(-"total_sample_weight_lc")
 
   preprocessed_landings <-
     dplyr::full_join(
@@ -1476,8 +1510,10 @@ get_fishery_metrics_long <- function(data = NULL) {
 #' The mapping tables are retrieved from Airtable frame base and filtered by
 #' form ID before being passed to this function.
 #'
-#' The KEFs v2 survey form captures both priority species (target catch) and sample species
-#' (for biological sampling), requiring separate taxonomic mappings for each.
+#' The KEFS v2 survey form records the species composition of the weighed sample
+#' and, nested inside it, length measurements of individual priority-species
+#' fish. The measurements are collapsed onto their species before this function
+#' runs, so a single taxonomic mapping covers the catch row.
 #'
 #' @keywords preprocessing helper
 #' @export
@@ -1492,21 +1528,10 @@ map_kefs_surveys <- function(
 ) {
   taxa_map <-
     if (isTRUE(kefs_v2)) {
+      # One taxa join, not two: since the length measurements are collapsed onto
+      # the sampled species they belong to, `sample_species` is the only taxon a
+      # catch row carries.
       data |>
-        dplyr::left_join(
-          taxa_mapping,
-          by = c("priority_species" = "survey_label")
-        ) |>
-        dplyr::select(-c("priority_species", "form_id", "english_name")) |>
-        dplyr::rename(
-          priority_scientific_name = "scientific_name",
-          priority_alpha3_code = "alpha3_code"
-        ) |>
-        dplyr::relocate("priority_scientific_name", .after = "n_priority") |>
-        dplyr::relocate(
-          "priority_alpha3_code",
-          .after = "priority_scientific_name"
-        ) |>
         dplyr::left_join(
           taxa_mapping,
           by = c("sample_species" = "survey_label")

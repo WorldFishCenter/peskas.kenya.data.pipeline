@@ -88,6 +88,17 @@ format_api_wcs <- function(surveys_df, conf) {
 #' which case the two do coincide. `tot_catch_price` is likewise a whole-catch
 #' valuation, `total_catch_weight * total_price_kg`, not a sum over catch rows.
 #'
+#' @section Length:
+#' The shared API schema carries one `length_cm` per catch row, but KEFS records
+#' lengths per individual fish -- `PrioritySpeciesCatch` is a length-frequency
+#' subsample nested inside the composition, and a trip can measure several
+#' species. [summarise_priority_lengths()] collapses those individuals onto the
+#' species they belong to during preprocessing, so `length_cm` arrives here as
+#' the mean length of the fish measured for that catch row. Because Kenya
+#' records one row per fish rather than per length bin, that plain mean is the
+#' same individual-weighted mean the Timor pipeline publishes for this schema.
+#' A catch row whose species was not measured carries `NA`.
+#'
 #' @section Catch price units:
 #' `sample_price` is the KSH/kg rate for the species, not a value: it equals the
 #' form's trip-level `PricePerKg` in 95% of single-species trips, is a multiple
