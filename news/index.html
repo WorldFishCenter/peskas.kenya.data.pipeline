@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,18 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.1.2" id="peskaskenyadatapipeline-512">peskas.kenya.data.pipeline 5.1.2<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-512"></a></h2>
+<div class="section level3">
+<h3 id="landing_date-is-published-as-a-date-not-a-timestamp-5-1-2">
+<code>landing_date</code> is published as a date, not a timestamp<a class="anchor" aria-label="anchor" href="#landing_date-is-published-as-a-date-not-a-timestamp-5-1-2"></a></h3>
+<p>The cross-country <code>landings</code> schema declares <code>landing_date</code> as a date, and Mozambique, Timor-Leste and Zanzibar all publish one. Kenya published a POSIXct timestamp, and was the last country still doing so — anyone concatenating the four parquet files hit either a type error or a silent coercion, depending on the reader.</p>
+<p>The cause was a bind, not a cast. The WCS tables carry <code>landing_date</code> as POSIXct and the KEFS tables carry it as <code>Date</code>; <code><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">dplyr::bind_rows()</a></code> promotes the pair to POSIXct, so the WCS type won for the whole column, KEFS rows included.</p>
+<ul><li>
+<strong>FIXED</strong> <code>format_api_wcs()</code> casts <code>landing_date</code> with <code><a href="https://lubridate.tidyverse.org/reference/as_date.html" class="external-link">lubridate::as_date()</a></code> before the select, so both branches enter the bind as <code>Date</code>. <strong>Data impact</strong>: the published type only. Verified against <code>trips-validated__20260921154256_ff4fdcf__.parquet</code>: 286,916 rows and the 22-column order are unchanged, no value moves, and the set of dates is <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> to the published one once both are read as dates. Every one of the 258,556 WCS source rows is already at midnight, so the cast discards no time component.</li>
+<li>The cast is at the API boundary rather than in preprocessing on purpose: the WCS preprocessed parquet is read by <code><a href="../reference/merge_landings.html">merge_landings()</a></code>, <code><a href="../reference/validate_landings.html">validate_landings()</a></code> and the price join, which derives <code>year</code> from this column. Retyping it there would reach all of them for no gain, since the schema this fixes governs the export alone.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.1" id="peskaskenyadatapipeline-511">peskas.kenya.data.pipeline 5.1.1<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-511"></a></h2>
 <p>Structural fix to KEFS v2 preprocessing. The form’s two repeat groups were joined as if they were the same level of the data, producing a cartesian product of every measured fish with every sampled species.</p>
