@@ -1306,7 +1306,10 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
 #'     \item total_catch_weight: Total weight of the entire catch in kilograms
 #'     \item sample_weight: Weight of individual sample in kilograms
 #'     \item sample_price: Price of the sample
+#'     \item length_cm: Mean measured length for the row's species, if any
 #'   }
+#' @param max_length_cm Numeric. Absolute upper bound on `length_cm`, in
+#'   centimetres. Defaults to 500.
 #'
 #' @return A data frame with columns:
 #'   \itemize{
@@ -1316,6 +1319,7 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
 #'         \item "5.1": Total sample weight exceeds total catch weight
 #'         \item "5.2": Individual sample weight exceeds either total sample weight
 #'                      or total catch weight
+#'         \item "5.3": Length exceeds `max_length_cm`
 #'       }
 #'   }
 #'
@@ -1327,20 +1331,26 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
 #'   \item An individual sample weighs more than the total it's supposed to be part of
 #' }
 #'
+#' Alert 5.3 is an absolute ceiling, not a per-species check. Zanzibar and
+#' Mozambique bound length per taxon from FishBase morphometrics; Kenya has no
+#' morphometrics table, so there is no species-specific bound to apply here.
+#' The default only catches the physically impossible
+#'
 #' @keywords validation
 #' @examples
 #' \dontrun{
 #' catch_flags <- get_catch_flags(dat = survey_data)
 #' }
 #' @export
-get_catch_flags <- function(dat = NULL) {
+get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
   dat |>
     dplyr::filter(
       .data$catch_outcome == "yes"
     ) |>
     dplyr::select(c(
       "submission_id",
-      "catch_outcome":"sample_price"
+      "catch_outcome":"sample_price",
+      dplyr::any_of("length_cm")
     )) |>
     dplyr::distinct() |>
     dplyr::mutate(
@@ -1352,6 +1362,10 @@ get_catch_flags <- function(dat = NULL) {
         .data$sample_weight > .data$total_sample_weight |
           .data$sample_weight > .data$total_catch_weight ~ "5.2",
         TRUE ~ NA_character_
+      ),
+      alert_length = dplyr::case_when(
+        .data$length_cm > max_length_cm ~ "5.3",
+        TRUE ~ NA_character_
       )
     ) |>
     dplyr::select(
@@ -1362,6 +1376,7 @@ get_catch_flags <- function(dat = NULL) {
       alert_flag = paste(
         .data$alert_total_sample,
         .data$alert_sample,
+        .data$alert_length,
         sep = ","
       ) |>
         stringr::str_remove_all("NA,") |>

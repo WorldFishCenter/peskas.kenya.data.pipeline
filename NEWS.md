@@ -1,3 +1,26 @@
+# peskas.kenya.data.pipeline 5.3.0
+
+## Records say which organization collected them
+
+* **NEW**
+
+`survey_organization` names the organization behind each record — `"WCS"` or
+`"KEFS"` — as the first column. `survey_id` identifies the form, not the
+organization, and Kenya publishes two programmes side by side that differ in
+what they collect and in how catch is sampled.
+
+# peskas.kenya.data.pipeline 5.2.0
+
+## Length is validated at all
+
+* **NEW**
+
+Alert 5.3 flags a catch length above 500 cm. Kenya had no length check of any
+kind, so a 1,316 cm *Siganus sutor* — a rabbitfish reaching about 45 cm — was
+published and stayed there. Unlike Zanzibar and Mozambique there is no
+morphometrics table here, so this is an absolute ceiling rather than a species
+check.
+
 # peskas.kenya.data.pipeline 5.1.2
 
 ## `landing_date` is published as a date, not a timestamp
@@ -438,7 +461,6 @@ itself, and one consequence of it:
   - `match_imei_to_trip.Rd`: IMEI-date trip joining with uniqueness constraint
   - `build_registry_from_trips.Rd`: Implicit registry construction from historical trips
   - `standardize_column_names.Rd`, `clean_matching_fields.Rd`, `clean_registration.Rd`, `clean_text.Rd`: Helper functions
-
 
 # peskas.kenya.data.pipeline 4.5.0
 
