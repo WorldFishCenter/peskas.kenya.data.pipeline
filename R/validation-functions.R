@@ -458,7 +458,7 @@ impute_price <- function(price_table = NULL) {
   # First imputation for all sizes
   imputed_prices <- price_table %>%
     tidyr::complete(
-      tidyr::nesting(fish_category, size),
+      tidyr::nesting(!!!rlang::syms(c("fish_category", "size"))),
       .data$date,
       .data$landing_site
     ) %>%
@@ -479,7 +479,7 @@ impute_price <- function(price_table = NULL) {
       median_ksh_kg_imputed = dplyr::case_when(
         !is.na(.data$median_ksh_kg_imputed) ~ .data$median_ksh_kg_imputed,
         is.na(.data$size) ~ stats::median(
-          .data$median_ksh_kg_imputed[size %in% c("small", "large")],
+          .data$median_ksh_kg_imputed[.data$size %in% c("small", "large")],
           na.rm = TRUE
         ),
         TRUE ~ .data$median_ksh_kg_imputed
@@ -1485,7 +1485,7 @@ get_indicators_flags <- function(dat = NULL, limits = NULL, clean_ids = NULL) {
     dplyr::distinct() |>
     dplyr::transmute(
       submission_id = .data$submission_id,
-      no_of_fishers,
+      .data$no_of_fishers,
       .data$trip_duration,
       .data$total_catch_weight,
       price_kg = .data$total_catch_price / .data$total_catch_weight,

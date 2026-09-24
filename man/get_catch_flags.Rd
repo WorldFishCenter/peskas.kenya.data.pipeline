@@ -4,7 +4,7 @@
 \alias{get_catch_flags}
 \title{Generate Catch-Level Validation Flags}
 \usage{
-get_catch_flags(dat = NULL)
+get_catch_flags(dat = NULL, max_length_cm = 500)
 }
 \arguments{
 \item{dat}{A data frame containing KEFS survey catch data with columns:
@@ -15,7 +15,11 @@ get_catch_flags(dat = NULL)
 \item total_catch_weight: Total weight of the entire catch in kilograms
 \item sample_weight: Weight of individual sample in kilograms
 \item sample_price: Price of the sample
+\item length_cm: Mean measured length for the row's species, if any
 }}
+
+\item{max_length_cm}{Numeric. Absolute upper bound on \code{length_cm}, in
+centimetres. Defaults to 500.}
 }
 \value{
 A data frame with columns:
@@ -26,6 +30,7 @@ A data frame with columns:
 \item "5.1": Total sample weight exceeds total catch weight
 \item "5.2": Individual sample weight exceeds either total sample weight
 or total catch weight
+\item "5.3": Length exceeds \code{max_length_cm}
 }
 }
 }
@@ -42,6 +47,11 @@ two types of weight inconsistencies:
 \item The sum of all samples exceeds the total reported catch
 \item An individual sample weighs more than the total it's supposed to be part of
 }
+
+Alert 5.3 is an absolute ceiling, not a per-species check. Zanzibar and
+Mozambique bound length per taxon from FishBase morphometrics; Kenya has no
+morphometrics table, so there is no species-specific bound to apply here.
+The default only catches the physically impossible
 }
 \examples{
 \dontrun{

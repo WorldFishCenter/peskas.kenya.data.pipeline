@@ -1308,20 +1308,26 @@ get_fishery_metrics_long <- function(data = NULL) {
   # Calculate base metrics by landing site and month
   base_metrics <- data %>%
     dplyr::mutate(
-      year_month = lubridate::floor_date(landing_date, "month"),
-      trip_id = submission_id
+      year_month = lubridate::floor_date(.data$landing_date, "month"),
+      trip_id = .data$submission_id
     ) %>%
-    dplyr::group_by(landing_site, year_month, trip_id, gear, no_of_fishers) %>%
+    dplyr::group_by(
+      .data$landing_site,
+      .data$year_month,
+      .data$trip_id,
+      .data$gear,
+      .data$no_of_fishers
+    ) %>%
     dplyr::summarise(
-      total_catch_per_trip = sum(catch_kg, na.rm = TRUE),
+      total_catch_per_trip = sum(.data$catch_kg, na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    dplyr::group_by(landing_site, year_month) %>%
+    dplyr::group_by(.data$landing_site, .data$year_month) %>%
     dplyr::summarise(
-      avg_fishers_per_trip = round(mean(no_of_fishers, na.rm = TRUE), 2),
-      avg_catch_per_trip = round(mean(total_catch_per_trip, na.rm = TRUE), 2),
+      avg_fishers_per_trip = round(mean(.data$no_of_fishers, na.rm = TRUE), 2),
+      avg_catch_per_trip = round(mean(.data$total_catch_per_trip, na.rm = TRUE), 2),
       predominant_gear = {
-        valid_gear <- gear[!is.na(gear)]
+        valid_gear <- .data$gear[!is.na(.data$gear)]
         if (length(valid_gear) > 0) {
           names(which.max(table(valid_gear)))
         } else {
@@ -1329,82 +1335,83 @@ get_fishery_metrics_long <- function(data = NULL) {
         }
       },
       pct_main_gear = round(
-        sum(gear == predominant_gear, na.rm = TRUE) / sum(!is.na(gear)) * 100,
+        sum(.data$gear == .data$predominant_gear, na.rm = TRUE) /
+          sum(!is.na(.data$gear)) * 100,
         2
       ),
       .groups = "drop"
     )
   # Calculate CPUE by gear type
   cpue_metrics <- data %>%
-    dplyr::mutate(year_month = lubridate::floor_date(landing_date, "month")) %>%
+    dplyr::mutate(year_month = lubridate::floor_date(.data$landing_date, "month")) %>%
     dplyr::group_by(
-      landing_site,
-      year_month,
-      gear,
-      submission_id,
-      no_of_fishers
+      .data$landing_site,
+      .data$year_month,
+      .data$gear,
+      .data$submission_id,
+      .data$no_of_fishers
     ) %>%
     dplyr::summarise(
-      trip_catch = sum(catch_kg, na.rm = TRUE),
+      trip_catch = sum(.data$catch_kg, na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    dplyr::mutate(cpue_per_fisher = trip_catch / no_of_fishers) %>%
-    dplyr::group_by(landing_site, year_month, gear) %>%
+    dplyr::mutate(cpue_per_fisher = .data$trip_catch / .data$no_of_fishers) %>%
+    dplyr::group_by(.data$landing_site, .data$year_month, .data$gear) %>%
     dplyr::summarise(
-      cpue = round(mean(cpue_per_fisher, na.rm = TRUE), 2),
+      cpue = round(mean(.data$cpue_per_fisher, na.rm = TRUE), 2),
       .groups = "drop"
     )
 
   # Calculate RPUE by gear type
   rpue_metrics <- data %>%
-    dplyr::mutate(year_month = lubridate::floor_date(landing_date, "month")) %>%
+    dplyr::mutate(year_month = lubridate::floor_date(.data$landing_date, "month")) %>%
     dplyr::group_by(
-      landing_site,
-      year_month,
-      gear,
-      submission_id,
-      no_of_fishers
+      .data$landing_site,
+      .data$year_month,
+      .data$gear,
+      .data$submission_id,
+      .data$no_of_fishers
     ) %>%
     dplyr::summarise(
-      trip_revenue = sum(total_catch_price, na.rm = TRUE),
+      trip_revenue = sum(.data$total_catch_price, na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    dplyr::mutate(rpue_per_fisher = trip_revenue / no_of_fishers) %>%
-    dplyr::group_by(landing_site, year_month, gear) %>%
+    dplyr::mutate(rpue_per_fisher = .data$trip_revenue / .data$no_of_fishers) %>%
+    dplyr::group_by(.data$landing_site, .data$year_month, .data$gear) %>%
     dplyr::summarise(
-      rpue = round(mean(rpue_per_fisher, na.rm = TRUE), 2),
+      rpue = round(mean(.data$rpue_per_fisher, na.rm = TRUE), 2),
       .groups = "drop"
     )
 
   # Calculate species composition metrics
   species_metrics <- data %>%
-    dplyr::mutate(year_month = lubridate::floor_date(landing_date, "month")) %>%
-    dplyr::group_by(landing_site, year_month, fish_category) %>%
+    dplyr::mutate(year_month = lubridate::floor_date(.data$landing_date, "month")) %>%
+    dplyr::group_by(.data$landing_site, .data$year_month, .data$fish_category) %>%
     dplyr::summarise(
-      species_catch_kg = sum(catch_kg, na.rm = TRUE),
+      species_catch_kg = sum(.data$catch_kg, na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    dplyr::group_by(landing_site, year_month) %>%
+    dplyr::group_by(.data$landing_site, .data$year_month) %>%
     dplyr::mutate(
-      species_pct = round(species_catch_kg / sum(species_catch_kg) * 100, 1),
-      rank = rank(-species_catch_kg)
+      species_pct = round(.data$species_catch_kg / sum(.data$species_catch_kg) * 100, 1),
+      rank = rank(-.data$species_catch_kg)
     ) %>%
-    dplyr::filter(rank <= 2) %>%
+    dplyr::filter(.data$rank <= 2) %>%
     dplyr::select(
-      landing_site,
-      year_month,
-      species = fish_category,
-      species_pct,
-      rank
+      "landing_site",
+      "year_month",
+      species = "fish_category",
+      "species_pct",
+      "rank"
     )
 
   # Convert to long format
   long_format <- dplyr::bind_rows(
     # Base site-level metrics
     base_metrics %>%
-      dplyr::select(-predominant_gear) %>%
+      dplyr::select(-"predominant_gear") %>%
       tidyr::pivot_longer(
-        cols = c(avg_fishers_per_trip, avg_catch_per_trip, pct_main_gear),
+        cols = c("avg_fishers_per_trip", "avg_catch_per_trip", "pct_main_gear"),
         names_to = "metric_type",
         values_to = "metric_value"
       ) %>%
@@ -1416,54 +1423,54 @@ get_fishery_metrics_long <- function(data = NULL) {
 
     # Predominant gear (text metric)
     base_metrics %>%
-      dplyr::select(landing_site, year_month, predominant_gear) %>%
+      dplyr::select("landing_site", "year_month", "predominant_gear") %>%
       dplyr::mutate(
         metric_type = "predominant_gear",
         metric_value = NA_real_,
-        gear_type = predominant_gear,
+        gear_type = .data$predominant_gear,
         species = NA_character_,
         rank = NA_integer_
       ) %>%
-      dplyr::select(-predominant_gear),
+      dplyr::select(-"predominant_gear"),
 
     # CPUE by gear type
     cpue_metrics %>%
       dplyr::mutate(
         metric_type = "cpue",
-        metric_value = cpue,
-        gear_type = gear,
+        metric_value = .data$cpue,
+        gear_type = .data$gear,
         species = NA_character_,
         rank = NA_integer_
       ) %>%
-      dplyr::select(-c(gear, cpue)),
+      dplyr::select(-c("gear", "cpue")),
 
     # RPUE by gear type
     rpue_metrics %>%
       dplyr::mutate(
         metric_type = "rpue",
-        metric_value = rpue,
-        gear_type = gear,
+        metric_value = .data$rpue,
+        gear_type = .data$gear,
         species = NA_character_,
         rank = NA_integer_
       ) %>%
-      dplyr::select(-c(gear, rpue)),
+      dplyr::select(-c("gear", "rpue")),
 
     # Species composition
     species_metrics %>%
       dplyr::mutate(
         metric_type = "species_pct",
-        metric_value = species_pct,
+        metric_value = .data$species_pct,
         gear_type = NA_character_
       ) %>%
-      dplyr::select(-species_pct)
+      dplyr::select(-"species_pct")
   ) %>%
     dplyr::arrange(
-      landing_site,
-      year_month,
-      metric_type,
-      gear_type,
-      species,
-      rank
+      .data$landing_site,
+      .data$year_month,
+      .data$metric_type,
+      .data$gear_type,
+      .data$species,
+      .data$rank
     )
 
   return(long_format)
