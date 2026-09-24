@@ -29,8 +29,9 @@ docs
 
 ## Other
 .Rprofile
-.claude/
 pds/
 figures/
 reports/
 inst/**/*.R
+.claude/settings.local.json
+CLAUDE.local.md
