@@ -3,14 +3,9 @@
 Retrieves ALL records from an Airtable table, handling pagination
 automatically.
 
-Retrieves ALL records from an Airtable table, handling pagination
-automatically.
-
 ## Usage
 
 ``` r
-airtable_to_df(base_id, table_name, token, list_handler = "collapse")
-
 airtable_to_df(base_id, table_name, token, list_handler = "collapse")
 ```
 
@@ -33,7 +28,5 @@ airtable_to_df(base_id, table_name, token, list_handler = "collapse")
   Character string. "collapse" (default) or "count" for list fields.
 
 ## Value
-
-A tibble with all records and an 'airtable_id' column.
 
 A tibble with all records and an 'airtable_id' column.

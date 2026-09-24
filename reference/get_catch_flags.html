@@ -46,7 +46,7 @@ the relationship between sample weights and total weights.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_catch_flags</span><span class="op">(</span>dat <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_catch_flags</span><span class="op">(</span>dat <span class="op">=</span> <span class="cn">NULL</span>, max_length_cm <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -60,7 +60,13 @@ the relationship between sample weights and total weights.</p>
 <li><p>total_catch_weight: Total weight of the entire catch in kilograms</p></li>
 <li><p>sample_weight: Weight of individual sample in kilograms</p></li>
 <li><p>sample_price: Price of the sample</p></li>
+<li><p>length_cm: Mean measured length for the row's species, if any</p></li>
 </ul></dd>
+
+
+<dt id="arg-max-length-cm">max_length_cm<a class="anchor" aria-label="anchor" href="#arg-max-length-cm"></a></dt>
+<dd><p>Numeric. Absolute upper bound on <code>length_cm</code>, in
+centimetres. Defaults to 500.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -69,6 +75,7 @@ the relationship between sample weights and total weights.</p>
 <li><p>alert_flag_catch: Comma-separated string of alert codes (NA if no alerts):</p><ul><li><p>"5.1": Total sample weight exceeds total catch weight</p></li>
 <li><p>"5.2": Individual sample weight exceeds either total sample weight
 or total catch weight</p></li>
+<li><p>"5.3": Length exceeds <code>max_length_cm</code></p></li>
 </ul></li>
 </ul></div>
     <div class="section level2">
@@ -76,7 +83,11 @@ or total catch weight</p></li>
     <p>The function only processes submissions where catch_outcome is "yes". It identifies
 two types of weight inconsistencies:</p><ol><li><p>The sum of all samples exceeds the total reported catch</p></li>
 <li><p>An individual sample weighs more than the total it's supposed to be part of</p></li>
-</ol></div>
+</ol><p>Alert 5.3 is an absolute ceiling, not a per-species check. Zanzibar and
+Mozambique bound length per taxon from FishBase morphometrics; Kenya has no
+morphometrics table, so there is no species-specific bound to apply here.
+The default only catches the physically impossible</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
