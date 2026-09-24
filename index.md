@@ -1,110 +1,197 @@
-# peskas.kenya.data.pipeline
+# Peskas Kenya data pipeline
 
-The goal of peskas.kenya.data.pipeline is to implement, deploy, and
-execute the data and modelling pipelines that underpin Peskas in Kenya,
-a partnership between [WorldFish](https://worldfishcenter.org/) and
-[Wildlife Conservation Society](https://www.wcs.org/) as part of the
-Asia-Africa Bluetech Superhighway project funded by the FCDO of the UK
-Government.
+[![R-CMD-check](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/R-CMD-check.yaml)
+[![pkgdown](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/WorldFishCenter/peskas.kenya.data.pipeline/actions/workflows/pkgdown.yaml)
 
-## The pipeline is an R package
+The code that turns fish landing surveys and boat GPS tracks from
+Kenya’s coast into checked data for Peskas.
 
-peskas.kenya.data.pipeline is structured as an R package because it
-makes it easier to write production-grade software. Specifically,
-structuring the code as an R package allows us to:
+**See the results:** [Peskas
+Kenya](https://peskas-dashboard-kenya.vercel.app/en), [Peskas Kenya BMU
+dashboard](https://digitalfisheries.kenya.peskas.org), [Peskas
+Management Platform](https://validation.peskas.org), [Peskas Fishery
+Data API](https://api.peskas.org/docs) and [Peskas
+Coasts](https://coasts.peskas.org).
 
-- better handle system and package dependencies,
-- forces us to split the code into functions,
-- makes it easier to document the code, and
-- makes it easier to test the code
+## What it is
 
-We make heavy use of [tidyverse style
-conventions](https://engineering-shiny.org) and the
-[usethis](https://usethis.r-lib.org) package to automate tasks during
-project setup and deployment.
+This pipeline serves fisheries managers, Beach Management Units, survey
+teams and researchers working on Kenya’s small-scale fisheries. It
+processes two survey programmes: catch and price surveys by the Wildlife
+Conservation Society (WCS), and catch assessment surveys by the Kenya
+Fisheries Service (KEFS). It links surveys to trips recorded by GPS
+trackers on boats, checks every record for likely errors, and publishes
+the results.
 
-For more information about the rationale of structuring the pipeline as
-a package check [Chapter
-3](https://engineering-shiny.org/structuring-project.html#structuring-your-app_)
-in [*Engineering Production-Grade Shiny
-Apps*](https://engineering-shiny.org). The book is focused on Shiny
-applications but the rationale also applies to data pipelines and
-production-ready code in general.
+## What it produces
 
-## How the pipeline works
+- Calculates monthly catch, revenue and price indicators for each Beach
+  Management Unit from the WCS surveys, for the Peskas Kenya BMU
+  dashboard.
+- Prepares monthly summaries by district, species and fishing gear for
+  the Peskas Kenya dashboard, and Kenya’s figures for the Peskas Coasts
+  regional comparison.
+- Flags likely errors in each KEFS survey, such as an impossible number
+  of fishers, trip duration or fish length, so survey teams can review
+  and correct them in the Peskas Management Platform.
+- Publishes landing records from both programmes, before and after
+  checks, through the Peskas Fishery Data API.
+- Links surveys to GPS-tracked trips, which Peskas Coasts uses to
+  estimate catch per hour of fishing.
 
-The pipeline is composed of different modules:
+## Where the data comes from
 
-1.  Data Collection: On site fishing landing surveys and continuous,
-    solar-powered GPS vessel trackers to collect and send data in near
-    real-time, alongside fishery metadata for a thorough data-gathering
-    process.
+- **WCS surveys.** Enumerators (trained data collectors) record landings
+  and fish prices at landing sites on KoboToolbox, the free mobile
+  survey app. A landing is a boat’s return to shore with its catch.
+- **KEFS surveys.** KEFS catch assessment surveys are recorded on KEFS’s
+  own KoboToolbox server.
+- **GPS trackers (Pelagic Data Systems).** Small solar-powered devices
+  on boats record where they travel. A trip is one fishing outing, from
+  leaving shore to landing.
+- **Reference data.** Boat and tracker records kept in Airtable, and
+  reference tables kept in Google Sheets.
 
-2.  Pre-processing: Data formatting, shaping, and standardisation to
-    prepare the raw data for analysis.
+A BMU (Beach Management Unit) is the community body that manages a
+landing site in Kenya. The data is updated every two days.
 
-3.  Validation: Outlier detection and error identification, and includes
-    an alert system to maintain data quality.
+Known limits:
 
-4.  Analytics: Modelling fisheries indicators, nutritional
-    characterization, and data mining to extract valuable insights.
+- WCS and KEFS collect different information and sample the catch
+  differently, so their figures are not directly comparable. Every
+  record says which organisation collected it.
+- Surveys are matched to GPS trips by comparing boat and fisher names
+  (for WCS, the boat name only), so some matches are missed.
+- Only KEFS surveys are sent to the Peskas Management Platform for
+  review. WCS surveys are checked inside the pipeline.
+- The first version of the KEFS survey form is no longer processed.
 
-5.  Data export: Automated dissemination of processed and analysed
-    fisheries data to ensure accessibility and comprehension. This
-    involves restructuring data for dashboard integration and open
-    publication.
+## Who runs it
 
-6.  isualisation: Tools for data reporting and sharing of insights
-    through a comprehensive dedicated web app dashboard (not hosted in
-    this repository).
+Peskas Kenya is run by [WorldFish](https://worldfishcenter.org/) with
+the [Wildlife Conservation Society](https://www.wcs.org/) (WCS) and the
+[Kenya Fisheries Service](https://kefs.go.ke/) (KEFS), as part of the
+Asia-Africa BlueTech Superhighway project, funded by the UK Government’s
+Foreign, Commonwealth and Development Office (FCDO). For questions,
+write to <peskas.platform@gmail.com>.
 
-See [Peskas: Automated analytics for small-scale, data-deficient
-fisheries](https://www.researchsquare.com/article/rs-4386336/v1) for
-further details.
+## Part of Peskas
 
-## Getting Started
+Peskas is WorldFish’s open-source platform for monitoring small-scale
+fisheries (<https://peskas.org>).
 
-This package uses a configuration file
-[`config.yml`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/inst/config.yml)
-to manage environment-specific settings and connections. To get started,
-familiarize yourself with the package structure, particularly the
-[`R`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/R)
-directory where the main functions are located.
+- [Peskas Zanzibar](https://zanzibar.peskas.org), [Peskas
+  Kenya](https://peskas-dashboard-kenya.vercel.app/en), [Peskas
+  Mozambique](https://peskas-dashboard-mozambique.vercel.app): country
+  dashboards
+- [Peskas Timor-Leste](https://timor.peskas.org): Timor-Leste portal
+- [Peskas Coasts](https://coasts.peskas.org): regional comparison across
+  countries
+- [Peskas Tracks](https://tracks.peskas.org): app for fishers to see
+  their trips and log catches
+- [Peskas Kenya BMU
+  dashboard](https://digitalfisheries.kenya.peskas.org): dashboard for
+  Beach Management Units in Kenya
+- [Peskas Management Platform](https://validation.peskas.org): data
+  review and download for survey teams
+- [Peskas Fishery Data API](https://api.peskas.org/docs): programmatic
+  access to landing data
+- Data pipelines:
+  [Zanzibar](https://github.com/WorldFishCenter/peskas.zanzibar.data.pipeline),
+  [Mozambique](https://github.com/WorldFishCenter/peskas.mozambique.data.pipeline),
+  [Timor-Leste](https://github.com/WorldFishCenter/peskas.timor.data.pipeline),
+  [Coasts](https://github.com/WorldFishCenter/peskas.coasts)
 
-If you are joining to work on the **WCS side of the pipeline only**,
-start with the [WCS collaborator
-guide](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/WCS-GUIDE.md):
-it covers environment setup, the WCS data flow end to end, and the
-dedicated WCS workflow.
+## For developers
 
-Each function typically reads the configuration using
+The code is an R package called `peskas.kenya.data.pipeline`. It relies
+on the shared
+[`coasts`](https://github.com/WorldFishCenter/peskas.coasts) package for
+storage, KoboToolbox, GPS tracks and dashboard data. Function reference:
+<https://worldfishcenter.github.io/peskas.kenya.data.pipeline/>.
+
+If you work on the WCS side of the pipeline only, start with the [WCS
+collaborator
+guide](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/WCS-GUIDE.md).
+
+### Requirements
+
+- R 4.5 with the GDAL, GEOS and PROJ spatial libraries. Production uses
+  the `rocker/geospatial:4.5` image.
+- The `coasts` package, installed from GitHub by
+  `devtools::install_deps()`.
+
+### Setup
+
+``` r
+
+devtools::install_deps()
+devtools::load_all()
+```
+
+Credentials come from environment variables. Copy
+[`.env.example`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/.env.example)
+to `.env` (git-ignored) and fill in your values.
 [`read_config()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/read_config.md)
-to access necessary parameters. To work on this package locally, you’ll
-need to set up environment variables using a `.env` file. Copy
-`.env.example` to `.env` and fill in your actual credentials. The
-package will automatically load these environment variables when reading
-the configuration. Remember to run `devtools::load_all()` when testing
-changes locally. If you’re new to R package development, consider
-reviewing the [*R packages*](https://r-pkgs.org) book by Hadley Wickham
-and Jenny Brian.
+loads it and reads
+[`inst/config.yml`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/inst/config.yml).
+The `default` profile uses the development buckets and databases. The
+`production` profile is switched on only by CI on `main`.
 
-## Quick Guide for Contributors
+### Main commands
 
-To keep our repository clean and efficient, please keep these guidelines
-in mind:
+``` r
 
-- Always work on a new branch, not directly on main.
-- Write clear, concise commit messages.
-- Avoid storing intermediate and garbage files, especially in the root
-  folder.
-- Strive for soft-coded solutions.
-- Maintain consistent code style throughout the project.
-- Document your code well - future you (and others) will thank you.
-- Test your changes thoroughly before submitting a pull request.
-- Keep your fork synced with the main repository.
+devtools::document()  # after editing roxygen comments; man/ is committed
+devtools::check()
+```
 
-These practices help us maintain a clean, efficient codebase that’s
-easier for everyone to work with. For more detailed guidelines, check
-out our
-[CONTRIBUTING.md](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/CONTRIBUTING.md)
-file.
+Each pipeline step is one exported function, for example
+[`validate_kefs_surveys_v2()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_kefs_surveys_v2.md).
+The order of the steps is in
+[`.github/workflows/data-pipeline.yaml`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/.github/workflows/data-pipeline.yaml).
+
+### How it runs in production
+
+GitHub Actions runs every job inside a Docker image built by
+[`build-container.yaml`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/.github/workflows/build-container.yaml),
+which installs the latest `coasts` release. Runs on `main` use the
+`production` profile; runs on any other branch use `default`.
+
+| Workflow | When it runs | What it does |
+|----|----|----|
+| [`data-pipeline.yaml`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/.github/workflows/data-pipeline.yaml) | 00:00 UTC on every second day of the month (1st, 3rd, 5th, …), and on every push | The full pipeline: WCS, KEFS and GPS data |
+| [`wcs-pipeline.yaml`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/.github/workflows/wcs-pipeline.yaml) | On demand, and on push to the WCS code | The WCS chain alone, writing to development storage only |
+
+Do not add a schedule to `wcs-pipeline.yaml`: the main pipeline already
+runs the WCS chain, and two scheduled runs would overwrite each other’s
+files.
+
+### Releases
+
+Bump `Version:` in `DESCRIPTION` and add a block at the top of
+[`NEWS.md`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/NEWS.md)
+headed `# peskas.kenya.data.pipeline X.Y.Z`, written for non-technical
+readers. On push to `main`, `release.yaml` turns that block into a
+GitHub release if the version is new.
+
+### Tests
+
+There are no automated tests yet. `R-CMD-check.yaml` checks that the
+package builds and its documentation is consistent. Check a change by
+running the affected function against the `default` profile.
+
+### Contributing
+
+Read
+[`.github/CONTRIBUTING.md`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/CONTRIBUTING.md).
+Code follows the [tidyverse style guide](https://style.tidyverse.org);
+comment `/style` on a pull request to apply it. New to R packages? See
+[*R Packages*](https://r-pkgs.org) by Hadley Wickham and Jenny Bryan.
+For AI-assisted work, see
+[`CLAUDE.md`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/CLAUDE.md).
+
+## Licence
+
+GPL-3 or later. See
+[`LICENSE.md`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/LICENSE.md).
