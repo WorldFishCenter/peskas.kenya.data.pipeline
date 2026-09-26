@@ -83,5 +83,10 @@ with `package = "peskas.kenya.data.pipeline"`. - Outputs:
 - `surveys.summaries.exclude_dashboard_ids` repeats `!expr` values
   instead of YAML anchors: undefined anchors silently resolved to a
   placeholder and excluded nothing.
+- KEFS `length_cm` in the API export is the mean length of the fish
+  measured per species and landing (see `R/api.R`). The Kenya dashboard
+  draws its size views from it and says so (`survey.meanLengths` in
+  `peskas.dashboard/packages/domain/src/country.ts`); changing it to
+  individual fish or length classes means dropping that flag.
 - `airtable_to_df` is defined twice in this package (`R/airtable.R` and
   `R/ingestion.R`).

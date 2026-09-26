@@ -60,6 +60,7 @@
 <ul><li>WCS outputs use the <code>kenya_wcs_*</code> prefixes on purpose. The bare <code>kenya_fishery_metrics</code> and <code>kenya_monthly_summaries_map</code> prefixes belong to <code><a href="https://rdrr.io/pkg/coasts/man/summarize_data.html" class="external-link">coasts::summarize_data()</a></code> / <code><a href="https://rdrr.io/pkg/coasts/man/export_portal.html" class="external-link">coasts::export_portal()</a></code>; writing a differently-keyed frame under them shadows the coasts portal input.</li>
 <li>
 <code>surveys.summaries.exclude_dashboard_ids</code> repeats <code>!expr</code> values instead of YAML anchors: undefined anchors silently resolved to a placeholder and excluded nothing.</li>
+<li>KEFS <code>length_cm</code> in the API export is the mean length of the fish measured per species and landing (see <code>R/api.R</code>). The Kenya dashboard draws its size views from it and says so (<code>survey.meanLengths</code> in <code>peskas.dashboard/packages/domain/src/country.ts</code>); changing it to individual fish or length classes means dropping that flag.</li>
 <li>
 <code>airtable_to_df</code> is defined twice in this package (<code>R/airtable.R</code> and <code>R/ingestion.R</code>).</li>
 </ul></div>
