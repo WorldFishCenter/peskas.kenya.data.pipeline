@@ -145,6 +145,9 @@ default:
             districts_summaries: districts_summaries
             gear_summaries: gear_summaries
             grid_summaries: grid_summaries
+            taxa_traits: taxa_traits
+            length_summaries: length_summaries
+            gear_taxa_summaries: gear_taxa_summaries
 
     google:
       key: gcs
@@ -208,6 +211,11 @@ default:
       assets: assets
       base_id: !expr Sys.getenv("AIRTABLE_BASE_ID")
       token: !expr Sys.getenv("AIRTABLE_TOKEN")
+    fishbase:
+      # Hub table of FishBase traits (enrich_taxa() in coasts) that
+      # coasts::summarize_data() turns into the dashboard's taxa traits.
+      taxa_enriched:
+        file_prefix: taxa-fishbase-enriched
   api:
     trips:
       raw:
