@@ -104,7 +104,9 @@ format_api_wcs <- function(surveys_df, conf) {
 #' the mean length of the fish measured for that catch row. Because Kenya
 #' records one row per fish rather than per length bin, that plain mean is the
 #' same individual-weighted mean the Timor pipeline publishes for this schema.
-#' A catch row whose species was not measured carries `NA`.
+#' A catch row whose species was not measured carries `NA`. Fish measured on
+#' fork length are restated as total length first ([convert_fork_lengths()]);
+#' lobsters and crabs stay on carapace length and octopus on mantle length.
 #'
 #' @section Catch price units:
 #' `sample_price` is the KSH/kg rate for the species, not a value: it equals the

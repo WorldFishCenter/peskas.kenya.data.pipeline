@@ -302,6 +302,117 @@ reshape_overall_sample <- function(raw_data = NULL) {
   return(long_data)
 }
 
+#' Restate fork lengths as total lengths
+#'
+#' @description
+#' KEFS records each fish on the length type the enumerator measured: mostly
+#' total length, but fork length for tunas, mackerels, jacks and some snappers.
+#' Everything downstream reads `length_cm` as total length, and the size views
+#' compare it with FishBase lengths at maturity that [coasts::enrich_taxa()]
+#' restates as total length. So fork lengths are restated here, per fish and
+#' before [summarise_priority_lengths()] averages them, with the same POPLL
+#' fits: `TL = intercept + slope * FL`, from [coasts::get_tl_conversions()].
+#'
+#' @param priority_df Long priority-species data from [reshape_priority_species()].
+#' @param taxa_mapping Airtable taxa mapping for the KEFS form, with
+#'   `survey_label`, `alpha3_code` and `scientific_name`.
+#' @param version FishBase / SeaLifeBase release. Keep it the release
+#'   [coasts::enrich_taxa()] reads, so both sides of the size comparison use the
+#'   same fits.
+#'
+#' @return `priority_df`, with converted fish carrying `length_type =
+#'   "total_length"`.
+#'
+#' @details
+#' A species with no fork-length fit keeps its fork lengths, and the step logs
+#' a warning naming it. Carapace (lobsters, crabs) and mantle (octopus, squid)
+#' lengths are left as measured: they are the standard measures for those
+#' animals, and none of the lobsters, crabs, octopus or squid KEFS measures has
+#' a length at maturity to compare against (2026-09).
+#'
+#' @keywords preprocessing helper
+#' @export
+convert_fork_lengths <- function(
+  priority_df = NULL,
+  taxa_mapping = NULL,
+  version = "latest"
+) {
+  fork_measured <- priority_df$priority_species[
+    priority_df$length_type %in% "fork_length"
+  ]
+  measured <- taxa_mapping |>
+    dplyr::filter(.data$survey_label %in% fork_measured) |>
+    dplyr::distinct(.data$survey_label, .data$alpha3_code, .data$scientific_name)
+  if (nrow(measured) == 0) {
+    return(priority_df)
+  }
+
+  expanded <- coasts::expand_taxonomic_info(
+    dplyr::distinct(measured, .data$alpha3_code, .data$scientific_name),
+    version = version
+  )
+  fl_to_tl <- coasts::get_tl_conversions(expanded, version = version) |>
+    dplyr::filter(.data$Type == "FL") |>
+    dplyr::inner_join(
+      dplyr::distinct(
+        expanded,
+        .data$alpha3_code,
+        scientific_name = .data$original_name,
+        .data$SpecCode,
+        .data$server
+      ),
+      by = c("SpecCode", "server")
+    ) |>
+    # A name that expands to several species takes the median of their fits.
+    dplyr::group_by(.data$alpha3_code, .data$scientific_name) |>
+    dplyr::summarise(
+      intercept = stats::median(.data$intercept),
+      slope = stats::median(.data$slope),
+      .groups = "drop"
+    ) |>
+    dplyr::inner_join(measured, by = c("alpha3_code", "scientific_name")) |>
+    dplyr::select(priority_species = "survey_label", "intercept", "slope")
+
+  converted <- priority_df |>
+    dplyr::left_join(
+      fl_to_tl,
+      by = "priority_species",
+      relationship = "many-to-one"
+    ) |>
+    dplyr::mutate(
+      convert = .data$length_type %in% "fork_length" & !is.na(.data$slope),
+      length_cm = dplyr::if_else(
+        .data$convert,
+        .data$intercept + .data$slope * .data$length_cm,
+        .data$length_cm
+      ),
+      length_type = dplyr::if_else(
+        .data$convert,
+        "total_length",
+        .data$length_type
+      )
+    )
+
+  unconverted <- converted |>
+    dplyr::filter(
+      .data$length_type %in% "fork_length",
+      !is.na(.data$length_cm)
+    ) |>
+    dplyr::count(.data$priority_species)
+  logger::log_info(
+    "Restated {sum(converted$convert & !is.na(converted$length_cm))} fork \\
+     lengths as total length"
+  )
+  if (nrow(unconverted) > 0) {
+    logger::log_warn(
+      "{sum(unconverted$n)} fork lengths have no total-length fit and stay as \\
+       measured: {paste(unconverted$priority_species, collapse = '; ')}"
+    )
+  }
+
+  dplyr::select(converted, -c("intercept", "slope", "convert"))
+}
+
 #' Collapse individual length measurements to the species they belong to
 #'
 #' @description
@@ -331,6 +442,8 @@ reshape_overall_sample <- function(raw_data = NULL) {
 #' schema. It is a subsample statistic: `measured_weight_kg` is the weight of the
 #' fish actually measured and is generally *less* than the species'
 #' `sample_weight`, which covers the whole weighed sample.
+#'
+#' Run [convert_fork_lengths()] first, so the mean is over total lengths.
 #'
 #' Rows carrying no usable length are dropped, so a species measured only with
 #' missing lengths contributes nothing rather than an `NaN` mean.

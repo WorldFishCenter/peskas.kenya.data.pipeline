@@ -15,11 +15,12 @@ get_catch_flags(dat = NULL, max_length_cm = 500)
 \item total_catch_weight: Total weight of the entire catch in kilograms
 \item sample_weight: Weight of individual sample in kilograms
 \item sample_price: Price of the sample
-\item length_cm: Mean measured length for the row's species, if any
+\item length_max_cm: Largest fish measured for the row's species, if any
 }}
 
-\item{max_length_cm}{Numeric. Absolute upper bound on \code{length_cm}, in
-centimetres. Defaults to 500.}
+\item{max_length_cm}{Numeric. Absolute upper bound on \code{length_max_cm}, in
+centimetres. Defaults to 500. The largest fish is tested rather than the
+mean, which one impossible fish among normal ones can stay under.}
 }
 \value{
 A data frame with columns:

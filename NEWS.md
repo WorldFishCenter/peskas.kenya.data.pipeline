@@ -1,3 +1,37 @@
+# peskas.kenya.data.pipeline 5.3.1
+
+## KEFS fork lengths are restated as total length
+
+* **FIXED**
+
+KEFS measures most fish on total length, but tunas, mackerels, jacks and some
+snappers on fork length: 360 of 12,746 measured fish. The mean length per
+species averaged both as if they were one, and the API drops the length type,
+so the size views compared fork lengths with lengths at maturity given as total
+length. Each fork-length fish is now restated as total length before the mean,
+with the FishBase fits coasts uses for the lengths at maturity
+(`coasts::get_tl_conversions()`).
+
+181 catch rows change, by 2% to 19% (yellowfin tuna by 11%). The share of
+measured catch below the length at maturity falls from 15.1% to 13.2% for
+kawakawa, from 2.9% to 1.3% for narrow-barred Spanish mackerel and from 93.2% to
+92.7% for yellowfin tuna. Four species with no published fit (34 fish, mostly
+black-and-white snapper) keep their fork lengths, and the step logs them.
+Lobsters and crabs stay on carapace length and octopus and squid on mantle
+length, their standard measures.
+
+Needs coasts 4.16.0 and the new `metadata.fishbase.db_version` config key, which
+should match coasts'.
+
+## Alert 5.3 checks every fish, not the mean
+
+* **FIXED**
+
+Alert 5.3 tested the mean length of the fish measured, so one impossible fish
+among normal ones could stay under 500 cm. It now tests the largest fish. This
+flags one more landing: two frigate tuna recorded at 106.5 and 669.5 cm (the
+species reaches about 65 cm), published until now with a mean of 388 cm.
+
 # peskas.kenya.data.pipeline 5.3.0
 
 ## Records say which organization collected them

@@ -389,8 +389,13 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
   # fish, and enumerators do measure several species in one trip). Joining them
   # on `submission_id` alone crosses every fish with every species, which
   # duplicated `sample_weight` and stuck each length on the wrong taxon.
-  # Collapse the fish to the species they belong to first, then attach.
-  priority_df <- reshape_priority_species(raw_data = raw_dat)
+  # Collapse the fish to the species they belong to first, then attach. Fork
+  # lengths are restated as total length before that mean, one fish at a time.
+  priority_df <- reshape_priority_species(raw_data = raw_dat) |>
+    convert_fork_lengths(
+      taxa_mapping = assets$taxa,
+      version = conf$metadata$fishbase$db_version
+    )
   sample_df <- reshape_overall_sample(raw_data = raw_dat) |>
     dplyr::mutate(submission_id = as.character(.data$submission_id))
 

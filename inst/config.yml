@@ -212,6 +212,11 @@ default:
       base_id: !expr Sys.getenv("AIRTABLE_BASE_ID")
       token: !expr Sys.getenv("AIRTABLE_TOKEN")
     fishbase:
+      # FishBase / SeaLifeBase release whose length-length fits restate KEFS
+      # fork lengths as total length. Keep it equal to coasts'
+      # metadata.fishbase.db_version: enrich_taxa() restates the lengths at
+      # maturity these fish are compared with using that release.
+      db_version: "latest"
       # Hub table of FishBase traits (enrich_taxa() in coasts) that
       # coasts::summarize_data() turns into the dashboard's taxa traits.
       taxa_enriched:

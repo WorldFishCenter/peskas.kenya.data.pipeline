@@ -1306,10 +1306,11 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
 #'     \item total_catch_weight: Total weight of the entire catch in kilograms
 #'     \item sample_weight: Weight of individual sample in kilograms
 #'     \item sample_price: Price of the sample
-#'     \item length_cm: Mean measured length for the row's species, if any
+#'     \item length_max_cm: Largest fish measured for the row's species, if any
 #'   }
-#' @param max_length_cm Numeric. Absolute upper bound on `length_cm`, in
-#'   centimetres. Defaults to 500.
+#' @param max_length_cm Numeric. Absolute upper bound on `length_max_cm`, in
+#'   centimetres. Defaults to 500. The largest fish is tested rather than the
+#'   mean, which one impossible fish among normal ones can stay under.
 #'
 #' @return A data frame with columns:
 #'   \itemize{
@@ -1350,7 +1351,7 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
     dplyr::select(c(
       "submission_id",
       "catch_outcome":"sample_price",
-      dplyr::any_of("length_cm")
+      "length_max_cm"
     )) |>
     dplyr::distinct() |>
     dplyr::mutate(
@@ -1364,7 +1365,7 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
         TRUE ~ NA_character_
       ),
       alert_length = dplyr::case_when(
-        .data$length_cm > max_length_cm ~ "5.3",
+        .data$length_max_cm > max_length_cm ~ "5.3",
         TRUE ~ NA_character_
       )
     ) |>

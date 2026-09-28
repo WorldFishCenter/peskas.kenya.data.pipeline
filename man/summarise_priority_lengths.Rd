@@ -36,6 +36,8 @@ schema. It is a subsample statistic: \code{measured_weight_kg} is the weight of 
 fish actually measured and is generally \emph{less} than the species'
 \code{sample_weight}, which covers the whole weighed sample.
 
+Run \code{\link[=convert_fork_lengths]{convert_fork_lengths()}} first, so the mean is over total lengths.
+
 Rows carrying no usable length are dropped, so a species measured only with
 missing lengths contributes nothing rather than an \code{NaN} mean.
 }

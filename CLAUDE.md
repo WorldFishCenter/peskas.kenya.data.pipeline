@@ -59,5 +59,9 @@ Two independent survey chains share the package:
 - KEFS `length_cm` in the API export is the mean length of the fish measured per species and
   landing (see `R/api.R`). The Kenya dashboard draws its size views from it and says so
   (`survey.meanLengths` in `peskas.dashboard/packages/domain/src/country.ts`); changing it to
-  individual fish or length classes means dropping that flag.
+  individual fish or length classes means dropping that flag. It is total length:
+  `convert_fork_lengths()` restates fork-length fish with coasts' POPLL fits before the mean,
+  except species with no fit. Lobsters and crabs stay on carapace length and octopus on mantle
+  length. Keep `metadata.fishbase.db_version` equal to coasts', which converts the
+  maturity lengths.
 - `airtable_to_df` is defined twice in this package (`R/airtable.R` and `R/ingestion.R`).
