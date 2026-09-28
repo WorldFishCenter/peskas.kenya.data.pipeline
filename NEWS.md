@@ -12,17 +12,6 @@ length. Each fork-length fish is now restated as total length before the mean,
 with the FishBase fits coasts uses for the lengths at maturity
 (`coasts::get_tl_conversions()`).
 
-181 catch rows change, by 2% to 19% (yellowfin tuna by 11%). The share of
-measured catch below the length at maturity falls from 15.1% to 13.2% for
-kawakawa, from 2.9% to 1.3% for narrow-barred Spanish mackerel and from 93.2% to
-92.7% for yellowfin tuna. Four species with no published fit (34 fish, mostly
-black-and-white snapper) keep their fork lengths, and the step logs them.
-Lobsters and crabs stay on carapace length and octopus and squid on mantle
-length, their standard measures.
-
-Needs coasts 4.16.0 and the new `metadata.fishbase.db_version` config key, which
-should match coasts'.
-
 ## Alert 5.3 checks every fish, not the mean
 
 * **FIXED**
