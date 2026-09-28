@@ -1,5 +1,13 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.3.2
+
+### Reviewers’ decisions are kept between runs
+
+- **FIXED** KEFS surveys a reviewer approves in the Peskas Management
+  Platform stay in the data, those a reviewer rejects leave it, and
+  reviewers’ decisions are no longer undone by the next run.
+
 ## peskas.kenya.data.pipeline 5.3.1
 
 ### KEFS fork lengths are restated as total length
@@ -644,10 +652,7 @@ the design itself, and one consequence of it:
     function for comprehensive validation of KEFS catch assessment
     surveys
   - Integrated KoboToolbox API validation status querying with
-    [`get_validation_status()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_validation_status.md)
-    and
-    [`update_validation_status()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/update_validation_status.md)
-    functions
+    `get_validation_status()` and `update_validation_status()` functions
   - Implemented multi-dimensional validation system with information,
     trip, catch, and indicator flags
   - Added support for manual validation override to preserve
@@ -710,10 +715,10 @@ the design itself, and one consequence of it:
       Documents composite indicator validation (CPUE, RPUE, price/kg)
       with 3 alert codes
   - Added documentation for KoboToolbox integration functions:
-    - [`get_validation_status()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_validation_status.md):
-      Retrieves validation status from KoboToolbox for submissions
-    - [`update_validation_status()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/update_validation_status.md):
-      Updates validation status in KoboToolbox
+    - `get_validation_status()`: Retrieves validation status from
+      KoboToolbox for submissions
+    - `update_validation_status()`: Updates validation status in
+      KoboToolbox
   - Updated
     [`get_indicators_flags()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_indicators_flags.md)
     documentation to correctly reflect the `clean_ids` parameter

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,7 +53,7 @@
 <ul><li>Keep the WCS chain inside <code>options_wcs</code>. Anything mixing WCS with KEFS, PDS or Airtable (API export, matched trips, portal aggregates) writes to <code>storage.google.options</code>, and cross-country artifacts go in <code>export_coasts_metrics</code>, never <code>export_summaries</code>.</li>
 <li>Never add a <code>schedule:</code> to <code>wcs-pipeline.yaml</code>. <code>data-pipeline.yaml</code> already writes the WCS prefixes; a second cron would race it, and since every read resolves <code>version = "latest"</code> the loser is silently shadowed mid-chain.</li>
 <li>Treat <code>wcs-surveys-validated</code> columns as a contract: <code>export_api_validated</code> and <code>merge_trips</code> read them.</li>
-<li>Prefer <code>coasts::</code> over the local copies of coasts helpers in <code>R/airtable.R</code> (<code>airtable_to_df</code>, <code>df_to_airtable</code>, <code>bulk_update_airtable</code>, <code>fetch_asset</code>, …) and <code>get_validation_status</code> / <code>update_validation_status</code> in <code>R/validation-functions.R</code>; flag the duplicate when you touch one.</li>
+<li>Prefer <code>coasts::</code> over the local copies of coasts helpers in <code>R/airtable.R</code> (<code>airtable_to_df</code>, <code>df_to_airtable</code>, <code>bulk_update_airtable</code>, <code>fetch_asset</code>, …); flag the duplicate when you touch one.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="gotchas">Gotchas<a class="anchor" aria-label="anchor" href="#gotchas"></a></h2>

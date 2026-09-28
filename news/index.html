@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,14 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.3.2" id="peskaskenyadatapipeline-532">peskas.kenya.data.pipeline 5.3.2<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-532"></a></h2>
+<div class="section level3">
+<h3 id="reviewers-decisions-are-kept-between-runs-5-3-2">Reviewers’ decisions are kept between runs<a class="anchor" aria-label="anchor" href="#reviewers-decisions-are-kept-between-runs-5-3-2"></a></h3>
+<ul><li>
+<strong>FIXED</strong> KEFS surveys a reviewer approves in the Peskas Management Platform stay in the data, those a reviewer rejects leave it, and reviewers’ decisions are no longer undone by the next run.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.3.1" id="peskaskenyadatapipeline-531">peskas.kenya.data.pipeline 5.3.1<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-531"></a></h2>
 <div class="section level3">
@@ -373,7 +381,7 @@
 <ul><li>
 <strong>KEFS V2 Validation Pipeline</strong>:
 <ul><li>Added <code><a href="../reference/validate_kefs_surveys_v2.html">validate_kefs_surveys_v2()</a></code> function for comprehensive validation of KEFS catch assessment surveys</li>
-<li>Integrated KoboToolbox API validation status querying with <code><a href="../reference/get_validation_status.html">get_validation_status()</a></code> and <code><a href="../reference/update_validation_status.html">update_validation_status()</a></code> functions</li>
+<li>Integrated KoboToolbox API validation status querying with <code>get_validation_status()</code> and <code>update_validation_status()</code> functions</li>
 <li>Implemented multi-dimensional validation system with information, trip, catch, and indicator flags</li>
 <li>Added support for manual validation override to preserve human-reviewed approvals while applying automated checks</li>
 <li>Exported new validation helper functions: <code><a href="../reference/get_trips_flags.html">get_trips_flags()</a></code>, <code><a href="../reference/get_catch_flags.html">get_catch_flags()</a></code>, and <code><a href="../reference/get_indicators_flags.html">get_indicators_flags()</a></code>
@@ -433,9 +441,9 @@
 </ul></li>
 <li>Added documentation for KoboToolbox integration functions:
 <ul><li>
-<code><a href="../reference/get_validation_status.html">get_validation_status()</a></code>: Retrieves validation status from KoboToolbox for submissions</li>
+<code>get_validation_status()</code>: Retrieves validation status from KoboToolbox for submissions</li>
 <li>
-<code><a href="../reference/update_validation_status.html">update_validation_status()</a></code>: Updates validation status in KoboToolbox</li>
+<code>update_validation_status()</code>: Updates validation status in KoboToolbox</li>
 </ul></li>
 <li>Updated <code><a href="../reference/get_indicators_flags.html">get_indicators_flags()</a></code> documentation to correctly reflect the <code>clean_ids</code> parameter</li>
 <li>All new documentation follows roxygen2 style with comprehensive examples, parameter descriptions, and return value specifications</li>

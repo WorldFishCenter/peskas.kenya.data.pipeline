@@ -15,7 +15,7 @@ generating automated validation flags for data quality issues."><meta property="
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,23 +60,22 @@ and alert flags as Parquet files to Google Cloud Storage.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The function performs the following main operations:</p><ol><li><p>Downloads preprocessed KEFS survey data from Google Cloud Storage.</p></li>
-<li><p>Sets up parallel processing with rate limiting (max 4 workers, 200ms delay) to avoid overwhelming the API server.</p></li>
-<li><p>Queries KoboToolbox API to retrieve existing validation statuses for all submissions.</p></li>
-<li><p>Identifies manually approved submissions (excluding system approvals) to preserve human review decisions.</p></li>
+<li><p>Reads reviewers' decisions with <code><a href="https://rdrr.io/pkg/coasts/man/review_decisions.html" class="external-link">coasts::review_decisions()</a></code>: the flags
+collection the Peskas Management Platform writes to, and every
+submission's status on KEFS's KoboToolbox server.</p></li>
 <li><p>Validates the data across multiple dimensions:</p><ul><li><p>Information flags: Missing catch outcome and weight data (flag 1.1)</p></li>
 <li><p>Trip flags: Horse power, number of fishers, trip duration, and revenue anomalies (flags 1-4)</p></li>
 <li><p>Catch flags: Sample weight inconsistencies (flags 5.1-5.2)</p></li>
 <li><p>Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.3)</p></li>
 </ul></li>
 <li><p>Combines all validation flags into a comprehensive alert system.</p></li>
-<li><p>Clears validation flags for manually approved submissions (respecting human decisions).</p></li>
-<li><p>Filters valid data based on presence of alert flags.</p></li>
-<li><p>Uploads both the validation flags and validated dataset as Parquet files to Google Cloud Storage.</p></li>
+<li><p>Keeps the submissions with no flag, and those a reviewer approved.</p></li>
+<li><p>Uploads the validated dataset, and pushes the flags with the reviewers'
+decisions to MongoDB with <code><a href="export_validation_flags.html">export_validation_flags()</a></code>.</p></li>
 </ol></div>
     <div class="section level2">
     <h2 id="note">Note<a class="anchor" aria-label="anchor" href="#note"></a></h2>
     <p>This function requires:</p><ul><li><p>A configuration file with Google Cloud Storage credentials and KoboToolbox API credentials</p></li>
-<li><p>The <code>future</code> package configured for parallel processing</p></li>
 <li><p>The preprocessed KEFS surveys data to be available in Google Cloud Storage</p></li>
 </ul></div>
     <div class="section level2">

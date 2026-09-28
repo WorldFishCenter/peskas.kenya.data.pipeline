@@ -50,7 +50,6 @@
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_total_catch_bounds.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_total_catch_bounds_iqr.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_trips_flags.html</loc></url>
-<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_validation_status.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_writable_fields.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/impute_price.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/index.html</loc></url>
@@ -77,7 +76,6 @@
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_legacy_landings.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_price_core.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_price_landings.html</loc></url>
-<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/process_submissions_parallel.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/read_config.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/rename_child.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/reshape_catch_data_v1.html</loc></url>
@@ -87,10 +85,8 @@
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/standardize_enumerator_names.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/summarise_catch_price.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/summarise_priority_lengths.html</loc></url>
-<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/sync_validation_submissions.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/tidyeval.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/update_airtable_record.html</loc></url>
-<url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/update_validation_status.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_catch.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_catch_iqr.html</loc></url>
 <url><loc>https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_dates.html</loc></url>

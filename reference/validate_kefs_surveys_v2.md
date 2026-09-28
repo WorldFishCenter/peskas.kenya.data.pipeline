@@ -24,16 +24,12 @@ The function performs the following main operations:
 
 1.  Downloads preprocessed KEFS survey data from Google Cloud Storage.
 
-2.  Sets up parallel processing with rate limiting (max 4 workers, 200ms
-    delay) to avoid overwhelming the API server.
+2.  Reads reviewers' decisions with
+    [`coasts::review_decisions()`](https://rdrr.io/pkg/coasts/man/review_decisions.html):
+    the flags collection the Peskas Management Platform writes to, and
+    every submission's status on KEFS's KoboToolbox server.
 
-3.  Queries KoboToolbox API to retrieve existing validation statuses for
-    all submissions.
-
-4.  Identifies manually approved submissions (excluding system
-    approvals) to preserve human review decisions.
-
-5.  Validates the data across multiple dimensions:
+3.  Validates the data across multiple dimensions:
 
     - Information flags: Missing catch outcome and weight data (flag
       1.1)
@@ -46,15 +42,13 @@ The function performs the following main operations:
     - Indicator flags: CPUE, RPUE, and price per kg outliers (flags
       6.1-6.3)
 
-6.  Combines all validation flags into a comprehensive alert system.
+4.  Combines all validation flags into a comprehensive alert system.
 
-7.  Clears validation flags for manually approved submissions
-    (respecting human decisions).
+5.  Keeps the submissions with no flag, and those a reviewer approved.
 
-8.  Filters valid data based on presence of alert flags.
-
-9.  Uploads both the validation flags and validated dataset as Parquet
-    files to Google Cloud Storage.
+6.  Uploads the validated dataset, and pushes the flags with the
+    reviewers' decisions to MongoDB with
+    [`export_validation_flags()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_validation_flags.md).
 
 ## Note
 
@@ -62,8 +56,6 @@ This function requires:
 
 - A configuration file with Google Cloud Storage credentials and
   KoboToolbox API credentials
-
-- The `future` package configured for parallel processing
 
 - The preprocessed KEFS surveys data to be available in Google Cloud
   Storage

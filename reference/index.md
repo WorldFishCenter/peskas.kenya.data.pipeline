@@ -15,8 +15,6 @@ these functions executes a step in the data pipeline.
   : Export Summarized Fishery Data for Dashboard Integration
 - [`export_validation_flags()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/export_validation_flags.md)
   : Export Validation Flags to MongoDB
-- [`get_validation_status()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_validation_status.md)
-  : Get Validation Status from KoboToolbox
 - [`ingest_kefs_surveys_v1()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/ingest_kefs_surveys_v1.md)
   : Download and Process KEFS (BMU DAILY ARTISANAL 2025) Catch Surveys
   from Kobotoolbox
@@ -47,10 +45,6 @@ these functions executes a step in the data pipeline.
   : Preprocess Legacy Landings Data
 - [`preprocess_price_landings()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_price_landings.md)
   : Preprocess Price Data
-- [`sync_validation_submissions()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/sync_validation_submissions.md)
-  : Synchronize Validation Statuses with KoboToolbox
-- [`update_validation_status()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/update_validation_status.md)
-  : Update Validation Status in KoboToolbox
 - [`validate_kefs_surveys_v2()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_kefs_surveys_v2.md)
   : Validate KEFS Surveys Data (Version 2)
 - [`validate_landings()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_landings.md)
@@ -189,15 +183,6 @@ Functions dedicated to the validation module
 
 - [`get_trips_flags()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_trips_flags.md)
   : Generate Trip-Level Validation Flags
-
-- [`get_validation_status()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_validation_status.md)
-  : Get Validation Status from KoboToolbox
-
-- [`sync_validation_submissions()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/sync_validation_submissions.md)
-  : Synchronize Validation Statuses with KoboToolbox
-
-- [`update_validation_status()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/update_validation_status.md)
-  : Update Validation Status in KoboToolbox
 
 - [`validate_catch()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/validate_catch.md)
   : Validate Individual Catch Data

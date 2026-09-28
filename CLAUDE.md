@@ -66,9 +66,8 @@ with `package = "peskas.kenya.data.pipeline"`. - Outputs:
   `export_api_validated` and `merge_trips` read them.
 - Prefer `coasts::` over the local copies of coasts helpers in
   `R/airtable.R` (`airtable_to_df`, `df_to_airtable`,
-  `bulk_update_airtable`, `fetch_asset`, …) and `get_validation_status`
-  / `update_validation_status` in `R/validation-functions.R`; flag the
-  duplicate when you touch one.
+  `bulk_update_airtable`, `fetch_asset`, …); flag the duplicate when you
+  touch one.
 
 ## Gotchas
 
