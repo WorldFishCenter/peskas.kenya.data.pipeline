@@ -15,7 +15,7 @@ onto their species before the two can be joined."><meta property="og:image" cont
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -93,6 +93,7 @@ individual-weighted mean the Timor pipeline publishes for the shared API
 schema. It is a subsample statistic: <code>measured_weight_kg</code> is the weight of the
 fish actually measured and is generally <em>less</em> than the species'
 <code>sample_weight</code>, which covers the whole weighed sample.</p>
+<p>Run <code><a href="convert_fork_lengths.html">convert_fork_lengths()</a></code> first, so the mean is over total lengths.</p>
 <p>Rows carrying no usable length are dropped, so a species measured only with
 missing lengths contributes nothing rather than an <code>NaN</code> mean.</p>
     </div>

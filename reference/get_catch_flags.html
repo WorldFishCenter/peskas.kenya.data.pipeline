@@ -13,7 +13,7 @@ the relationship between sample weights and total weights.'><meta property="og:i
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,13 +60,14 @@ the relationship between sample weights and total weights.</p>
 <li><p>total_catch_weight: Total weight of the entire catch in kilograms</p></li>
 <li><p>sample_weight: Weight of individual sample in kilograms</p></li>
 <li><p>sample_price: Price of the sample</p></li>
-<li><p>length_cm: Mean measured length for the row's species, if any</p></li>
+<li><p>length_max_cm: Largest fish measured for the row's species, if any</p></li>
 </ul></dd>
 
 
 <dt id="arg-max-length-cm">max_length_cm<a class="anchor" aria-label="anchor" href="#arg-max-length-cm"></a></dt>
-<dd><p>Numeric. Absolute upper bound on <code>length_cm</code>, in
-centimetres. Defaults to 500.</p></dd>
+<dd><p>Numeric. Absolute upper bound on <code>length_max_cm</code>, in
+centimetres. Defaults to 500. The largest fish is tested rather than the
+mean, which one impossible fish among normal ones can stay under.</p></dd>
 
 </dl></div>
     <div class="section level2">

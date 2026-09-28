@@ -30,12 +30,13 @@ get_catch_flags(dat = NULL, max_length_cm = 500)
 
   - sample_price: Price of the sample
 
-  - length_cm: Mean measured length for the row's species, if any
+  - length_max_cm: Largest fish measured for the row's species, if any
 
 - max_length_cm:
 
-  Numeric. Absolute upper bound on `length_cm`, in centimetres. Defaults
-  to 500.
+  Numeric. Absolute upper bound on `length_max_cm`, in centimetres.
+  Defaults to 500. The largest fish is tested rather than the mean,
+  which one impossible fish among normal ones can stay under.
 
 ## Value
 

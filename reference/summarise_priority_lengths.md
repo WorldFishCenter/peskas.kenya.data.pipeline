@@ -60,5 +60,9 @@ schema. It is a subsample statistic: `measured_weight_kg` is the weight
 of the fish actually measured and is generally *less* than the species'
 `sample_weight`, which covers the whole weighed sample.
 
+Run
+[`convert_fork_lengths()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/convert_fork_lengths.md)
+first, so the mean is over total lengths.
+
 Rows carrying no usable length are dropped, so a species measured only
 with missing lengths contributes nothing rather than an `NaN` mean.

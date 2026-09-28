@@ -117,6 +117,8 @@ Functions dedicated to the preprocessing module
 
 - [`clean_catch_names()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/clean_catch_names.md)
   : Clean Catch Names
+- [`convert_fork_lengths()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/convert_fork_lengths.md)
+  : Restate fork lengths as total lengths
 - [`fetch_asset()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/fetch_asset.md)
   : Fetch and Filter Asset Data from Airtable
 - [`get_airtable_form_id()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_airtable_form_id.md)
@@ -270,6 +272,8 @@ Functions dedicated to data analytics and general statistics
 
 - [`add_version()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/add_version.md)
   : Add timestamp and sha string to a file name
+- [`convert_fork_lengths()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/convert_fork_lengths.md)
+  : Restate fork lengths as total lengths
 - [`fetch_asset()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/fetch_asset.md)
   : Fetch and Filter Asset Data from Airtable
 - [`get_airtable_form_id()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_airtable_form_id.md)

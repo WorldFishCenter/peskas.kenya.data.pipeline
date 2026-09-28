@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,19 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.3.1" id="peskaskenyadatapipeline-531">peskas.kenya.data.pipeline 5.3.1<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-531"></a></h2>
+<div class="section level3">
+<h3 id="kefs-fork-lengths-are-restated-as-total-length-5-3-1">KEFS fork lengths are restated as total length<a class="anchor" aria-label="anchor" href="#kefs-fork-lengths-are-restated-as-total-length-5-3-1"></a></h3>
+<ul><li><strong>FIXED</strong></li>
+</ul><p>KEFS measures most fish on total length, but tunas, mackerels, jacks and some snappers on fork length: 360 of 12,746 measured fish. The mean length per species averaged both as if they were one, and the API drops the length type, so the size views compared fork lengths with lengths at maturity given as total length. Each fork-length fish is now restated as total length before the mean, with the FishBase fits coasts uses for the lengths at maturity (<code><a href="https://rdrr.io/pkg/coasts/man/get_tl_conversions.html" class="external-link">coasts::get_tl_conversions()</a></code>).</p>
+</div>
+<div class="section level3">
+<h3 id="alert-checks-every-fish-not-the-mean-5-3-1">Alert 5.3 checks every fish, not the mean<a class="anchor" aria-label="anchor" href="#alert-checks-every-fish-not-the-mean-5-3-1"></a></h3>
+<ul><li><strong>FIXED</strong></li>
+</ul><p>Alert 5.3 tested the mean length of the fish measured, so one impossible fish among normal ones could stay under 500 cm. It now tests the largest fish. This flags one more landing: two frigate tuna recorded at 106.5 and 669.5 cm (the species reaches about 65 cm), published until now with a mean of 388 cm.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.3.0" id="peskaskenyadatapipeline-530">peskas.kenya.data.pipeline 5.3.0<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-530"></a></h2>
 <div class="section level3">
