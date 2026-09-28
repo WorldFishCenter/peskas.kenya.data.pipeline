@@ -21,9 +21,9 @@ generating automated validation flags for data quality issues.
 The function performs the following main operations:
 \enumerate{
 \item Downloads preprocessed KEFS survey data from Google Cloud Storage.
-\item Sets up parallel processing with rate limiting (max 4 workers, 200ms delay) to avoid overwhelming the API server.
-\item Queries KoboToolbox API to retrieve existing validation statuses for all submissions.
-\item Identifies manually approved submissions (excluding system approvals) to preserve human review decisions.
+\item Reads reviewers' decisions with \code{\link[coasts:review_decisions]{coasts::review_decisions()}}: the flags
+collection the Peskas Management Platform writes to, and every
+submission's status on KEFS's KoboToolbox server.
 \item Validates the data across multiple dimensions:
 \itemize{
 \item Information flags: Missing catch outcome and weight data (flag 1.1)
@@ -32,16 +32,15 @@ The function performs the following main operations:
 \item Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.3)
 }
 \item Combines all validation flags into a comprehensive alert system.
-\item Clears validation flags for manually approved submissions (respecting human decisions).
-\item Filters valid data based on presence of alert flags.
-\item Uploads both the validation flags and validated dataset as Parquet files to Google Cloud Storage.
+\item Keeps the submissions with no flag, and those a reviewer approved.
+\item Uploads the validated dataset, and pushes the flags with the reviewers'
+decisions to MongoDB with \code{\link[=export_validation_flags]{export_validation_flags()}}.
 }
 }
 \note{
 This function requires:
 \itemize{
 \item A configuration file with Google Cloud Storage credentials and KoboToolbox API credentials
-\item The \code{future} package configured for parallel processing
 \item The preprocessed KEFS surveys data to be available in Google Cloud Storage
 }
 }

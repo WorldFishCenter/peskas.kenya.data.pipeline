@@ -1,3 +1,9 @@
+# peskas.kenya.data.pipeline 5.3.2
+
+## Reviewers' decisions are kept between runs
+
+* **FIXED** KEFS surveys a reviewer approves in the Peskas Management Platform stay in the data, those a reviewer rejects leave it, and reviewers' decisions are no longer undone by the next run.
+
 # peskas.kenya.data.pipeline 5.3.1
 
 ## KEFS fork lengths are restated as total length

@@ -1,6 +1,6 @@
 Package: peskas.kenya.data.pipeline
 Title: Kenya Small-Scale Fisheries Data Pipeline
-Version: 5.3.1
+Version: 5.3.2
 Authors@R: c(
     person("Lorenzo", "Longobardi", , "l.longobardi@cgiar.org", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-3126-7341")),
@@ -17,8 +17,6 @@ Imports:
     digest,
     dotenv,
     dplyr,
-    furrr,
-    future,
     git2r,
     glue,
     googleAnalyticsR,
@@ -29,7 +27,6 @@ Imports:
     logger,
     lubridate,
     magrittr,
-    progressr,
     purrr,
     readr,
     rlang,
@@ -39,7 +36,7 @@ Imports:
     tibble,
     tidyr,
     univOutl,
-    coasts (>= 4.16.0)
+    coasts (>= 4.17.0)
 Suggests:
     ggplot2
 Remotes: github::WorldFishCenter/peskas.coasts, github::WorldFishCenter/ssf-ai-toolkit/Rplug@plug-R
