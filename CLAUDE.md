@@ -3,7 +3,7 @@
 R package for the Kenya node of Peskas: ingests, preprocesses, validates and exports WCS catch
 and price surveys and KEFS surveys, matches surveys to PDS trips, and feeds the Kenya app
 database, the validation portal, the peskas-api bucket and the coasts portal.
-Ecosystem context (other repos, data flow, cross-repo contracts): see PESKAS.md, loaded via CLAUDE.local.md.
+Ecosystem context (other repos, data flow, cross-repo contracts): loaded by the `peskas` Claude Code plugin (repo `peskas-context`).
 
 ## Commands
 ```r
