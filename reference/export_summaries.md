@@ -19,39 +19,38 @@ export_summaries(log_threshold = logger::DEBUG)
 
 ## Value
 
-This function does not return a value. It uploads the following
-collections to MongoDB:
-
-- Monthly catch summaries (`monthly_stats` and `monthly_summaries`)
-
-- Gear distribution statistics (`gear_distribution`)
-
-- Fish distribution statistics (`fish_distribution`)
+This function does not return a value. It pushes these collections to
+MongoDB: `individual_stats`, `individual_gear_stats`,
+`individual_fish_distribution`, `monthly_stats`, `catch_monthly`,
+`fish_distribution` and `gear_summaries`.
 
 ## Details
 
 The function performs the following operations:
 
-1.  **Data Retrieval**: Pulls validated fishery data from the
-    "legacy-validated" MongoDB collection.
+1.  **Data Retrieval**: Reads the latest validated WCS catch table
+    (`surveys.wcs.catch.validated`) from cloud storage, and BMU sizes
+    from `get_metadata()$BMUs`; landing sites without a size are
+    dropped.
 
 2.  **Summary Dataset Generation**: Creates the following summary
     datasets:
 
-    - **Monthly Statistics**: Aggregates metrics like catch, effort, and
-      CPUE by BMU (Beach Management Unit) and month.
+    - **Individual metrics**: catch and gear metrics per fisher.
 
-    - **Gear Distribution**: Calculates the percentage usage of each
-      gear type by landing site.
+    - **Monthly Statistics**: catch, effort and CPUE by BMU (Beach
+      Management Unit) for the last six months.
 
-    - **Fish Distribution**: Calculates the percentage of each fish
-      category by landing site.
+    - **Monthly Summaries**: monthly metrics by BMU.
 
-    - **Mapping Distribution**: Prepares a dataset of landing sites with
-      geographic coordinates for spatial mapping.
+    - **Fish Distribution**: the share of each fish category by landing
+      site, overall and per fisher.
 
-3.  **Data Upload**: Uploads each of the summary datasets to its
-    designated MongoDB collection.
+    - **Gear Summaries**: metrics by gear type.
+
+3.  **Data Upload**: Pushes each dataset to its collection in the
+    `dashboard_wcs` MongoDB database
+    (`storage.mongodb.databases.dashboard_wcs.collections.v1`).
 
 **Calculated Metrics**:
 
@@ -68,12 +67,6 @@ The function performs the following operations:
   - Mean effort
 
   - Mean CPUE (Catch Per Unit Effort)
-
-- **Gear Distribution**:
-
-  - Count of each gear type used
-
-  - Percentage distribution of gear types by landing site
 
 - **Fish Distribution**:
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.4.0
+
+### Boats are placed by where they land
+
+- **NEW** Fleet activity estimates place each tracked boat in the
+  district where its trips land, read from its GPS track, so new and
+  moved trackers count without being linked to a district by hand.
+- **NEW** Fishing trips longer than two days now count in the fleet
+  activity estimates.
+
 ## peskas.kenya.data.pipeline 5.3.2
 
 ### Reviewers’ decisions are kept between runs

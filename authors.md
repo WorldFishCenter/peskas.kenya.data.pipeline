@@ -12,13 +12,13 @@
 ## Citation
 
 Longobardi L (2026). *peskas.kenya.data.pipeline: Kenya Small-Scale
-Fisheries Data Pipeline*. R package version 5.3.2,
+Fisheries Data Pipeline*. R package version 5.4.0,
 <https://worldfishcenter.github.io/peskas.kenya.data.pipeline/>.
 
     @Manual{,
       title = {peskas.kenya.data.pipeline: Kenya Small-Scale Fisheries Data Pipeline},
       author = {Lorenzo Longobardi},
       year = {2026},
-      note = {R package version 5.3.2},
+      note = {R package version 5.4.0},
       url = {https://worldfishcenter.github.io/peskas.kenya.data.pipeline/},
     }

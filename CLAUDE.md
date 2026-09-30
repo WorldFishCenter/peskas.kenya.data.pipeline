@@ -37,17 +37,23 @@ separate `peskas-wcs` GCP project. `WCS-GUIDE.md` is the guide for
 external WCS collaborators. - **KEFS v2** (Kenya Fisheries Service, its
 own Kobo server `kf.fims.kefs.go.ke`): `ingest_kefs_surveys_v2` -\>
 `preprocess_kefs_surveys_v2` -\> `validate_kefs_surveys_v2`, which also
-syncs KoBo validation status and pushes flags to Mongo `validation-*`. -
-**KEFS v1** (`ingest_kefs_surveys_v1`, `preprocess_kefs_surveys_v1`)
-still exists, but its job is commented out in `data-pipeline.yaml`. -
-Joint steps (main pipeline only): `merge_trips` (surveys to PDS trips),
+reads reviewers’ decisions
+([`coasts::review_decisions()`](https://rdrr.io/pkg/coasts/man/review_decisions.html))
+and pushes flags to Mongo `validation-*`. - **KEFS v1**
+(`ingest_kefs_surveys_v1`, `preprocess_kefs_surveys_v1`) still exists,
+but its job is commented out in `data-pipeline.yaml`. - Joint steps
+(main pipeline only): `merge_trips` (surveys to PDS trips),
 `export_api_raw/validated` (both chains to the peskas-api bucket),
 `export_coasts_metrics` (cross-country portal artifacts), then
 [`coasts::summarize_data`](https://rdrr.io/pkg/coasts/man/summarize_data.html),
 [`coasts::generate_fleet_analysis`](https://rdrr.io/pkg/coasts/man/generate_fleet_analysis.html)
 and
 [`coasts::export_portal`](https://rdrr.io/pkg/coasts/man/export_portal.html)
-with `package = "peskas.kenya.data.pipeline"`. - Outputs:
+with `package = "peskas.kenya.data.pipeline"`. The fleet estimate places
+each tracker by where its trips land (`pds.fleet_location: landing`,
+from
+[`coasts::describe_pds_tracks`](https://rdrr.io/pkg/coasts/man/describe_pds_tracks.html)
+in the PDS job), not by the Airtable `gaul 2` link. - Outputs:
 `export_summaries` writes Mongo `app[-dev]` (`dashboard_wcs`), read by
 `peskas.kenya.bmu.dashboard`; `validate_kefs_surveys_v2` writes
 `validation-*`, read by `peskas-validation`.
@@ -64,10 +70,10 @@ with `package = "peskas.kenya.data.pipeline"`. - Outputs:
   shadowed mid-chain.
 - Treat `wcs-surveys-validated` columns as a contract:
   `export_api_validated` and `merge_trips` read them.
-- Prefer `coasts::` over the local copies of coasts helpers in
-  `R/airtable.R` (`airtable_to_df`, `df_to_airtable`,
-  `bulk_update_airtable`, `fetch_asset`, …); flag the duplicate when you
-  touch one.
+- Prefer `coasts::` over the local copies of coasts helpers
+  (`df_to_airtable`, `bulk_update_airtable`, `fetch_asset`, … in
+  `R/airtable.R`; `airtable_to_df` in `R/ingestion.R`); flag the
+  duplicate when you touch one.
 
 ## Gotchas
 
@@ -85,13 +91,11 @@ with `package = "peskas.kenya.data.pipeline"`. - Outputs:
 - KEFS `length_cm` in the API export is the mean length of the fish
   measured per species and landing (see `R/api.R`). The Kenya dashboard
   draws its size views from it and says so (`survey.meanLengths` in
-  `peskas.dashboard/packages/domain/src/country.ts`); changing it to
-  individual fish or length classes means dropping that flag. It is
-  total length:
+  `packages/domain/src/country.ts` on the `peskas.dashboard` branch
+  `shadcn-migration`); changing it to individual fish or length classes
+  means dropping that flag. It is total length:
   [`convert_fork_lengths()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/convert_fork_lengths.md)
   restates fork-length fish with coasts’ POPLL fits before the mean,
   except species with no fit. Lobsters and crabs stay on carapace length
   and octopus on mantle length. Keep `metadata.fishbase.db_version`
   equal to coasts’, which converts the maturity lengths.
-- `airtable_to_df` is defined twice in this package (`R/airtable.R` and
-  `R/ingestion.R`).
