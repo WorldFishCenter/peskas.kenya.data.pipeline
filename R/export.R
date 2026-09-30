@@ -83,13 +83,17 @@ compute_monthly_summaries <- function(valid_data, bmu_size) {
 #'
 #' @details
 #' The function performs the following operations:
-#' 1. **Data Retrieval**: Pulls validated fishery data from the "legacy-validated" MongoDB collection.
+#' 1. **Data Retrieval**: Reads the latest validated WCS catch table
+#'    (`surveys.wcs.catch.validated`) from cloud storage, and BMU sizes from
+#'    `get_metadata()$BMUs`; landing sites without a size are dropped.
 #' 2. **Summary Dataset Generation**: Creates the following summary datasets:
-#'    - **Monthly Statistics**: Aggregates metrics like catch, effort, and CPUE by BMU (Beach Management Unit) and month.
-#'    - **Gear Distribution**: Calculates the percentage usage of each gear type by landing site.
-#'    - **Fish Distribution**: Calculates the percentage of each fish category by landing site.
-#'    - **Mapping Distribution**: Prepares a dataset of landing sites with geographic coordinates for spatial mapping.
-#' 3. **Data Upload**: Uploads each of the summary datasets to its designated MongoDB collection.
+#'    - **Individual metrics**: catch and gear metrics per fisher.
+#'    - **Monthly Statistics**: catch, effort and CPUE by BMU (Beach Management Unit) for the last six months.
+#'    - **Monthly Summaries**: monthly metrics by BMU.
+#'    - **Fish Distribution**: the share of each fish category by landing site, overall and per fisher.
+#'    - **Gear Summaries**: metrics by gear type.
+#' 3. **Data Upload**: Pushes each dataset to its collection in the `dashboard_wcs` MongoDB
+#'    database (`storage.mongodb.databases.dashboard_wcs.collections.v1`).
 #'
 #' **Calculated Metrics**:
 #' - **Effort** = Number of fishers / Size of BMU in km²
@@ -99,19 +103,15 @@ compute_monthly_summaries <- function(valid_data, bmu_size) {
 #'   * Mean catch per trip
 #'   * Mean effort
 #'   * Mean CPUE (Catch Per Unit Effort)
-#' - **Gear Distribution**:
-#'   * Count of each gear type used
-#'   * Percentage distribution of gear types by landing site
 #' - **Fish Distribution**:
 #'   * Total catch by fish category
 #'   * Percentage of each fish category within the total catch
 #'
 #' @param log_threshold The logging threshold level for monitoring operations (default: `logger::DEBUG`).
 #' @return
-#' This function does not return a value. It uploads the following collections to MongoDB:
-#' - Monthly catch summaries (`monthly_stats` and `monthly_summaries`)
-#' - Gear distribution statistics (`gear_distribution`)
-#' - Fish distribution statistics (`fish_distribution`)
+#' This function does not return a value. It pushes these collections to MongoDB:
+#' `individual_stats`, `individual_gear_stats`, `individual_fish_distribution`,
+#' `monthly_stats`, `catch_monthly`, `fish_distribution` and `gear_summaries`.
 #'
 #' @note
 #' **Dependencies**:
@@ -161,28 +161,6 @@ export_summaries <- function(log_threshold = logger::DEBUG) {
 
   # Caluclate fishers day and summarise by month the main metrics
   monthly_summaries <- compute_monthly_summaries(valid_data, bmu_size)
-
-  # Calculate gear usage percent
-  gear_distribution <-
-    valid_data %>%
-    dplyr::group_by(.data$submission_id) %>%
-    dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::first(.x))) %>%
-    dplyr::filter(!is.na(.data$gear)) %>%
-    dplyr::group_by(.data$landing_site) %>%
-    dplyr::mutate(total_n = dplyr::n()) %>%
-    dplyr::group_by(.data$landing_site, .data$gear) %>%
-    dplyr::summarise(
-      gear_n = dplyr::n(),
-      gear_perc = .data$gear_n / dplyr::first(.data$total_n) * 100,
-      .groups = "drop"
-    ) %>%
-    dplyr::ungroup() %>%
-    tidyr::complete(
-      .data$landing_site,
-      .data$gear,
-      fill = list(gear_n = 0, gear_perc = 0)
-    ) %>%
-    dplyr::mutate(landing_site = stringr::str_to_title(.data$landing_site))
 
   fish_distribution <-
     valid_data %>%

@@ -10,12 +10,9 @@ export_summaries(log_threshold = logger::DEBUG)
 \item{log_threshold}{The logging threshold level for monitoring operations (default: \code{logger::DEBUG}).}
 }
 \value{
-This function does not return a value. It uploads the following collections to MongoDB:
-\itemize{
-\item Monthly catch summaries (\code{monthly_stats} and \code{monthly_summaries})
-\item Gear distribution statistics (\code{gear_distribution})
-\item Fish distribution statistics (\code{fish_distribution})
-}
+This function does not return a value. It pushes these collections to MongoDB:
+\code{individual_stats}, \code{individual_gear_stats}, \code{individual_fish_distribution},
+\code{monthly_stats}, \code{catch_monthly}, \code{fish_distribution} and \code{gear_summaries}.
 }
 \description{
 This function processes and exports validated fishery data by calculating various
@@ -25,15 +22,19 @@ for usage in a dashboard.
 \details{
 The function performs the following operations:
 \enumerate{
-\item \strong{Data Retrieval}: Pulls validated fishery data from the "legacy-validated" MongoDB collection.
+\item \strong{Data Retrieval}: Reads the latest validated WCS catch table
+(\code{surveys.wcs.catch.validated}) from cloud storage, and BMU sizes from
+\code{get_metadata()$BMUs}; landing sites without a size are dropped.
 \item \strong{Summary Dataset Generation}: Creates the following summary datasets:
 \itemize{
-\item \strong{Monthly Statistics}: Aggregates metrics like catch, effort, and CPUE by BMU (Beach Management Unit) and month.
-\item \strong{Gear Distribution}: Calculates the percentage usage of each gear type by landing site.
-\item \strong{Fish Distribution}: Calculates the percentage of each fish category by landing site.
-\item \strong{Mapping Distribution}: Prepares a dataset of landing sites with geographic coordinates for spatial mapping.
+\item \strong{Individual metrics}: catch and gear metrics per fisher.
+\item \strong{Monthly Statistics}: catch, effort and CPUE by BMU (Beach Management Unit) for the last six months.
+\item \strong{Monthly Summaries}: monthly metrics by BMU.
+\item \strong{Fish Distribution}: the share of each fish category by landing site, overall and per fisher.
+\item \strong{Gear Summaries}: metrics by gear type.
 }
-\item \strong{Data Upload}: Uploads each of the summary datasets to its designated MongoDB collection.
+\item \strong{Data Upload}: Pushes each dataset to its collection in the \code{dashboard_wcs} MongoDB
+database (\code{storage.mongodb.databases.dashboard_wcs.collections.v1}).
 }
 
 \strong{Calculated Metrics}:
@@ -46,11 +47,6 @@ The function performs the following operations:
 \item Mean catch per trip
 \item Mean effort
 \item Mean CPUE (Catch Per Unit Effort)
-}
-\item \strong{Gear Distribution}:
-\itemize{
-\item Count of each gear type used
-\item Percentage distribution of gear types by landing site
 }
 \item \strong{Fish Distribution}:
 \itemize{
