@@ -225,6 +225,9 @@ default:
       # coasts::summarize_data() turns into the dashboard's taxa traits.
       taxa_enriched:
         file_prefix: taxa-fishbase-enriched
+  fao:
+    # Validated survey file carrying the "days fished last week" answer.
+    surveys: kefs-v2-surveys-validated
   api:
     trips:
       raw:
