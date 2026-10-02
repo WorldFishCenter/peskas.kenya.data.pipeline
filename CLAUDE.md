@@ -53,7 +53,9 @@ with `package = "peskas.kenya.data.pipeline"`. The fleet estimate places
 each tracker by where its trips land (`pds.fleet_location: landing`,
 from
 [`coasts::describe_pds_tracks`](https://rdrr.io/pkg/coasts/man/describe_pds_tracks.html)
-in the PDS job), not by the Airtable `gaul 2` link. - Outputs:
+in the PDS job), not by the Airtable `gaul 2` link. With `fao.surveys`
+set to the KEFS v2 validated file, it also raises catch and revenue with
+the FAO ARTFISH method (coasts \>= 4.19.0). - Outputs:
 `export_summaries` writes Mongo `app[-dev]` (`dashboard_wcs`), read by
 `peskas.kenya.bmu.dashboard`; `validate_kefs_surveys_v2` writes
 `validation-*`, read by `peskas-validation`.
