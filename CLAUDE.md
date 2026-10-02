@@ -34,7 +34,9 @@ Two independent survey chains share the package:
   artifacts), then `coasts::summarize_data`, `coasts::generate_fleet_analysis` and
   `coasts::export_portal` with `package = "peskas.kenya.data.pipeline"`. The fleet estimate
   places each tracker by where its trips land (`pds.fleet_location: landing`, from
-  `coasts::describe_pds_tracks` in the PDS job), not by the Airtable `gaul 2` link.
+  `coasts::describe_pds_tracks` in the PDS job), not by the Airtable `gaul 2` link. With
+  `fao.surveys` set to the KEFS v2 validated file, it also raises catch and revenue with the
+  FAO ARTFISH method (coasts >= 4.19.0).
 - Outputs: `export_summaries` writes Mongo `app[-dev]` (`dashboard_wcs`), read by `peskas.kenya.bmu.dashboard`;
   `validate_kefs_surveys_v2` writes `validation-*`, read by `peskas-validation`.
 
