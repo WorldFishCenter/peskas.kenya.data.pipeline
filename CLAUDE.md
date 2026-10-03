@@ -62,8 +62,7 @@ Two independent survey chains share the package:
   undefined anchors silently resolved to a placeholder and excluded nothing.
 - KEFS `length_cm` in the API export is the mean length of the fish measured per species and
   landing (see `R/api.R`). The Kenya dashboard draws its size views from it and says so
-  (`survey.meanLengths` in `packages/domain/src/country.ts` on the `peskas.dashboard` branch
-  `shadcn-migration`); changing it to
+  (`survey.meanLengths` in `peskas.dashboard`'s `packages/domain/src/country.ts`); changing it to
   individual fish or length classes means dropping that flag. It is total length:
   `convert_fork_lengths()` restates fork-length fish with coasts' POPLL fits before the mean,
   except species with no fit. Lobsters and crabs stay on carapace length and octopus on mantle
