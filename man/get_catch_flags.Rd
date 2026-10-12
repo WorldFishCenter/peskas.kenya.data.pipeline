@@ -33,6 +33,9 @@ A data frame with columns:
 or total catch weight
 \item "5.3": Length exceeds \code{max_length_cm}
 }
+\item alert_catches: For 5.2 and 5.3, the species sample each was raised
+on: its number in the form (\code{catch_number}, 1 for the first species),
+\code{code}, \code{species} and the \code{value} recorded. NULL when none was.
 }
 }
 \description{

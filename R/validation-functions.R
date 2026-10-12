@@ -1052,6 +1052,9 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
 #'                      or total catch weight
 #'         \item "5.3": Length exceeds `max_length_cm`
 #'       }
+#'     \item alert_catches: For 5.2 and 5.3, the species sample each was raised
+#'       on: its number in the form (`catch_number`, 1 for the first species),
+#'       `code`, `species` and the `value` recorded. NULL when none was.
 #'   }
 #'
 #' @details
@@ -1074,7 +1077,8 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
 #' }
 #' @export
 get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
-  dat |>
+  checks <-
+    dat |>
     dplyr::filter(
       .data$catch_outcome == "yes"
     ) |>
@@ -1098,7 +1102,36 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
         .data$length_max_cm > max_length_cm ~ "5.3",
         TRUE ~ NA_character_
       )
+    )
+
+  # Where each sample alert was raised, so a reviewer can go straight to it.
+  # 5.1 compares two totals and belongs to no sample. `n_sample` follows the
+  # form's species samples from 1.
+  locations <-
+    checks |>
+    dplyr::filter(!is.na(.data$n_sample)) |>
+    tidyr::pivot_longer(
+      c("alert_sample", "alert_length"),
+      values_to = "code",
+      values_drop_na = TRUE
     ) |>
+    dplyr::mutate(
+      catch_number = as.integer(.data$n_sample),
+      value = dplyr::if_else(
+        .data$code == "5.2",
+        paste(.data$sample_weight, "kg"),
+        paste(.data$length_max_cm, "cm")
+      )
+    ) |>
+    dplyr::group_by(.data$submission_id, .data$catch_number, .data$code) |>
+    dplyr::summarise(
+      species = dplyr::first(.data$sample_scientific_name),
+      value = dplyr::first(.data$value),
+      .groups = "drop"
+    ) |>
+    tidyr::nest(alert_catches = -"submission_id")
+
+  checks |>
     dplyr::select(
       "submission_id",
       dplyr::starts_with("alert_")
@@ -1129,7 +1162,8 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
       } else {
         paste(.data$alert_flag[!is.na(.data$alert_flag)], collapse = ", ")
       }
-    )
+    ) |>
+    dplyr::left_join(locations, by = "submission_id")
 }
 
 #' Generate Composite Indicator Validation Flags

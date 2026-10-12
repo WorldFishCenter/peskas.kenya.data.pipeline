@@ -590,12 +590,17 @@ export_validation_flags <- function(
         TRUE ~ .data$validation_status
       )
     ) |>
-    dplyr::filter(!is.na(.data$submitted_by))
+    dplyr::filter(!is.na(.data$submitted_by)) |>
+    # Stored as [] when no sample was flagged; a missing one would be {}.
+    dplyr::mutate(dplyr::across(
+      dplyr::any_of("alert_catches"),
+      ~ lapply(.x, function(x) if (is.null(x)) list() else x)
+    ))
 
   validation_flags_long <- validation_flags_with_kobo_status |>
     dplyr::mutate(alert_flag = as.character(.data$alert_flag)) %>%
     tidyr::separate_rows("alert_flag", sep = ",\\s*") |>
-    dplyr::select(-c(dplyr::starts_with("valid")))
+    dplyr::select(-c(dplyr::starts_with("valid"), dplyr::any_of("alert_catches")))
 
   asset_id <- survey_conf[[config_key]]
 

@@ -1,3 +1,9 @@
+# peskas.kenya.data.pipeline 5.6.0
+
+## Alerts point to the species sample that raised them
+
+* **NEW** Alerts 5.2 (a sample heavier than its total) and 5.3 (a length over 500 cm) record which species sample they are about (numbered as in the form), its species and the weight or length recorded. The Management Platform shows them, so a reviewer goes straight to the sample instead of checking each one: 2,018 KEFS submissions now say which. No alert or decision changes.
+
 # peskas.kenya.data.pipeline 5.5.2
 
 ## No-catch trips with a price of zero are not flagged
