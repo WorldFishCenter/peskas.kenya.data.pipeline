@@ -934,7 +934,7 @@ validate_nboats_iqr <- function(
 #'         \item "2": Number of fishers is <= 0 or exceeds maximum
 #'         \item "3": Trip duration is <= 0 or exceeds maximum
 #'         \item "4.1": Catch outcome is "yes" but total catch price is <= 0
-#'         \item "4.2": Catch outcome is "no" but total catch price is >= 0
+#'         \item "4.2": Catch outcome is "no" but total catch price is > 0
 #'         \item "4.3": Total catch price exceeds maximum revenue limit
 #'       }
 #'   }
@@ -977,7 +977,7 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
       ),
       alert_tot_catch_price = dplyr::case_when(
         .data$catch_outcome == "yes" & .data$total_catch_price <= 0 ~ "4.1",
-        .data$catch_outcome == "no" & .data$total_catch_price >= 0 ~ "4.2",
+        .data$catch_outcome == "no" & .data$total_catch_price > 0 ~ "4.2",
         .data$total_catch_price > limits$max_revenue ~ "4.3",
         TRUE ~ NA_character_
       ),
