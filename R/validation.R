@@ -442,7 +442,9 @@ validate_kefs_surveys_v2 <- function() {
       sep = ",",
       na.rm = TRUE
     ) |>
-    dplyr::mutate(alert_flag = dplyr::na_if(.data$alert_flag, "")) |>
+    dplyr::mutate(
+      alert_flag = unique_alert_codes(dplyr::na_if(.data$alert_flag, ""))
+    ) |>
     dplyr::left_join(
       preprocessed_surveys |>
         dplyr::select(

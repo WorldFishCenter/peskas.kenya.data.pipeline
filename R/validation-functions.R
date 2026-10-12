@@ -1273,3 +1273,12 @@ get_indicators_flags <- function(dat = NULL, limits = NULL, clean_ids = NULL) {
       }
     )
 }
+
+# Each alert code once per submission. Checks run on every catch row, so an
+# alert repeats once per species ("5.2, 5.2") unless removed here.
+unique_alert_codes <- function(alert_flag) {
+  codes <- lapply(strsplit(alert_flag, ",\\s*"), unique)
+  out <- vapply(codes, paste, character(1), collapse = ", ")
+  out[is.na(alert_flag)] <- NA_character_
+  out
+}
