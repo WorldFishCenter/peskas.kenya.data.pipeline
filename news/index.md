@@ -1,5 +1,13 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.5.1
+
+### Each alert shows once
+
+- **FIXED** A submission lists each alert code once. An alert used to
+  repeat once per species recorded (“5.2, 5.2”), and each repeat counted
+  as one more flagged submission in the enumerator statistics.
+
 ## peskas.kenya.data.pipeline 5.5.0
 
 ### A second estimate of total catch and revenue, by FAO’s ARTFISH method
