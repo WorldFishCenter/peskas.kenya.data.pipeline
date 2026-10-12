@@ -54,6 +54,10 @@ A data frame with columns:
 
   - "5.3": Length exceeds `max_length_cm`
 
+- alert_catches: For 5.2 and 5.3, the species sample each was raised on:
+  its number in the form (`catch_number`, 1 for the first species),
+  `code`, `species` and the `value` recorded. NULL when none was.
+
 ## Details
 
 The function only processes submissions where catch_outcome is "yes". It
