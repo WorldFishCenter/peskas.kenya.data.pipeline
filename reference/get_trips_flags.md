@@ -62,7 +62,7 @@ A data frame with columns:
 
   - "4.1": Catch outcome is "yes" but total catch price is \<= 0
 
-  - "4.2": Catch outcome is "no" but total catch price is \>= 0
+  - "4.2": Catch outcome is "no" but total catch price is \> 0
 
   - "4.3": Total catch price exceeds maximum revenue limit
 

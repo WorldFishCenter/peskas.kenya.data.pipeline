@@ -1,5 +1,14 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.5.2
+
+### No-catch trips with a price of zero are not flagged
+
+- **FIXED** Alert 4.2 flags a trip with no catch only when its total
+  price is above zero. It said “zero or more”, so a no-catch trip with a
+  price of 0 would have been flagged. No trip in the data changes: so
+  far those trips record no price at all.
+
 ## peskas.kenya.data.pipeline 5.5.1
 
 ### Each alert shows once
