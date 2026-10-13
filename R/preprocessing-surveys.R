@@ -1585,8 +1585,14 @@ map_kefs_surveys <- function(
       .after = dplyr::any_of(c("vessel_type", "gear"))
     ) |>
     dplyr::rename(vessel_type = "standard_name") |>
+    # Site codes match whatever their case: the form sends "Kipini" for the
+    # table's "kipini", and an unmatched code leaves the trip without a district.
+    dplyr::mutate(landing_site = stringr::str_to_lower(stringr::str_trim(.data$landing_site))) |>
     dplyr::left_join(
-      sites_mapping,
+      dplyr::mutate(
+        sites_mapping,
+        site_code = stringr::str_to_lower(stringr::str_trim(.data$site_code))
+      ),
       by = c("landing_site" = "site_code")
     ) |>
     dplyr::select(-c("landing_site", "form_id")) |>
