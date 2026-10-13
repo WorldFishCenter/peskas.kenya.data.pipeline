@@ -1,5 +1,14 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.6.1
+
+### Landing-site codes match whatever their case
+
+- **FIXED** A survey’s landing site is matched to the Airtable landing
+  sites whatever its case, so “Kipini” finds the table’s “kipini”. 148
+  KEFS trips at Kipini and Ras Ya Mwana had no district for that reason
+  and now count in Garsen.
+
 ## peskas.kenya.data.pipeline 5.6.0
 
 ### Alerts point to the species sample that raised them
