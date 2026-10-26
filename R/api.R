@@ -41,7 +41,7 @@ format_api_wcs <- function(surveys_df, conf) {
       trip_duration_hrs = NA_real_,
       vessel_type = NA_character_,
       catch_habitat = NA_character_,
-      catch_outcome = NA_character_,
+      catch_outcome = NA_integer_,
       length_cm = NA_real_,
       survey_organization = "WCS"
     ) |>
@@ -131,7 +131,7 @@ format_api_kefs <- function(surveys_df, conf) {
     dplyr::mutate(
       n_sample = as.integer(.data$n_sample),
       survey_organization = "KEFS",
-      catch_outcome = dplyr::if_else(.data$catch_outcome == "yes", "1", "0"),
+      catch_outcome = dplyr::if_else(.data$catch_outcome == "yes", 1L, 0L),
       # sample_price is a KSH/kg rate, catch_price is a value; multiply through.
       catch_price = .data$sample_weight * .data$sample_price
     ) |>

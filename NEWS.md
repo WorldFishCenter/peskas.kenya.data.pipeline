@@ -1,3 +1,9 @@
+# peskas.kenya.data.pipeline 5.6.2
+
+## Catch outcome goes out as a number
+
+* **FIXED** Whether a trip caught anything is published as a number, as the API describes it, instead of text.
+
 # peskas.kenya.data.pipeline 5.6.1
 
 ## Landing-site codes match whatever their case
