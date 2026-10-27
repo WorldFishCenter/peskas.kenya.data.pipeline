@@ -324,7 +324,7 @@ validate_landings <- function() {
 #'   \item max_cpue: 20 kg/fisher/hour (maximum catch per unit effort)
 #'   \item max_rpue: 3,876 KSH/fisher/hour (approximately 30 USD/fisher/hour)
 #'   \item max_price_kg: 3,876 KSH/kg (approximately 30 USD/kg)
-#'   \item min_price_kg: 20 KSH/kg (approximately 0.15 USD/kg)
+#'   \item min_price_kg: 50 KSH/kg (approximately 0.40 USD/kg), as in the KoBo form
 #' }
 #'
 #' @note
@@ -422,7 +422,7 @@ validate_kefs_surveys_v2 <- function() {
       max_cpue = 20, # max catch per unit effort (fisher/hours) 20 kg/hour
       max_rpue = 3876, # max revenue per unit effort (fisher/hours) 30 USD/hour
       max_price_kg = 3876, # max price per kg 30 USD/kg
-      min_price_kg = 20
+      min_price_kg = 50
     )
 
   composite_flags <- get_indicators_flags(

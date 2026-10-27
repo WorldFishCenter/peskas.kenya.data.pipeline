@@ -1,3 +1,9 @@
+# peskas.kenya.data.pipeline 5.7.1
+
+## The low-price alert matches the KoBo form
+
+* **FIXED** Alert 6.4 flags a trip sold for less than 50 KSH per kg (about 0.40 USD) instead of 20, the floor the KEFS form has had since 22 April 2026. 
+
 # peskas.kenya.data.pipeline 5.7.0
 
 ## A price too low to be real is flagged

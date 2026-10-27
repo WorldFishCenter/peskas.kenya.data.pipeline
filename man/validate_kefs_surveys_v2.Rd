@@ -59,7 +59,7 @@ And for indicator validation:
 \item max_cpue: 20 kg/fisher/hour (maximum catch per unit effort)
 \item max_rpue: 3,876 KSH/fisher/hour (approximately 30 USD/fisher/hour)
 \item max_price_kg: 3,876 KSH/kg (approximately 30 USD/kg)
-\item min_price_kg: 20 KSH/kg (approximately 0.15 USD/kg)
+\item min_price_kg: 50 KSH/kg (approximately 0.40 USD/kg), as in the KoBo form
 }
 }
 
