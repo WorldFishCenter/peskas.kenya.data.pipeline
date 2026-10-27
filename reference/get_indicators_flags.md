@@ -39,6 +39,8 @@ get_indicators_flags(dat = NULL, limits = NULL, clean_ids = NULL)
 
   - max_price_kg: Maximum acceptable price per kilogram (KSH/kg)
 
+  - min_price_kg: Minimum acceptable price per kilogram (KSH/kg)
+
 - clean_ids:
 
   A vector of submission IDs that have passed previous validation
@@ -59,6 +61,8 @@ A data frame with columns:
   - "6.2": RPUE (revenue per unit effort) exceeds maximum
 
   - "6.3": Price per kilogram exceeds maximum
+
+  - "6.4": Price per kilogram is below minimum
 
 ## Details
 
@@ -93,7 +97,8 @@ clean_ids <- dplyr::full_join(trip_flags, catch_flags, by = "submission_id") |>
 indicator_limits <- list(
   max_cpue = 20,
   max_rpue = 3876,
-  max_price_kg = 3876
+  max_price_kg = 3876,
+  min_price_kg = 20
 )
 indicator_flags <- get_indicators_flags(
   dat = survey_data,

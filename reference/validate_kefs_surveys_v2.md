@@ -40,7 +40,7 @@ The function performs the following main operations:
     - Catch flags: Sample weight inconsistencies (flags 5.1-5.2)
 
     - Indicator flags: CPUE, RPUE, and price per kg outliers (flags
-      6.1-6.3)
+      6.1-6.4)
 
 4.  Combines all validation flags into a comprehensive alert system.
 
@@ -79,3 +79,5 @@ And for indicator validation:
 - max_rpue: 3,876 KSH/fisher/hour (approximately 30 USD/fisher/hour)
 
 - max_price_kg: 3,876 KSH/kg (approximately 30 USD/kg)
+
+- min_price_kg: 20 KSH/kg (approximately 0.15 USD/kg)

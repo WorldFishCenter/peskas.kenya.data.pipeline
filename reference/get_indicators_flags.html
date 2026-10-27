@@ -13,7 +13,7 @@ that have passed previous validation checks."><meta property="og:image" content=
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.6.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,6 +66,7 @@ that have passed previous validation checks.</p>
 <dd><p>A list containing threshold values for validation:</p><ul><li><p>max_cpue: Maximum acceptable catch per unit effort (kg/fisher/hour)</p></li>
 <li><p>max_rpue: Maximum acceptable revenue per unit effort (KSH/fisher/hour)</p></li>
 <li><p>max_price_kg: Maximum acceptable price per kilogram (KSH/kg)</p></li>
+<li><p>min_price_kg: Minimum acceptable price per kilogram (KSH/kg)</p></li>
 </ul></dd>
 
 
@@ -80,6 +81,7 @@ Only these submissions will be evaluated for indicator-based anomalies.</p></dd>
 <li><p>alert_flag_indicators: Comma-separated string of alert codes (NA if no alerts):</p><ul><li><p>"6.1": CPUE (catch per unit effort) exceeds maximum</p></li>
 <li><p>"6.2": RPUE (revenue per unit effort) exceeds maximum</p></li>
 <li><p>"6.3": Price per kilogram exceeds maximum</p></li>
+<li><p>"6.4": Price per kilogram is below minimum</p></li>
 </ul></li>
 </ul></div>
     <div class="section level2">
@@ -106,7 +108,8 @@ determined to be generally valid.</p>
 <span class="r-in"><span><span class="va">indicator_limits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  max_cpue <span class="op">=</span> <span class="fl">20</span>,</span></span>
 <span class="r-in"><span>  max_rpue <span class="op">=</span> <span class="fl">3876</span>,</span></span>
-<span class="r-in"><span>  max_price_kg <span class="op">=</span> <span class="fl">3876</span></span></span>
+<span class="r-in"><span>  max_price_kg <span class="op">=</span> <span class="fl">3876</span>,</span></span>
+<span class="r-in"><span>  min_price_kg <span class="op">=</span> <span class="fl">20</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">indicator_flags</span> <span class="op">&lt;-</span> <span class="fu">get_indicators_flags</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  dat <span class="op">=</span> <span class="va">survey_data</span>,</span></span>

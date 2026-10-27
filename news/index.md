@@ -1,5 +1,16 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.7.0
+
+### A price too low to be real is flagged
+
+- **NEW** Alert 6.4 flags a trip sold for less than 20 KSH per kg (about
+  0.15 USD), the low end of alert 6.3. Only a price too high was
+  checked, so a mistyped trip price per kg went out as validated, often
+  the weight typed again (11 kg sold at 1 KSH per kg) while the species
+  prices in the same form were right. On the data of 27 October 2026 it
+  flags 36 KEFS trips for review.
+
 ## peskas.kenya.data.pipeline 5.6.2
 
 ### Catch outcome goes out as a number
