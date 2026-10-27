@@ -98,7 +98,7 @@ indicator_limits <- list(
   max_cpue = 20,
   max_rpue = 3876,
   max_price_kg = 3876,
-  min_price_kg = 20
+  min_price_kg = 50
 )
 indicator_flags <- get_indicators_flags(
   dat = survey_data,

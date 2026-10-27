@@ -80,4 +80,5 @@ And for indicator validation:
 
 - max_price_kg: 3,876 KSH/kg (approximately 30 USD/kg)
 
-- min_price_kg: 20 KSH/kg (approximately 0.15 USD/kg)
+- min_price_kg: 50 KSH/kg (approximately 0.40 USD/kg), as in the KoBo
+  form
