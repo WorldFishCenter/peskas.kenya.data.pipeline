@@ -21,6 +21,7 @@ get_indicators_flags(dat = NULL, limits = NULL, clean_ids = NULL)
 \item max_cpue: Maximum acceptable catch per unit effort (kg/fisher/hour)
 \item max_rpue: Maximum acceptable revenue per unit effort (KSH/fisher/hour)
 \item max_price_kg: Maximum acceptable price per kilogram (KSH/kg)
+\item min_price_kg: Minimum acceptable price per kilogram (KSH/kg)
 }}
 
 \item{clean_ids}{A vector of submission IDs that have passed previous validation checks.
@@ -35,6 +36,7 @@ A data frame with columns:
 \item "6.1": CPUE (catch per unit effort) exceeds maximum
 \item "6.2": RPUE (revenue per unit effort) exceeds maximum
 \item "6.3": Price per kilogram exceeds maximum
+\item "6.4": Price per kilogram is below minimum
 }
 }
 }
@@ -70,7 +72,8 @@ clean_ids <- dplyr::full_join(trip_flags, catch_flags, by = "submission_id") |>
 indicator_limits <- list(
   max_cpue = 20,
   max_rpue = 3876,
-  max_price_kg = 3876
+  max_price_kg = 3876,
+  min_price_kg = 20
 )
 indicator_flags <- get_indicators_flags(
   dat = survey_data,

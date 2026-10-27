@@ -1186,6 +1186,7 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
 #'     \item max_cpue: Maximum acceptable catch per unit effort (kg/fisher/hour)
 #'     \item max_rpue: Maximum acceptable revenue per unit effort (KSH/fisher/hour)
 #'     \item max_price_kg: Maximum acceptable price per kilogram (KSH/kg)
+#'     \item min_price_kg: Minimum acceptable price per kilogram (KSH/kg)
 #'   }
 #' @param clean_ids A vector of submission IDs that have passed previous validation checks.
 #'   Only these submissions will be evaluated for indicator-based anomalies.
@@ -1198,6 +1199,7 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
 #'         \item "6.1": CPUE (catch per unit effort) exceeds maximum
 #'         \item "6.2": RPUE (revenue per unit effort) exceeds maximum
 #'         \item "6.3": Price per kilogram exceeds maximum
+#'         \item "6.4": Price per kilogram is below minimum
 #'       }
 #'   }
 #'
@@ -1228,7 +1230,8 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
 #' indicator_limits <- list(
 #'   max_cpue = 20,
 #'   max_rpue = 3876,
-#'   max_price_kg = 3876
+#'   max_price_kg = 3876,
+#'   min_price_kg = 20
 #' )
 #' indicator_flags <- get_indicators_flags(
 #'   dat = survey_data,
@@ -1272,6 +1275,7 @@ get_indicators_flags <- function(dat = NULL, limits = NULL, clean_ids = NULL) {
       ),
       alert_price_kg = dplyr::case_when(
         .data$price_kg > limits$max_price_kg ~ "6.3",
+        .data$price_kg > 0 & .data$price_kg < limits$min_price_kg ~ "6.4",
         TRUE ~ NA_character_
       )
     ) |>

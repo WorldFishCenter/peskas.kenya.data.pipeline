@@ -29,7 +29,7 @@ submission's status on KEFS's KoboToolbox server.
 \item Information flags: Missing catch outcome and weight data (flag 1.1)
 \item Trip flags: Horse power, number of fishers, trip duration, and revenue anomalies (flags 1-4)
 \item Catch flags: Sample weight inconsistencies (flags 5.1-5.2)
-\item Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.3)
+\item Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.4)
 }
 \item Combines all validation flags into a comprehensive alert system.
 \item Keeps the submissions with no flag, and those a reviewer approved.
@@ -59,6 +59,7 @@ And for indicator validation:
 \item max_cpue: 20 kg/fisher/hour (maximum catch per unit effort)
 \item max_rpue: 3,876 KSH/fisher/hour (approximately 30 USD/fisher/hour)
 \item max_price_kg: 3,876 KSH/kg (approximately 30 USD/kg)
+\item min_price_kg: 20 KSH/kg (approximately 0.15 USD/kg)
 }
 }
 

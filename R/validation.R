@@ -304,7 +304,7 @@ validate_landings <- function() {
 #'    - Information flags: Missing catch outcome and weight data (flag 1.1)
 #'    - Trip flags: Horse power, number of fishers, trip duration, and revenue anomalies (flags 1-4)
 #'    - Catch flags: Sample weight inconsistencies (flags 5.1-5.2)
-#'    - Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.3)
+#'    - Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.4)
 #' 4. Combines all validation flags into a comprehensive alert system.
 #' 5. Keeps the submissions with no flag, and those a reviewer approved.
 #' 6. Uploads the validated dataset, and pushes the flags with the reviewers'
@@ -324,6 +324,7 @@ validate_landings <- function() {
 #'   \item max_cpue: 20 kg/fisher/hour (maximum catch per unit effort)
 #'   \item max_rpue: 3,876 KSH/fisher/hour (approximately 30 USD/fisher/hour)
 #'   \item max_price_kg: 3,876 KSH/kg (approximately 30 USD/kg)
+#'   \item min_price_kg: 20 KSH/kg (approximately 0.15 USD/kg)
 #' }
 #'
 #' @note
@@ -420,7 +421,8 @@ validate_kefs_surveys_v2 <- function() {
     list(
       max_cpue = 20, # max catch per unit effort (fisher/hours) 20 kg/hour
       max_rpue = 3876, # max revenue per unit effort (fisher/hours) 30 USD/hour
-      max_price_kg = 3876 # max price per kg 30 USD/kg
+      max_price_kg = 3876, # max price per kg 30 USD/kg
+      min_price_kg = 20
     )
 
   composite_flags <- get_indicators_flags(
