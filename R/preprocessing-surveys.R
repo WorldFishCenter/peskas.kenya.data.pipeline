@@ -145,7 +145,7 @@ preprocess_kefs_surveys_v1 <- function(log_threshold = logger::DEBUG) {
     dplyr::left_join(
       standardize_enumerator_names(
         data = raw_dat,
-        max_distance = 2
+        enumerators = get_kefs_enumerators(conf)
       ),
       by = "submission_id"
     ) |>
@@ -372,7 +372,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     dplyr::left_join(
       standardize_enumerator_names(
         data = raw_dat,
-        max_distance = 2
+        enumerators = get_kefs_enumerators(conf)
       ),
       by = "submission_id"
     ) |>
@@ -1661,115 +1661,208 @@ map_wcs_surveys <- function(
 
 #' Standardize Enumerator Names
 #'
-#' Cleans and standardizes enumerator names by removing special characters,
-#' fixing typos, and matching similar names using string distance.
+#' Turns the enumerator names typed in the KEFS forms into one stable name per
+#' person, anchored on the KEFS enumerators listed in Airtable (see
+#' [get_kefs_enumerators()]). Their aliases, the spellings the data cannot tie
+#' to them on its own (a different surname, two people with one name), are
+#' applied first.
 #'
-#' @param data A data frame with columns 'submission_id' and 'enumerator_name'
-#' @param max_distance Maximum Levenshtein distance for matching similar names.
-#'   Lower values are stricter. Default is 3.
+#' @param data Raw KEFS survey data with columns 'submission_id',
+#'   'Name_of_Data_Collector', 'BMU' and 'date_data'.
+#' @param enumerators Data frame with columns 'name' and 'aliases': other
+#'   spellings of that person, separated by commas, semicolons or new lines;
+#'   "spelling (bmu)" limits one to a BMU.
+#' @param min_submissions A name that matches no one and appears in fewer
+#'   submissions than this becomes "undefined".
 #'
 #' @return A data frame with two columns: 'submission_id' and 'enumerator_name_clean'
 #'
 #' @details
 #' The function:
-#' - Removes numbers and special characters
-#' - Converts to lowercase
-#' - Removes extra whitespace
-#' - Marks single-word entries as "undefined"
-#' - Matches similar names (e.g., "john smith" and "jhon smith")
-#' - Returns the shorter/alphabetically first variant as the standard name
+#' - Lowercases names and keeps letters only ("Najma_Bausi" -> "najma bausi")
+#' - Matches a name to a person when every word of the shorter name matches a
+#'   word of the longer one, in any order and with small typos ("mahmoud madi
+#'   yusuf" -> "mahmud madi"), or when the two are the same once spaces are
+#'   removed ("abdulhakim mohamed" -> "abdul hakim")
+#' - Tries the KEFS list first, then groups the other names among themselves,
+#'   most frequent spelling first
+#' - Never merges two names that recorded landings on the same days at
+#'   different BMUs: they are two people
+#' - Gives a first name alone ("naomi") to the one person with that name at the
+#'   same BMU, and keeps it as its own name when there is none or several
+#' - Marks test entries, boat names ("mv ...") and blank names as "undefined"
 #'
 #' @keywords preprocessing helper
 #' @examples
-#' \dontrun{
-#' clean_names <- standardize_enumerator_names(raw_dat, max_distance = 2)
-#' }
+#' raw <- data.frame(
+#'   submission_id = 1:7,
+#'   Name_of_Data_Collector = c(
+#'     "Amina Juma", "amina_juma", "Amina Said", "Hassan Ali Omar",
+#'     "hasan ali", "Peter", "test"
+#'   ),
+#'   BMU = "vanga",
+#'   date_data = "2025-01-01"
+#' )
+#' enumerators <- data.frame(
+#'   name = c("Amina Juma", "Hassan Ali"),
+#'   aliases = c("amina said", NA)
+#' )
+#' clean <- standardize_enumerator_names(raw, enumerators)
+#' stopifnot(identical(
+#'   clean$enumerator_name_clean,
+#'   c(rep("amina juma", 3), rep("hassan ali", 2), "undefined", "undefined")
+#' ))
 #'
 #' @export
-standardize_enumerator_names <- function(data = NULL, max_distance = 3) {
-  # Step 1: Clean the names
-  cleaned_data <- data |>
-    dplyr::select(
-      "submission_id",
-      enumerator_name = "Name_of_Data_Collector"
-    ) |>
-    dplyr::mutate(
-      cleaned_name = stringr::str_replace_all(
-        .data$enumerator_name,
-        "[^a-zA-Z ]",
-        ""
-      ),
-      cleaned_name = stringr::str_squish(.data$cleaned_name),
-      cleaned_name = stringr::str_trim(.data$cleaned_name),
-      cleaned_name = tolower(.data$cleaned_name),
-      cleaned_name = dplyr::if_else(
-        stringr::str_detect(.data$cleaned_name, "\\s"),
-        .data$cleaned_name,
-        "undefined"
-      ),
-      cleaned_name = stringr::str_replace_all(.data$cleaned_name, "\\s+", "")
-    )
-
-  # Step 2: Get unique names for matching
-  unique_names <- cleaned_data |>
-    dplyr::filter(.data$cleaned_name != "undefined") |>
-    dplyr::distinct(.data$cleaned_name) |>
-    dplyr::pull(.data$cleaned_name)
-
-  # Step 3: Find similar names and create mapping
-  dist_matrix <- stringdist::stringdistmatrix(unique_names, method = "lv")
-  dist_matrix <- as.matrix(dist_matrix)
-  similar_idx <- which(
-    dist_matrix <= max_distance & dist_matrix > 0,
-    arr.ind = TRUE
+standardize_enumerator_names <- function(
+  data = NULL,
+  enumerators = NULL,
+  min_submissions = 3
+) {
+  rows <- data.frame(
+    submission_id = data$submission_id,
+    name = normalize_enumerator_name(data$Name_of_Data_Collector),
+    bmu = data$BMU,
+    day = substr(data$date_data, 1, 10)
   )
-  similar_idx <- similar_idx[
-    similar_idx[, 1] < similar_idx[, 2],
-    ,
-    drop = FALSE
-  ]
-
-  # Create name mapping
-  name_mapping <- data.frame(
-    cleaned_name = unique_names,
-    standardized_name = unique_names,
-    stringsAsFactors = FALSE
+  junk <- rows$name == "" | grepl("\\b(test|mv)\\b", rows$name)
+  rows$name[junk] <- ""
+  roster <- unique(normalize_enumerator_name(enumerators$name))
+  spellings <- strsplit(dplyr::coalesce(enumerators$aliases, ""), "[,;\n]")
+  alias <- trimws(unlist(spellings))
+  aliases <- data.frame(
+    name = normalize_enumerator_name(sub("\\(.*\\)", "", alias)),
+    bmu = trimws(ifelse(grepl("\\(", alias), sub(".*\\((.*)\\).*", "\\1", alias), "")),
+    enumerator = rep(normalize_enumerator_name(enumerators$name), lengths(spellings))
+  )
+  aliases <- aliases[aliases$name != "", ]
+  for (i in seq_len(nrow(aliases))) {
+    hit <- rows$name == aliases$name[i] &
+      (aliases$bmu[i] == "" | rows$bmu %in% aliases$bmu[i])
+    rows$name[hit] <- aliases$enumerator[i]
+  }
+  general <- aliases[aliases$bmu == "", ]
+  known <- c(
+    stats::setNames(roster, roster),
+    stats::setNames(general$enumerator, general$name)
   )
 
-  # Standardize to shorter/earlier name
-  if (nrow(similar_idx) > 0) {
-    for (i in 1:nrow(similar_idx)) {
-      idx1 <- similar_idx[i, 1]
-      idx2 <- similar_idx[i, 2]
+  freq <- sort(table(rows$name[rows$name != ""]), decreasing = TRUE)
+  names_seen <- names(freq)
+  person <- stats::setNames(rep(NA_character_, length(names_seen)), names_seen)
+  person[names_seen %in% roster] <- names_seen[names_seen %in% roster]
 
-      name1 <- unique_names[idx1]
-      name2 <- unique_names[idx2]
-
-      if (
-        nchar(name1) < nchar(name2) ||
-          (nchar(name1) == nchar(name2) && name1 < name2)
-      ) {
-        name_mapping$standardized_name[
-          name_mapping$cleaned_name == name2
-        ] <- name1
-      } else {
-        name_mapping$standardized_name[
-          name_mapping$cleaned_name == name1
-        ] <- name2
-      }
-    }
+  # Same days at different BMUs: two people, whatever their names.
+  elsewhere <- function(name, id) {
+    a <- unique(rows[rows$name == name, c("day", "bmu")])
+    b <- unique(rows[rows$name %in% names(person)[person %in% id], c("day", "bmu")])
+    days <- intersect(a$day, b$day)
+    clash <- vapply(days, function(d) !any(a$bmu[a$day == d] %in% b$bmu[b$day == d]), TRUE)
+    sum(clash) >= 3
   }
 
-  # Step 4: Apply mapping and return final result
-  final_data <- cleaned_data |>
-    dplyr::left_join(name_mapping, by = "cleaned_name") |>
-    dplyr::mutate(
-      enumerator_name_clean = dplyr::coalesce(
-        .data$standardized_name,
-        .data$cleaned_name
-      )
-    ) |>
-    dplyr::select("submission_id", "enumerator_name_clean")
+  # Full names: the KEFS list and aliases first, then spellings already placed (when
+  # frequent enough to be trusted as a bridge), most frequent first.
+  for (x in names_seen[is.na(person) & (grepl(" ", names_seen) | nchar(names_seen) >= 8)]) {
+    placed <- names(person)[!is.na(person) & names(person) %in% names(freq)[freq >= 10]]
+    pool <- c(known, person[placed])
+    ids <- unique(pool[vapply(names(pool), same_enumerator, TRUE, x = x)])
+    ids <- ids[!vapply(ids, elsewhere, TRUE, name = x)]
+    person[x] <- if (length(ids) == 1) ids else x
+  }
 
-  return(final_data)
+  # First names alone: the one person with that name at the same BMU.
+  rows$id <- unname(person[rows$name])
+  people <- unique(c(roster, stats::na.omit(person)))
+  for (i in which(is.na(rows$id) & rows$name != "" & !duplicated(rows[c("name", "bmu")]))) {
+    x <- rows$name[i]
+    here <- rows$name == x & rows$bmu %in% rows$bmu[i]
+    ids <- people[vapply(strsplit(people, " "), function(w) any(enumerator_word_match(x, w)), TRUE)]
+    if (length(ids) > 1) {
+      ids <- ids[vapply(ids, function(p) sum(rows$id %in% p & rows$bmu %in% rows$bmu[i]) >= 3, TRUE)]
+    }
+    rows$id[here] <- if (length(ids) == 1) ids else x
+  }
+
+  rare <- names(freq)[freq < min_submissions]
+  rows$id[rows$name == "" | (rows$name %in% rare & rows$id == rows$name & !rows$id %in% roster)] <- "undefined"
+  data.frame(submission_id = rows$submission_id, enumerator_name_clean = rows$id)
+}
+
+#' KEFS enumerators from Airtable
+#'
+#' Reads the rows of the Airtable `enumerators` table linked to the KEFS form:
+#' each person's name, as on the form's list of enumerators, and their aliases.
+#'
+#' @param conf Configuration object from read_config().
+#' @return A data frame with columns 'name' and 'aliases'.
+#' @keywords preprocessing helper
+#' @export
+get_kefs_enumerators <- function(conf = NULL) {
+  form <- get_airtable_form_id(
+    kobo_asset_id = conf$ingestion$kefs$koboform$asset_id_v2,
+    conf = conf
+  )
+  enumerators <- airtable_to_df(
+    base_id = conf$metadata$airtable$base_id,
+    table_name = "enumerators",
+    token = conf$metadata$airtable$token
+  ) |>
+    janitor::clean_names() |>
+    dplyr::filter(stringr::str_detect(.data$kobo_form, stringr::fixed(form)))
+  # Airtable leaves out a field that is empty in every row.
+  data.frame(
+    name = enumerators$name,
+    aliases = enumerators[["aliases"]] %||% rep(NA_character_, nrow(enumerators))
+  )
+}
+
+#' Lowercase, ASCII, letters and single spaces only
+#' @keywords internal
+#' @noRd
+normalize_enumerator_name <- function(x) {
+  x <- tolower(iconv(x, to = "ASCII//TRANSLIT", sub = ""))
+  x <- gsub("['`]", "", x)
+  x <- gsub("[^a-z]", " ", x)
+  x <- gsub("\\band\\b", " ", x)
+  stringr::str_squish(x)
+}
+
+#' Two words match when equal, one typo apart (4+ letters) or two apart (8+ letters)
+#' @keywords internal
+#' @noRd
+enumerator_word_match <- function(a, b) {
+  n <- pmin(nchar(a), nchar(b))
+  d <- stringdist::stringdist(a, b, method = "osa")
+  d == 0 | (n >= 4 & d <= 1) | (n >= 8 & d <= 2)
+}
+
+#' Same person: every word of the shorter name (2+ words) matches a distinct word of
+#' the longer one, or the names without spaces are one typo apart or one starts the other
+#' @keywords internal
+#' @noRd
+same_enumerator <- function(x, y) {
+  wx <- strsplit(x, " ")[[1]]
+  wy <- strsplit(y, " ")[[1]]
+  jx <- paste(wx, collapse = "")
+  jy <- paste(wy, collapse = "")
+  if (min(nchar(jx), nchar(jy)) >= 8 &&
+    (stringdist::stringdist(jx, jy, method = "osa") <= 1 ||
+      startsWith(jx, jy) || startsWith(jy, jx))) {
+    return(TRUE)
+  }
+  short <- if (length(wx) <= length(wy)) wx else wy
+  long <- if (length(wx) <= length(wy)) wy else wx
+  if (length(short) < 2) {
+    return(FALSE)
+  }
+  free <- rep(TRUE, length(long))
+  for (w in short) {
+    hit <- which(free & enumerator_word_match(w, long))
+    if (!length(hit)) {
+      return(FALSE)
+    }
+    free[hit[1]] <- FALSE
+  }
+  TRUE
 }
