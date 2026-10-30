@@ -1,5 +1,28 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.8.0
+
+### One name per KEFS enumerator
+
+- **CHANGED** KEFS enumerator names typed in the form are matched to the
+  enumerators listed in the Airtable `enumerators` table for the KEFS
+  form (the form’s single-select list since 22 April 2026). Words can
+  come in any order and with small typos (“mahmoud madi yusuf” is Mahmud
+  Madi), a name written without spaces counts (“abdulhakim mohamed” is
+  Abdul Hakim), and the table’s new `Aliases` field holds the spellings
+  the data cannot settle alone, a different surname or two people with
+  one name (“athman lali (kiunga)” limits a spelling to one BMU). Names
+  not on the list are grouped among themselves.
+- **CHANGED** A first name alone (“naomi”) goes to the one person with
+  that name at the same BMU, or stays a name of its own; it used to
+  become “undefined”. Two names that recorded landings on the same days
+  at different BMUs are never merged.
+- On the prod data of 30 October 2026 the v2 form goes from 144
+  enumerators and 4,305 “undefined” submissions to 96 and 84. The other
+  names are real: about 90 people recorded at least 10 submissions since
+  2024, many before the list existed. The new names reach the Management
+  Platform at the next validation run; reviewers’ decisions are kept.
+
 ## peskas.kenya.data.pipeline 5.7.1
 
 ### The low-price alert matches the KoBo form

@@ -315,6 +315,8 @@ Functions dedicated to the preprocessing module
   : Fetch and Filter Asset Data from Airtable
 - [`get_airtable_form_id()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_airtable_form_id.md)
   : Get Airtable Form ID from KoBoToolbox Asset ID
+- [`get_kefs_enumerators()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_kefs_enumerators.md)
+  : KEFS enumerators from Airtable
 - [`map_kefs_surveys()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/map_kefs_surveys.md)
   : Map Survey Labels to Standardized Taxa, Gear, and Vessel Names
 - [`preprocess_kefs_surveys_v1()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/preprocess_kefs_surveys_v1.md)
@@ -472,6 +474,8 @@ Functions dedicated to data analytics and general statistics
   : Calculate Individual Fisher Performance Metrics by Gear Type
 - [`get_individual_metrics()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_individual_metrics.md)
   : Calculate Individual Fisher Performance Metrics
+- [`get_kefs_enumerators()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_kefs_enumerators.md)
+  : KEFS enumerators from Airtable
 - [`get_writable_fields()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/get_writable_fields.md)
   : Get Writable Fields from Airtable Table
 - [`impute_price()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/impute_price.md)
