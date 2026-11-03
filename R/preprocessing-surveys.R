@@ -347,6 +347,8 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       no_of_fishers = "NumCrew",
       fishing_trip_start = "Enter_date_and_time_sel_left_for_fishing",
       fishing_trip_end = "Enter_date_and_time_the_vessel_landed",
+      "time_out",
+      "time_in",
       fishing_per_week = "BAC",
       gear = "gear_type",
       mesh_size = "Please_enter_the_mesh_size_in_inches",
@@ -436,8 +438,12 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       landing_date = lubridate::as_date(.data$landing_date),
       hp = as.integer(.data$hp),
       no_of_fishers = as.integer(.data$no_of_fishers),
-      fishing_trip_start = lubridate::ymd_hms(.data$fishing_trip_start),
-      fishing_trip_end = lubridate::ymd_hms(.data$fishing_trip_end),
+      fishing_trip_start = lubridate::ymd_hms(
+        dplyr::coalesce(.data$fishing_trip_start, .data$time_out)
+      ),
+      fishing_trip_end = lubridate::ymd_hms(
+        dplyr::coalesce(.data$fishing_trip_end, .data$time_in)
+      ),
       trip_duration = as.numeric(difftime(
         .data$fishing_trip_end,
         .data$fishing_trip_start,
@@ -454,7 +460,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       total_catch_price = as.numeric(.data$total_catch_price)
     ) |>
     dplyr::relocate("trip_duration", .after = "fishing_trip_end") |>
-    dplyr::select(-"total_sample_weight_lc")
+    dplyr::select(-c("total_sample_weight_lc", "time_out", "time_in"))
 
   preprocessed_landings <-
     dplyr::full_join(

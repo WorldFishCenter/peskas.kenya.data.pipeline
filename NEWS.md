@@ -1,3 +1,9 @@
+# peskas.kenya.data.pipeline 5.8.1
+
+## Trip duration on the new KEFS form
+
+* **FIXED** KEFS trips have a trip duration again on the form versions deployed since 22 April 2026. Those versions record when the vessel left and landed in two new fields (`time_out`, `time_in`), and only the old ones were read, so the trips had no duration, no CPUE or RPUE, and alerts 3, 6.1 and 6.2 could not fire on them.
+
 # peskas.kenya.data.pipeline 5.8.0
 
 ## One name per KEFS enumerator
