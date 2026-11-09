@@ -1,3 +1,10 @@
+# peskas.kenya.data.pipeline 5.8.2
+
+## KEFS surveys that weighed the whole catch by species
+
+* **FIXED** A KEFS survey whose species weights add up to the total catch (within 5%) takes the total catch as its sample weight. Some enumerators weigh every species in the whole catch but still type the small weighed sample in the sample weight field, so each species looked heavier than the sample and alert 5.2 rejected the trip. Since July 2026 this removed almost every survey from three Lunga Lunga enumerators (and from one in Kilifi North between November 2025 and June 2026), which emptied those districts from the dashboard's estimates. Alert 5.2 itself is unchanged.
+* On the prod data of 9 November 2026: 1,606 surveys get the total catch as sample weight, alert 5.2 goes from 2,118 surveys to 703, and no survey gains an alert. The sample weight is used only by alerts 5.1 and 5.2.
+
 # peskas.kenya.data.pipeline 5.8.1
 
 ## Trip duration on the new KEFS form

@@ -467,7 +467,20 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       trip_info_preprocessed,
       catch_info,
       by = "submission_id"
-    )
+    ) |>
+    # Species weighed on the whole catch: the whole catch is the sample.
+    dplyr::mutate(
+      species_kg = sum(.data$sample_weight, na.rm = TRUE),
+      total_sample_weight = dplyr::if_else(
+        (abs(.data$species_kg - .data$total_catch_weight) <=
+          0.05 * .data$total_catch_weight &
+          .data$total_sample_weight < .data$species_kg) %in% TRUE,
+        .data$total_catch_weight,
+        .data$total_sample_weight
+      ),
+      .by = "submission_id"
+    ) |>
+    dplyr::select(-"species_kg")
 
   preprocessed_data <-
     map_kefs_surveys(
