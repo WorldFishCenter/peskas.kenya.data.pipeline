@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.8.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.8.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,15 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.8.2" id="peskaskenyadatapipeline-582">peskas.kenya.data.pipeline 5.8.2<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-582"></a></h2>
+<div class="section level3">
+<h3 id="kefs-surveys-that-weighed-the-whole-catch-by-species-5-8-2">KEFS surveys that weighed the whole catch by species<a class="anchor" aria-label="anchor" href="#kefs-surveys-that-weighed-the-whole-catch-by-species-5-8-2"></a></h3>
+<ul><li>
+<strong>FIXED</strong> A KEFS survey whose species weights add up to the total catch (within 5%) takes the total catch as its sample weight. Some enumerators weigh every species in the whole catch but still type the small weighed sample in the sample weight field, so each species looked heavier than the sample and alert 5.2 rejected the trip. Since July 2026 this removed almost every survey from three Lunga Lunga enumerators (and from one in Kilifi North between November 2025 and June 2026), which emptied those districts from the dashboard’s estimates. Alert 5.2 itself is unchanged.</li>
+<li>On the prod data of 9 November 2026: 1,606 surveys get the total catch as sample weight, alert 5.2 goes from 2,118 surveys to 703, and no survey gains an alert. The sample weight is used only by alerts 5.1 and 5.2.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.8.1" id="peskaskenyadatapipeline-581">peskas.kenya.data.pipeline 5.8.1<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-581"></a></h2>
 <div class="section level3">
