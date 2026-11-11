@@ -90,6 +90,8 @@ default:
           file_prefix: kefs-v2-surveys-preprocessed
         validated:
           file_prefix: kefs-v2-surveys-validated
+        lengths:
+          file_prefix: kefs-v2-lengths-preprocessed
         validation:
           flags:
             file_prefix: kefs-v2-flags
@@ -222,7 +224,8 @@ default:
       # maturity these fish are compared with using that release.
       db_version: "latest"
       # Hub table of FishBase traits (enrich_taxa() in coasts) that
-      # coasts::summarize_data() turns into the dashboard's taxa traits.
+      # coasts::summarize_data() turns into the dashboard's taxa traits, and
+      # whose species lengths bound KEFS alerts 5.3 and 5.4.
       taxa_enriched:
         file_prefix: taxa-fishbase-enriched
   fao:

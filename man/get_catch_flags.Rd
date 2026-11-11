@@ -4,7 +4,7 @@
 \alias{get_catch_flags}
 \title{Generate Catch-Level Validation Flags}
 \usage{
-get_catch_flags(dat = NULL, max_length_cm = 500)
+get_catch_flags(dat = NULL, species_lengths, max_length_cm = 500)
 }
 \arguments{
 \item{dat}{A data frame containing KEFS survey catch data with columns:
@@ -15,12 +15,20 @@ get_catch_flags(dat = NULL, max_length_cm = 500)
 \item total_catch_weight: Total weight of the entire catch in kilograms
 \item sample_weight: Weight of individual sample in kilograms
 \item sample_price: Price of the sample
-\item length_max_cm: Largest fish measured for the row's species, if any
+\item sample_alpha3_code, sample_scientific_name: The row's species
+\item length_type: How the fish were measured (e.g. \code{total_length})
+\item length_min_cm, length_max_cm: Smallest and largest fish measured
+for the row's species, if any
 }}
 
+\item{species_lengths}{The hub table of FishBase traits written by
+\code{\link[coasts:enrich_taxa]{coasts::enrich_taxa()}}, with \code{alpha3_code}, \code{original_name}, \code{server},
+\code{length_max_tl} and \code{length_common_tl}.}
+
 \item{max_length_cm}{Numeric. Absolute upper bound on \code{length_max_cm}, in
-centimetres. Defaults to 500. The largest fish is tested rather than the
-mean, which one impossible fish among normal ones can stay under.}
+centimetres, for every species. Defaults to 500. The largest and smallest
+fish are tested rather than the mean, which one impossible fish among
+normal ones can stay inside.}
 }
 \value{
 A data frame with columns:
@@ -31,9 +39,11 @@ A data frame with columns:
 \item "5.1": Total sample weight exceeds total catch weight
 \item "5.2": Individual sample weight exceeds either total sample weight
 or total catch weight
-\item "5.3": Length exceeds \code{max_length_cm}
+\item "5.3": A fish is longer than its species grows, or than
+\code{max_length_cm}
+\item "5.4": A fish is shorter than its species plausibly lands
 }
-\item alert_catches: For 5.2 and 5.3, the species sample each was raised
+\item alert_catches: For 5.2, 5.3 and 5.4, the species sample each was raised
 on: its number in the form (\code{catch_number}, 1 for the first species),
 \code{code}, \code{species} and the \code{value} recorded. NULL when none was.
 }
@@ -52,14 +62,15 @@ two types of weight inconsistencies:
 \item An individual sample weighs more than the total it's supposed to be part of
 }
 
-Alert 5.3 is an absolute ceiling, not a per-species check. Zanzibar and
-Mozambique bound length per taxon from FishBase morphometrics; Kenya has no
-morphometrics table, so there is no species-specific bound to apply here.
-The default only catches the physically impossible
+Alerts 5.3 and 5.4 bound each fish by its taxon with
+\code{\link[coasts:get_length_limits]{coasts::get_length_limits()}}, the rule Zanzibar and Mozambique use for
+their alerts 4 and 3. The limits come from FishBase species only, so they
+bound fish whatever length type was ticked; rays, crabs, lobsters and
+cephalopods keep the \code{max_length_cm} ceiling.
 }
 \examples{
 \dontrun{
-catch_flags <- get_catch_flags(dat = survey_data)
+catch_flags <- get_catch_flags(dat = survey_data, species_lengths = traits)
 }
 }
 \keyword{validation}

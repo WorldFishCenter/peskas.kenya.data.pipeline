@@ -43,6 +43,7 @@ format_api_wcs <- function(surveys_df, conf) {
       catch_habitat = NA_character_,
       catch_outcome = NA_integer_,
       length_cm = NA_real_,
+      n_fish = NA_integer_,
       survey_organization = "WCS"
     ) |>
     dplyr::select(
@@ -65,6 +66,7 @@ format_api_wcs <- function(surveys_df, conf) {
       catch_taxon = "alpha3_code",
       "scientific_name",
       "length_cm",
+      "n_fish",
       "catch_kg",
       "catch_price",
       tot_catch_kg = "total_catch_kg",
@@ -81,6 +83,7 @@ format_api_wcs <- function(surveys_df, conf) {
 #' Transform KEFS survey data into the canonical API schema
 #'
 #' @param surveys_df Data frame of KEFS preprocessed or validated survey records.
+#' @param fish_lengths The measured fish, one row each (`kefs-v2-lengths`).
 #' @param conf Configuration list from [read_config()].
 #' @return A tibble in the canonical API schema.
 #'
@@ -96,17 +99,16 @@ format_api_wcs <- function(surveys_df, conf) {
 #' valuation, `total_catch_weight * total_price_kg`, not a sum over catch rows.
 #'
 #' @section Length:
-#' The shared API schema carries one `length_cm` per catch row, but KEFS records
-#' lengths per individual fish -- `PrioritySpeciesCatch` is a length-frequency
-#' subsample nested inside the composition, and a trip can measure several
-#' species. [summarise_priority_lengths()] collapses those individuals onto the
-#' species they belong to during preprocessing, so `length_cm` arrives here as
-#' the mean length of the fish measured for that catch row. Because Kenya
-#' records one row per fish rather than per length bin, that plain mean is the
-#' same individual-weighted mean the Timor pipeline publishes for this schema.
-#' A catch row whose species was not measured carries `NA`. Fish measured on
-#' fork length are restated as total length first ([convert_fork_lengths()]);
-#' lobsters and crabs stay on carapace length and octopus on mantle length.
+#' KEFS measures individual fish (`PrioritySpeciesCatch`), a subsample of the
+#' composition. Each measured length is a row of its own, with `n_fish` the fish
+#' measured at that length, as the other countries publish a length class with
+#' its count. The composition row's weight and price are shared out over those
+#' rows by the fish's own weights (by their number when one is missing), so the
+#' rows still sum to the sample. A species weighed in several composition rows
+#' has its fish on the first (see `fish_lengths` in preprocessing). A catch row
+#' whose species was not measured carries `NA`. Fish measured on fork length are
+#' restated as total length first ([convert_fork_lengths()]); lobsters and crabs
+#' stay on carapace length and octopus on mantle length.
 #'
 #' @section Catch price units:
 #' `sample_price` is the KSH/kg rate for the species, not a value: it equals the
@@ -116,8 +118,31 @@ format_api_wcs <- function(surveys_df, conf) {
 #' `tot_catch_price`, so the rate is multiplied by the weight here, matching how
 #' [format_api_wcs()] derives `catch_price` from a median KSH/kg.
 #' @noRd
-format_api_kefs <- function(surveys_df, conf) {
+format_api_kefs <- function(surveys_df, fish_lengths, conf) {
+  lengths <- fish_lengths |>
+    dplyr::mutate(n_sample = as.integer(.data$n_sample)) |>
+    dplyr::summarise(
+      n_fish = dplyr::n(),
+      fish_kg = sum(.data$priority_weight),
+      .by = c("submission_id", "n_sample", "length_cm")
+    ) |>
+    dplyr::mutate(
+      share = if (anyNA(.data$fish_kg) || sum(.data$fish_kg) <= 0) {
+        .data$n_fish / sum(.data$n_fish)
+      } else {
+        .data$fish_kg / sum(.data$fish_kg)
+      },
+      .by = c("submission_id", "n_sample")
+    ) |>
+    dplyr::select(-"fish_kg")
+
   surveys_df |>
+    dplyr::select(-"length_cm") |>
+    dplyr::mutate(n_sample = as.integer(.data$n_sample)) |>
+    dplyr::left_join(lengths, by = c("submission_id", "n_sample")) |>
+    dplyr::mutate(
+      sample_weight = .data$sample_weight * dplyr::coalesce(.data$share, 1)
+    ) |>
     dplyr::rowwise() |>
     dplyr::mutate(
       trip_id = paste0(
@@ -129,7 +154,6 @@ format_api_kefs <- function(surveys_df, conf) {
     ) |>
     dplyr::ungroup() |>
     dplyr::mutate(
-      n_sample = as.integer(.data$n_sample),
       survey_organization = "KEFS",
       catch_outcome = dplyr::if_else(.data$catch_outcome == "yes", 1L, 0L),
       # sample_price is a KSH/kg rate, catch_price is a value; multiply through.
@@ -156,6 +180,7 @@ format_api_kefs <- function(surveys_df, conf) {
       catch_taxon = "sample_alpha3_code",
       scientific_name = "sample_scientific_name",
       "length_cm",
+      "n_fish",
       catch_kg = "sample_weight",
       "catch_price",
       tot_catch_kg = "total_catch_weight",
@@ -288,10 +313,15 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
+  kefs_lengths <- coasts::download_parquet_from_cloud(
+    prefix = conf$surveys$kefs$v2$lengths$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
 
   logger::log_info("Transforming surveys to API format...")
   api_data <- dplyr::bind_rows(
-    format_api_kefs(kefs_validated, conf),
+    format_api_kefs(kefs_validated, kefs_lengths, conf),
     format_api_wcs(wcs_validated, conf)
   )
 
@@ -345,6 +375,7 @@ export_api_validated <- function(log_threshold = logger::DEBUG) {
 #' - `catch_taxon`: Species alpha-3 code
 #' - `scientific_name`: Scientific name
 #' - `length_cm`: Length in cm (NA for WCS surveys)
+#' - `n_fish`: Number of fish behind `length_cm` (NA without a length)
 #' - `catch_kg`: Catch weight in kg
 #' - `catch_price`: Individual-level price (NA for WCS — prices are resolved
 #'   only at the validated stage)
@@ -372,6 +403,11 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
+  kefs_lengths <- coasts::download_parquet_from_cloud(
+    prefix = conf$surveys$kefs$v2$lengths$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
 
   logger::log_info("Downloading WCS merged landings...")
   # The merged landings are the WCS preprocessed stage: the three source
@@ -396,7 +432,7 @@ export_api_raw <- function(log_threshold = logger::DEBUG) {
     )
 
   logger::log_info("Transforming surveys to API format...")
-  kefs_api <- format_api_kefs(kefs_raw, conf)
+  kefs_api <- format_api_kefs(kefs_raw, kefs_lengths, conf)
   wcs_api <- format_api_wcs(wcs_raw, conf)
   api_data <- dplyr::bind_rows(kefs_api, wcs_api)
 

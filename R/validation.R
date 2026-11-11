@@ -303,7 +303,8 @@ validate_landings <- function() {
 #' 3. Validates the data across multiple dimensions:
 #'    - Information flags: Missing catch outcome and weight data (flag 1.1)
 #'    - Trip flags: Horse power, number of fishers, trip duration, and revenue anomalies (flags 1-4)
-#'    - Catch flags: Sample weight inconsistencies (flags 5.1-5.2)
+#'    - Catch flags: Sample weight inconsistencies, and fish too long or too
+#'      short for their species (flags 5.1-5.4)
 #'    - Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.4)
 #' 4. Combines all validation flags into a comprehensive alert system.
 #' 5. Keeps the submissions with no flag, and those a reviewer approved.
@@ -406,7 +407,14 @@ validate_kefs_surveys_v2 <- function() {
     dat = preprocessed_surveys,
     limits = trip_limits
   )
-  catch_flags <- get_catch_flags(dat = preprocessed_surveys)
+  catch_flags <- get_catch_flags(
+    dat = preprocessed_surveys,
+    species_lengths = coasts::download_parquet_from_cloud(
+      prefix = conf$metadata$fishbase$taxa_enriched$file_prefix,
+      provider = conf$storage$google$key,
+      options = conf$storage$google$options_coasts
+    )
+  )
 
   no_flags_ids <-
     dplyr::full_join(trip_flags, catch_flags, by = "submission_id") |>
