@@ -1036,11 +1036,18 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
 #'     \item total_catch_weight: Total weight of the entire catch in kilograms
 #'     \item sample_weight: Weight of individual sample in kilograms
 #'     \item sample_price: Price of the sample
-#'     \item length_max_cm: Largest fish measured for the row's species, if any
+#'     \item sample_alpha3_code, sample_scientific_name: The row's species
+#'     \item length_type: How the fish were measured (e.g. `total_length`)
+#'     \item length_min_cm, length_max_cm: Smallest and largest fish measured
+#'       for the row's species, if any
 #'   }
+#' @param species_lengths The hub table of FishBase traits written by
+#'   [coasts::enrich_taxa()], with `alpha3_code`, `original_name`, `server`,
+#'   `length_max_tl` and `length_common_tl`.
 #' @param max_length_cm Numeric. Absolute upper bound on `length_max_cm`, in
-#'   centimetres. Defaults to 500. The largest fish is tested rather than the
-#'   mean, which one impossible fish among normal ones can stay under.
+#'   centimetres, for every species. Defaults to 500. The largest and smallest
+#'   fish are tested rather than the mean, which one impossible fish among
+#'   normal ones can stay inside.
 #'
 #' @return A data frame with columns:
 #'   \itemize{
@@ -1050,9 +1057,11 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
 #'         \item "5.1": Total sample weight exceeds total catch weight
 #'         \item "5.2": Individual sample weight exceeds either total sample weight
 #'                      or total catch weight
-#'         \item "5.3": Length exceeds `max_length_cm`
+#'         \item "5.3": A fish is longer than its species grows, or than
+#'                      `max_length_cm`
+#'         \item "5.4": A fish is shorter than its species plausibly lands
 #'       }
-#'     \item alert_catches: For 5.2 and 5.3, the species sample each was raised
+#'     \item alert_catches: For 5.2, 5.3 and 5.4, the species sample each was raised
 #'       on: its number in the form (`catch_number`, 1 for the first species),
 #'       `code`, `species` and the `value` recorded. NULL when none was.
 #'   }
@@ -1065,18 +1074,23 @@ get_trips_flags <- function(dat = NULL, limits = NULL) {
 #'   \item An individual sample weighs more than the total it's supposed to be part of
 #' }
 #'
-#' Alert 5.3 is an absolute ceiling, not a per-species check. Zanzibar and
-#' Mozambique bound length per taxon from FishBase morphometrics; Kenya has no
-#' morphometrics table, so there is no species-specific bound to apply here.
-#' The default only catches the physically impossible
+#' Alerts 5.3 and 5.4 bound each fish by its taxon with
+#' [coasts::get_length_limits()], the rule Zanzibar and Mozambique use for
+#' their alerts 4 and 3. The limits come from FishBase species only, so they
+#' bound fish whatever length type was ticked; rays, crabs, lobsters and
+#' cephalopods keep the `max_length_cm` ceiling.
 #'
 #' @keywords validation
 #' @examples
 #' \dontrun{
-#' catch_flags <- get_catch_flags(dat = survey_data)
+#' catch_flags <- get_catch_flags(dat = survey_data, species_lengths = traits)
 #' }
 #' @export
-get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
+get_catch_flags <- function(
+  dat = NULL,
+  species_lengths,
+  max_length_cm = 500
+) {
   checks <-
     dat |>
     dplyr::filter(
@@ -1085,9 +1099,18 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
     dplyr::select(c(
       "submission_id",
       "catch_outcome":"sample_price",
+      "length_type",
+      "length_min_cm",
       "length_max_cm"
     )) |>
     dplyr::distinct() |>
+    dplyr::left_join(
+      coasts::get_length_limits(species_lengths),
+      by = c(
+        sample_alpha3_code = "alpha3_code",
+        sample_scientific_name = "original_name"
+      )
+    ) |>
     dplyr::mutate(
       alert_total_sample = dplyr::case_when(
         .data$total_sample_weight > .data$total_catch_weight ~ "5.1",
@@ -1100,6 +1123,11 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
       ),
       alert_length = dplyr::case_when(
         .data$length_max_cm > max_length_cm ~ "5.3",
+        .data$length_max_cm > .data$max_length ~ "5.3",
+        TRUE ~ NA_character_
+      ),
+      alert_short = dplyr::case_when(
+        .data$length_min_cm < .data$min_length ~ "5.4",
         TRUE ~ NA_character_
       )
     )
@@ -1111,16 +1139,16 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
     checks |>
     dplyr::filter(!is.na(.data$n_sample)) |>
     tidyr::pivot_longer(
-      c("alert_sample", "alert_length"),
+      c("alert_sample", "alert_length", "alert_short"),
       values_to = "code",
       values_drop_na = TRUE
     ) |>
     dplyr::mutate(
       catch_number = as.integer(.data$n_sample),
-      value = dplyr::if_else(
-        .data$code == "5.2",
-        paste(.data$sample_weight, "kg"),
-        paste(.data$length_max_cm, "cm")
+      value = dplyr::case_when(
+        .data$code == "5.2" ~ paste(.data$sample_weight, "kg"),
+        .data$code == "5.3" ~ paste(.data$length_max_cm, "cm"),
+        .data$code == "5.4" ~ paste(.data$length_min_cm, "cm")
       )
     ) |>
     dplyr::group_by(.data$submission_id, .data$catch_number, .data$code) |>
@@ -1141,6 +1169,7 @@ get_catch_flags <- function(dat = NULL, max_length_cm = 500) {
         .data$alert_total_sample,
         .data$alert_sample,
         .data$alert_length,
+        .data$alert_short,
         sep = ","
       ) |>
         stringr::str_remove_all("NA,") |>

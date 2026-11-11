@@ -13,7 +13,7 @@ devtools::check()
 ```
 - Pipeline steps: read `.github/workflows/data-pipeline.yaml` (scheduled, one exported function per step).
 - `.github/workflows/wcs-pipeline.yaml` runs the WCS chain alone (manual dispatch or push to WCS files; no cron).
-- There is no `tests/` directory, so R-CMD-check and test-coverage check nothing behaviour-specific. Verify changes by running the function against the dev profile.
+- `tests/testthat/` covers a few functions; run `devtools::test()`. For anything else, verify by running the function against the dev profile.
 
 ## Architecture
 Two independent survey chains share the package:
@@ -60,11 +60,12 @@ Two independent survey chains share the package:
   portal input.
 - `surveys.summaries.exclude_dashboard_ids` repeats `!expr` values instead of YAML anchors:
   undefined anchors silently resolved to a placeholder and excluded nothing.
-- KEFS `length_cm` in the API export is the mean length of the fish measured per species and
-  landing (see `R/api.R`). The Kenya dashboard draws its size views from it and says so
-  (`survey.meanLengths` in `peskas.dashboard`'s `packages/domain/src/country.ts`); changing it to
-  individual fish or length classes means dropping that flag. It is total length:
-  `convert_fork_lengths()` restates fork-length fish with coasts' POPLL fits before the mean,
+- KEFS lengths in the API export are the measured fish's own (>= 5.9.0): one row per length, with
+  `n_fish` and a share of the composition row's weight, from `kefs-v2-lengths-preprocessed`
+  (written by `preprocess_kefs_surveys_v2()`, read by `format_api_kefs()` in `R/api.R`). The stored
+  KEFS tables keep one row per species (mean, range, count); alerts 5.3 and 5.4 test that range
+  against the species' FishBase lengths in coasts' `taxa-fishbase-enriched` (coasts >= 4.25.1). Total length:
+  `convert_fork_lengths()` restates fork-length fish with coasts' POPLL fits first,
   except species with no fit. Lobsters and crabs stay on carapace length and octopus on mantle
   length. Keep `metadata.fishbase.db_version` equal to coasts', which converts the
   maturity lengths.

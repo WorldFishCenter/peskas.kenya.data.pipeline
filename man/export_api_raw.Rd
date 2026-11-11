@@ -46,6 +46,7 @@ any WCS form)
 \item \code{catch_taxon}: Species alpha-3 code
 \item \code{scientific_name}: Scientific name
 \item \code{length_cm}: Length in cm (NA for WCS surveys)
+\item \code{n_fish}: Number of fish behind \code{length_cm} (NA without a length)
 \item \code{catch_kg}: Catch weight in kg
 \item \code{catch_price}: Individual-level price (NA for WCS — prices are resolved
 only at the validated stage)

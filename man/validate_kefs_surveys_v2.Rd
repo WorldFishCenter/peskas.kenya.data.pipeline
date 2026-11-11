@@ -28,7 +28,8 @@ submission's status on KEFS's KoboToolbox server.
 \itemize{
 \item Information flags: Missing catch outcome and weight data (flag 1.1)
 \item Trip flags: Horse power, number of fishers, trip duration, and revenue anomalies (flags 1-4)
-\item Catch flags: Sample weight inconsistencies (flags 5.1-5.2)
+\item Catch flags: Sample weight inconsistencies, and fish too long or too
+short for their species (flags 5.1-5.4)
 \item Indicator flags: CPUE, RPUE, and price per kg outliers (flags 6.1-6.4)
 }
 \item Combines all validation flags into a comprehensive alert system.

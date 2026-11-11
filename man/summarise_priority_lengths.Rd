@@ -24,15 +24,14 @@ Tibble with one row per \code{submission_id} x \code{priority_species}:
 \description{
 \code{PrioritySpeciesCatch} records one row per \emph{measured fish}, while
 \code{OverallSampleWeight} records one row per \emph{catch item} (a species in the
-weighed sample). The two are nested, and the cross-country API schema carries
-a single \code{length_cm} per catch row, so the individuals have to be collapsed
-onto their species before the two can be joined.
+weighed sample). The two are nested, so the individuals have to be collapsed
+onto their species before the two can be joined. The API export publishes the
+fish one by one instead (\code{format_api_kefs()}); this summary is what the stored
+tables and alerts 5.3 and 5.4 use.
 }
 \details{
-\code{length_cm} is the plain mean across individuals, which -- because Kenya
-records one row per fish rather than per length bin -- is the same
-individual-weighted mean the Timor pipeline publishes for the shared API
-schema. It is a subsample statistic: \code{measured_weight_kg} is the weight of the
+\code{length_cm} is the plain mean across individuals. It is a subsample
+statistic: \code{measured_weight_kg} is the weight of the
 fish actually measured and is generally \emph{less} than the species'
 \code{sample_weight}, which covers the whole weighed sample.
 

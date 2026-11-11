@@ -417,6 +417,22 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
     )
   }
 
+  # The fish one by one, for the API export: each on the first composition row
+  # of its species, so a species weighed in several rows has its fish once.
+  fish_lengths <-
+    priority_df |>
+    dplyr::filter(!is.na(.data$priority_species), !is.na(.data$length_cm)) |>
+    dplyr::mutate(submission_id = as.character(.data$submission_id)) |>
+    dplyr::inner_join(
+      sample_df |>
+        dplyr::summarise(
+          n_sample = min(.data$n_sample),
+          .by = c("submission_id", "sample_species")
+        ),
+      by = c("submission_id", "priority_species" = "sample_species")
+    ) |>
+    dplyr::select("submission_id", "n_sample", "length_cm", "priority_weight")
+
   # A species may legitimately appear in more than one composition row (separate
   # grades or batches, with their own weight and price). Each keeps its own
   # weight, and they share the species' length summary -- a mean is not additive,
@@ -507,6 +523,12 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
   coasts::upload_parquet_to_cloud(
     data = preprocessed_data,
     prefix = conf$surveys$kefs$v2$preprocessed$file_prefix,
+    provider = conf$storage$google$key,
+    options = conf$storage$google$options
+  )
+  coasts::upload_parquet_to_cloud(
+    data = fish_lengths,
+    prefix = conf$surveys$kefs$v2$lengths$file_prefix,
     provider = conf$storage$google$key,
     options = conf$storage$google$options
   )
