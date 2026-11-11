@@ -71,6 +71,8 @@ from the validated export are those validation rejected.
 
 - `length_cm`: Length in cm (NA for WCS surveys)
 
+- `n_fish`: Number of fish behind `length_cm` (NA without a length)
+
 - `catch_kg`: Catch weight in kg
 
 - `catch_price`: Individual-level price (NA for WCS — prices are

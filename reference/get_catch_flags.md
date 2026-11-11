@@ -9,7 +9,7 @@ sample weights and total weights.
 ## Usage
 
 ``` r
-get_catch_flags(dat = NULL, max_length_cm = 500)
+get_catch_flags(dat = NULL, species_lengths, max_length_cm = 500)
 ```
 
 ## Arguments
@@ -30,13 +30,26 @@ get_catch_flags(dat = NULL, max_length_cm = 500)
 
   - sample_price: Price of the sample
 
-  - length_max_cm: Largest fish measured for the row's species, if any
+  - sample_alpha3_code, sample_scientific_name: The row's species
+
+  - length_type: How the fish were measured (e.g. `total_length`)
+
+  - length_min_cm, length_max_cm: Smallest and largest fish measured for
+    the row's species, if any
+
+- species_lengths:
+
+  The hub table of FishBase traits written by
+  [`coasts::enrich_taxa()`](https://rdrr.io/pkg/coasts/man/enrich_taxa.html),
+  with `alpha3_code`, `original_name`, `server`, `length_max_tl` and
+  `length_common_tl`.
 
 - max_length_cm:
 
-  Numeric. Absolute upper bound on `length_max_cm`, in centimetres.
-  Defaults to 500. The largest fish is tested rather than the mean,
-  which one impossible fish among normal ones can stay under.
+  Numeric. Absolute upper bound on `length_max_cm`, in centimetres, for
+  every species. Defaults to 500. The largest and smallest fish are
+  tested rather than the mean, which one impossible fish among normal
+  ones can stay inside.
 
 ## Value
 
@@ -52,11 +65,15 @@ A data frame with columns:
   - "5.2": Individual sample weight exceeds either total sample weight
     or total catch weight
 
-  - "5.3": Length exceeds `max_length_cm`
+  - "5.3": A fish is longer than its species grows, or than
+    `max_length_cm`
 
-- alert_catches: For 5.2 and 5.3, the species sample each was raised on:
-  its number in the form (`catch_number`, 1 for the first species),
-  `code`, `species` and the `value` recorded. NULL when none was.
+  - "5.4": A fish is shorter than its species plausibly lands
+
+- alert_catches: For 5.2, 5.3 and 5.4, the species sample each was
+  raised on: its number in the form (`catch_number`, 1 for the first
+  species), `code`, `species` and the `value` recorded. NULL when none
+  was.
 
 ## Details
 
@@ -68,15 +85,17 @@ identifies two types of weight inconsistencies:
 2.  An individual sample weighs more than the total it's supposed to be
     part of
 
-Alert 5.3 is an absolute ceiling, not a per-species check. Zanzibar and
-Mozambique bound length per taxon from FishBase morphometrics; Kenya has
-no morphometrics table, so there is no species-specific bound to apply
-here. The default only catches the physically impossible
+Alerts 5.3 and 5.4 bound each fish by its taxon with
+[`coasts::get_length_limits()`](https://rdrr.io/pkg/coasts/man/get_length_limits.html),
+the rule Zanzibar and Mozambique use for their alerts 4 and 3. The
+limits come from FishBase species only, so they bound fish whatever
+length type was ticked; rays, crabs, lobsters and cephalopods keep the
+`max_length_cm` ceiling.
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-catch_flags <- get_catch_flags(dat = survey_data)
+catch_flags <- get_catch_flags(dat = survey_data, species_lengths = traits)
 } # }
 ```

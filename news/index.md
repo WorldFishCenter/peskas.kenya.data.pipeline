@@ -1,5 +1,18 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.9.0
+
+### Number of fish behind each length
+
+- **CHANGED** Each fish KEFS measures is published in the API with its
+  own length, instead of the average length of its species, with the
+  number of fish behind each length.
+- **CHANGED** Alert 5.3 flags a fish longer than its species grows
+  according to FishBase, as Zanzibar and Mozambique do, instead of only
+  lengths over 500 cm.
+- **NEW** Alert 5.4 flags a fish too short for its species, under a
+  quarter of its common length.
+
 ## peskas.kenya.data.pipeline 5.8.2
 
 ### KEFS surveys that weighed the whole catch by species

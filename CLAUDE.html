@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.8.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,7 +42,8 @@
 <ul><li>Pipeline steps: read <code>.github/workflows/data-pipeline.yaml</code> (scheduled, one exported function per step).</li>
 <li>
 <code>.github/workflows/wcs-pipeline.yaml</code> runs the WCS chain alone (manual dispatch or push to WCS files; no cron).</li>
-<li>There is no <code>tests/</code> directory, so R-CMD-check and test-coverage check nothing behaviour-specific. Verify changes by running the function against the dev profile.</li>
+<li>
+<code>tests/testthat/</code> covers a few functions; run <code>devtools::test()</code>. For anything else, verify by running the function against the dev profile.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="architecture">Architecture<a class="anchor" aria-label="anchor" href="#architecture"></a></h2>
@@ -60,7 +61,7 @@
 <ul><li>WCS outputs use the <code>kenya_wcs_*</code> prefixes on purpose. The bare <code>kenya_fishery_metrics</code> and <code>kenya_monthly_summaries_map</code> prefixes belong to <code><a href="https://rdrr.io/pkg/coasts/man/summarize_data.html" class="external-link">coasts::summarize_data()</a></code> / <code><a href="https://rdrr.io/pkg/coasts/man/export_portal.html" class="external-link">coasts::export_portal()</a></code>; writing a differently-keyed frame under them shadows the coasts portal input.</li>
 <li>
 <code>surveys.summaries.exclude_dashboard_ids</code> repeats <code>!expr</code> values instead of YAML anchors: undefined anchors silently resolved to a placeholder and excluded nothing.</li>
-<li>KEFS <code>length_cm</code> in the API export is the mean length of the fish measured per species and landing (see <code>R/api.R</code>). The Kenya dashboard draws its size views from it and says so (<code>survey.meanLengths</code> in <code>peskas.dashboard</code>‘s <code>packages/domain/src/country.ts</code>); changing it to individual fish or length classes means dropping that flag. It is total length: <code><a href="reference/convert_fork_lengths.html">convert_fork_lengths()</a></code> restates fork-length fish with coasts’ POPLL fits before the mean, except species with no fit. Lobsters and crabs stay on carapace length and octopus on mantle length. Keep <code>metadata.fishbase.db_version</code> equal to coasts’, which converts the maturity lengths.</li>
+<li>KEFS lengths in the API export are the measured fish’s own (&gt;= 5.9.0): one row per length, with <code>n_fish</code> and a share of the composition row’s weight, from <code>kefs-v2-lengths-preprocessed</code> (written by <code><a href="reference/preprocess_kefs_surveys_v2.html">preprocess_kefs_surveys_v2()</a></code>, read by <code>format_api_kefs()</code> in <code>R/api.R</code>). The stored KEFS tables keep one row per species (mean, range, count); alerts 5.3 and 5.4 test that range against the species’ FishBase lengths in coasts’ <code>taxa-fishbase-enriched</code> (coasts &gt;= 4.25.1). Total length: <code><a href="reference/convert_fork_lengths.html">convert_fork_lengths()</a></code> restates fork-length fish with coasts’ POPLL fits first, except species with no fit. Lobsters and crabs stay on carapace length and octopus on mantle length. Keep <code>metadata.fishbase.db_version</code> equal to coasts’, which converts the maturity lengths.</li>
 </ul></div>
 </div>
 

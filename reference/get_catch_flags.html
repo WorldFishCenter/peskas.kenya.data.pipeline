@@ -13,7 +13,7 @@ the relationship between sample weights and total weights."><meta property="og:i
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.8.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -46,7 +46,7 @@ the relationship between sample weights and total weights.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_catch_flags</span><span class="op">(</span>dat <span class="op">=</span> <span class="cn">NULL</span>, max_length_cm <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_catch_flags</span><span class="op">(</span>dat <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">species_lengths</span>, max_length_cm <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -60,14 +60,24 @@ the relationship between sample weights and total weights.</p>
 <li><p>total_catch_weight: Total weight of the entire catch in kilograms</p></li>
 <li><p>sample_weight: Weight of individual sample in kilograms</p></li>
 <li><p>sample_price: Price of the sample</p></li>
-<li><p>length_max_cm: Largest fish measured for the row's species, if any</p></li>
+<li><p>sample_alpha3_code, sample_scientific_name: The row's species</p></li>
+<li><p>length_type: How the fish were measured (e.g. <code>total_length</code>)</p></li>
+<li><p>length_min_cm, length_max_cm: Smallest and largest fish measured
+for the row's species, if any</p></li>
 </ul></dd>
+
+
+<dt id="arg-species-lengths">species_lengths<a class="anchor" aria-label="anchor" href="#arg-species-lengths"></a></dt>
+<dd><p>The hub table of FishBase traits written by
+<code><a href="https://rdrr.io/pkg/coasts/man/enrich_taxa.html" class="external-link">coasts::enrich_taxa()</a></code>, with <code>alpha3_code</code>, <code>original_name</code>, <code>server</code>,
+<code>length_max_tl</code> and <code>length_common_tl</code>.</p></dd>
 
 
 <dt id="arg-max-length-cm">max_length_cm<a class="anchor" aria-label="anchor" href="#arg-max-length-cm"></a></dt>
 <dd><p>Numeric. Absolute upper bound on <code>length_max_cm</code>, in
-centimetres. Defaults to 500. The largest fish is tested rather than the
-mean, which one impossible fish among normal ones can stay under.</p></dd>
+centimetres, for every species. Defaults to 500. The largest and smallest
+fish are tested rather than the mean, which one impossible fish among
+normal ones can stay inside.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -76,9 +86,11 @@ mean, which one impossible fish among normal ones can stay under.</p></dd>
 <li><p>alert_flag_catch: Comma-separated string of alert codes (NA if no alerts):</p><ul><li><p>"5.1": Total sample weight exceeds total catch weight</p></li>
 <li><p>"5.2": Individual sample weight exceeds either total sample weight
 or total catch weight</p></li>
-<li><p>"5.3": Length exceeds <code>max_length_cm</code></p></li>
+<li><p>"5.3": A fish is longer than its species grows, or than
+<code>max_length_cm</code></p></li>
+<li><p>"5.4": A fish is shorter than its species plausibly lands</p></li>
 </ul></li>
-<li><p>alert_catches: For 5.2 and 5.3, the species sample each was raised
+<li><p>alert_catches: For 5.2, 5.3 and 5.4, the species sample each was raised
 on: its number in the form (<code>catch_number</code>, 1 for the first species),
 <code>code</code>, <code>species</code> and the <code>value</code> recorded. NULL when none was.</p></li>
 </ul></div>
@@ -87,16 +99,17 @@ on: its number in the form (<code>catch_number</code>, 1 for the first species),
     <p>The function only processes submissions where catch_outcome is "yes". It identifies
 two types of weight inconsistencies:</p><ol><li><p>The sum of all samples exceeds the total reported catch</p></li>
 <li><p>An individual sample weighs more than the total it's supposed to be part of</p></li>
-</ol><p>Alert 5.3 is an absolute ceiling, not a per-species check. Zanzibar and
-Mozambique bound length per taxon from FishBase morphometrics; Kenya has no
-morphometrics table, so there is no species-specific bound to apply here.
-The default only catches the physically impossible</p>
+</ol><p>Alerts 5.3 and 5.4 bound each fish by its taxon with
+<code><a href="https://rdrr.io/pkg/coasts/man/get_length_limits.html" class="external-link">coasts::get_length_limits()</a></code>, the rule Zanzibar and Mozambique use for
+their alerts 4 and 3. The limits come from FishBase species only, so they
+bound fish whatever length type was ticked; rays, crabs, lobsters and
+cephalopods keep the <code>max_length_cm</code> ceiling.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">catch_flags</span> <span class="op">&lt;-</span> <span class="fu">get_catch_flags</span><span class="op">(</span>dat <span class="op">=</span> <span class="va">survey_data</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">catch_flags</span> <span class="op">&lt;-</span> <span class="fu">get_catch_flags</span><span class="op">(</span>dat <span class="op">=</span> <span class="va">survey_data</span>, species_lengths <span class="op">=</span> <span class="va">traits</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

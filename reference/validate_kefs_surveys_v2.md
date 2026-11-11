@@ -37,7 +37,8 @@ The function performs the following main operations:
     - Trip flags: Horse power, number of fishers, trip duration, and
       revenue anomalies (flags 1-4)
 
-    - Catch flags: Sample weight inconsistencies (flags 5.1-5.2)
+    - Catch flags: Sample weight inconsistencies, and fish too long or
+      too short for their species (flags 5.1-5.4)
 
     - Indicator flags: CPUE, RPUE, and price per kg outliers (flags
       6.1-6.4)

@@ -2,9 +2,10 @@
 
 `PrioritySpeciesCatch` records one row per *measured fish*, while
 `OverallSampleWeight` records one row per *catch item* (a species in the
-weighed sample). The two are nested, and the cross-country API schema
-carries a single `length_cm` per catch row, so the individuals have to
-be collapsed onto their species before the two can be joined.
+weighed sample). The two are nested, so the individuals have to be
+collapsed onto their species before the two can be joined. The API
+export publishes the fish one by one instead (`format_api_kefs()`); this
+summary is what the stored tables and alerts 5.3 and 5.4 use.
 
 ## Usage
 
@@ -53,12 +54,10 @@ Tibble with one row per `submission_id` x `priority_species`:
 
 ## Details
 
-`length_cm` is the plain mean across individuals, which – because Kenya
-records one row per fish rather than per length bin – is the same
-individual-weighted mean the Timor pipeline publishes for the shared API
-schema. It is a subsample statistic: `measured_weight_kg` is the weight
-of the fish actually measured and is generally *less* than the species'
-`sample_weight`, which covers the whole weighed sample.
+`length_cm` is the plain mean across individuals. It is a subsample
+statistic: `measured_weight_kg` is the weight of the fish actually
+measured and is generally *less* than the species' `sample_weight`,
+which covers the whole weighed sample.
 
 Run
 [`convert_fork_lengths()`](https://worldfishcenter.github.io/peskas.kenya.data.pipeline/reference/convert_fork_lengths.md)
