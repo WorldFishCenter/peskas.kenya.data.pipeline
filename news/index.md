@@ -1,5 +1,13 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.9.2
+
+### Reviewers’ decisions saved during a run are kept
+
+- **FIXED** A decision a reviewer saves in the management platform while
+  the pipeline is running is no longer undone when the run writes its
+  flags.
+
 ## peskas.kenya.data.pipeline 5.9.1
 
 ### Habitat left empty when it was not recorded
