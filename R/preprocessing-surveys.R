@@ -515,6 +515,7 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
         .data$habitat == "beach" ~ "Shore",
         .data$habitat == "mangroove" ~ "Mangrove",
         .data$habitat == "sea_grass" ~ "Seagrass",
+        is.na(.data$habitat) ~ NA_character_,
         TRUE ~ "Multiple"
       )
     )
