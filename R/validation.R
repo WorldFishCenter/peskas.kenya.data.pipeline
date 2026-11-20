@@ -500,7 +500,8 @@ validate_kefs_surveys_v2 <- function() {
 #' @description
 #' Exports validation flags to MongoDB, keeping the decisions reviewers made in
 #' the Peskas Management Platform or in KoboToolbox (read beforehand with
-#' `coasts::review_decisions()`).
+#' `coasts::review_decisions()`, and again just before the push with
+#' `coasts::refresh_review_decisions()`).
 #'
 #' @details
 #' The function performs the following steps:
@@ -613,16 +614,25 @@ export_validation_flags <- function(
     dplyr::select(-c(dplyr::starts_with("valid"), dplyr::any_of("alert_catches")))
 
   asset_id <- survey_conf[[config_key]]
+  flags_collection <- paste(
+    conf$storage$mongodb$databases$validation$collections$flags,
+    asset_id,
+    sep = "-"
+  )
 
+  # Right before the push: a reviewer may have decided since the run began.
+  validation_flags_with_kobo_status <- coasts::refresh_review_decisions(
+    flags = validation_flags_with_kobo_status,
+    pipeline_users = survey_conf$username,
+    connection_string = conf$storage$mongodb$connection_strings$validation,
+    db_name = conf$storage$mongodb$databases$validation$database_name,
+    collection_name = flags_collection
+  )
   coasts::mdb_collection_push(
     data = validation_flags_with_kobo_status,
     connection_string = conf$storage$mongodb$connection_strings$validation,
     db_name = conf$storage$mongodb$databases$validation$database_name,
-    collection_name = paste(
-      conf$storage$mongodb$databases$validation$collections$flags,
-      asset_id,
-      sep = "-"
-    )
+    collection_name = flags_collection
   )
 
   coasts::mdb_collection_push(
