@@ -1,5 +1,15 @@
 # Changelog
 
+## peskas.kenya.data.pipeline 5.9.1
+
+### Habitat left empty when it was not recorded
+
+- **FIXED** A KEFS trip whose form did not record where it fished (the
+  form versions of 2024 and 2025 had no habitat question) now has an
+  empty habitat in the API, instead of “Multiple”. “Multiple” is kept
+  for trips that ticked more than one habitat. On the data of 19
+  November 2026 about 10,300 trips change.
+
 ## peskas.kenya.data.pipeline 5.9.0
 
 ### Number of fish behind each length
