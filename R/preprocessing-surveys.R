@@ -460,6 +460,10 @@ preprocess_kefs_surveys_v2 <- function(log_threshold = logger::DEBUG) {
       fishing_trip_end = lubridate::ymd_hms(
         dplyr::coalesce(.data$fishing_trip_end, .data$time_in)
       ),
+      fishing_trip_end = correct_trip_end(
+        .data$fishing_trip_start,
+        .data$fishing_trip_end
+      ),
       trip_duration = as.numeric(difftime(
         .data$fishing_trip_end,
         .data$fishing_trip_start,
@@ -1907,4 +1911,28 @@ same_enumerator <- function(x, y) {
     free[hit[1]] <- FALSE
   }
   TRUE
+}
+
+#' Correct a landing time typed on a 12-hour clock or on the wrong day
+#'
+#' A landing earlier on the same day as the departure is a typing slip: a
+#' morning departure landing "before noon" was a 1 pm typed as 1:00, so it gains
+#' 12 hours; an afternoon or evening departure landing in the morning came back
+#' the next day, so it gains a day. Every other landing is kept as it is.
+#'
+#' @param start,end Departure and landing times (POSIXct).
+#' @return The landing times, corrected.
+#' @noRd
+correct_trip_end <- function(start, end) {
+  start_local <- lubridate::with_tz(start, "Africa/Nairobi")
+  end_local <- lubridate::with_tz(end, "Africa/Nairobi")
+  landed_earlier_same_day <- end < start &
+    lubridate::as_date(start_local) == lubridate::as_date(end_local)
+  dplyr::case_when(
+    (landed_earlier_same_day & lubridate::hour(end_local) < 12 &
+      lubridate::hour(start_local) < 12) %in% TRUE ~ end + lubridate::hours(12),
+    (landed_earlier_same_day & lubridate::hour(end_local) < 12) %in% TRUE ~
+      end + lubridate::days(1),
+    .default = end
+  )
 }

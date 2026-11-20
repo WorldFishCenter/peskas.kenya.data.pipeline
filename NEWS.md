@@ -1,3 +1,10 @@
+# peskas.kenya.data.pipeline 5.9.3
+
+## KEFS landing times typed on a 12-hour clock
+
+* **FIXED** A KEFS trip that leaves in the morning and "lands" earlier the same morning now has 12 hours added to its landing time: the landing was typed on a 12-hour clock (1 pm entered as 1:00). A trip that leaves in the afternoon or evening and lands the next morning, with the same date typed for both, gets one day added. Alert 3 rejected these trips for a negative trip duration, although only the landing hour was wrong. Seven enumerators made most of these slips in 2024 and 2025, and three sub-counties lost a fifth to a quarter of their 2025 surveys.
+* On the prod data of 20 November 2026: 2,279 trips get a corrected landing time (2,093 by 12 hours, 186 by a day), alert 3 goes from 2,681 surveys to 402, and 2,153 more surveys are validated. No survey that passed before gains an alert. Eight surveys rejected only by alert 3 now show a price or revenue alert instead.
+
 # peskas.kenya.data.pipeline 5.9.2
 
 ## Reviewers' decisions saved during a run are kept
