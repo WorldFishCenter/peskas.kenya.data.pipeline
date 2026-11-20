@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">peskas.kenya.data.pipeline</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.9.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.9.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,15 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.9.3" id="peskaskenyadatapipeline-593">peskas.kenya.data.pipeline 5.9.3<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-593"></a></h2>
+<div class="section level3">
+<h3 id="kefs-landing-times-typed-on-a-hour-clock-5-9-3">KEFS landing times typed on a 12-hour clock<a class="anchor" aria-label="anchor" href="#kefs-landing-times-typed-on-a-hour-clock-5-9-3"></a></h3>
+<ul><li>
+<strong>FIXED</strong> A KEFS trip that leaves in the morning and “lands” earlier the same morning now has 12 hours added to its landing time: the landing was typed on a 12-hour clock (1 pm entered as 1:00). A trip that leaves in the afternoon or evening and lands the next morning, with the same date typed for both, gets one day added. Alert 3 rejected these trips for a negative trip duration, although only the landing hour was wrong. Seven enumerators made most of these slips in 2024 and 2025, and three sub-counties lost a fifth to a quarter of their 2025 surveys.</li>
+<li>On the prod data of 20 November 2026: 2,279 trips get a corrected landing time (2,093 by 12 hours, 186 by a day), alert 3 goes from 2,681 surveys to 402, and 2,153 more surveys are validated. No survey that passed before gains an alert. Eight surveys rejected only by alert 3 now show a price or revenue alert instead.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.9.2" id="peskaskenyadatapipeline-592">peskas.kenya.data.pipeline 5.9.2<a class="anchor" aria-label="anchor" href="#peskaskenyadatapipeline-592"></a></h2>
 <div class="section level3">
